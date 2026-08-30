@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Field Report Feed - Prepshare</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "secondary-container": "#feb64e",
+                "on-primary-fixed": "#131c28",
+                "on-surface-variant": "#a3a6ad",
+                "on-tertiary-fixed-variant": "#2c4e34",
+                "on-secondary": "#ffffff",
+                "on-secondary-container": "#714800",
+                "primary-container": "#1b2430",
+                "surface-container": "#1c2026",
+                "surface-container-lowest": "#0a0c0f",
+                "on-surface": "#e5e7eb",
+                "surface": "#14171C",
+                "surface-container-low": "#181b21",
+                "on-error": "#ffffff",
+                "on-primary": "#ffffff",
+                "on-primary-container": "#828b9a",
+                "inverse-primary": "#bec7d7",
+                "outline": "#4b5563",
+                "secondary-fixed": "#ffddb5",
+                "surface-container-highest": "#282c33",
+                "tertiary-fixed": "#c5ecc9",
+                "on-tertiary-container": "#6f9375",
+                "secondary-fixed-dim": "#ffb956",
+                "error-container": "#ffdad6",
+                "primary-fixed-dim": "#bec7d7",
+                "on-tertiary": "#ffffff",
+                "inverse-on-surface": "#f2f1ec",
+                "surface-dim": "#dbdad5",
+                "tertiary": "#001104",
+                "surface-variant": "#1f2937",
+                "surface-tint": "#565f6d",
+                "tertiary-fixed-dim": "#aad0ae",
+                "on-secondary-fixed-variant": "#643f00",
+                "secondary": "#E8A33D",
+                "primary-fixed": "#dae3f4",
+                "inverse-surface": "#30312e",
+                "background": "#14171C",
+                "surface-container-high": "#23272e",
+                "primary": "#6B8F71",
+                "surface-bright": "#14171C",
+                "on-background": "#e5e7eb",
+                "on-secondary-fixed": "#2a1800",
+                "outline-variant": "#374151",
+                "tertiary-container": "#062913",
+                "error": "#ef4444",
+                "on-error-container": "#93000a",
+                "on-tertiary-fixed": "#00210c",
+                "on-primary-fixed-variant": "#3e4755"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "xl": "64px",
+                "margin-mobile": "16px",
+                "gutter": "20px",
+                "lg": "48px",
+                "xs": "8px",
+                "md": "24px",
+                "sm": "16px",
+                "margin-desktop": "40px",
+                "base": "4px"
+        },
+        "fontFamily": {
+                "headline-lg": [
+                        "Inter", "sans-serif"
+                ],
+                "metadata": [
+                        "Courier Prime", "monospace"
+                ],
+                "label-bold": [
+                        "Courier Prime", "monospace"
+                ],
+                "body-lg": [
+                        "Inter", "sans-serif"
+                ],
+                "body-sm": [
+                        "Inter", "sans-serif"
+                ],
+                "headline-lg-mobile": [
+                        "Inter", "sans-serif"
+                ],
+                "body-md": [
+                        "Inter", "sans-serif"
+                ],
+                "headline-md": [
+                        "Inter", "sans-serif"
+                ]
+        },
+        "fontSize": {
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "1.2",
+                                "letterSpacing": "0.02em",
+                                "fontWeight": "800"
+                        }
+                ],
+                "metadata": [
+                        "12px",
+                        {
+                                "lineHeight": "1.2",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-bold": [
+                        "14px",
+                        {
+                                "lineHeight": "1.0",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-lg": [
+                        "18px",
+                        {
+                                "lineHeight": "1.6",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-sm": [
+                        "14px",
+                        {
+                                "lineHeight": "1.5",
+                                "fontWeight": "400"
+                        }
+                ],
+                "headline-lg-mobile": [
+                        "24px",
+                        {
+                                "lineHeight": "1.2",
+                                "fontWeight": "800"
+                        }
+                ],
+                "body-md": [
+                        "16px",
+                        {
+                                "lineHeight": "1.6",
+                                "fontWeight": "400"
+                        }
+                ],
+                "headline-md": [
+                        "20px",
+                        {
+                                "lineHeight": "1.4",
+                                "fontWeight": "700"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<style>
+        .redaction-bar {
+            background-color: #e5e7eb;
+            color: transparent;
+            transition: color 0.2s ease, background-color 0.2s ease;
+            cursor: pointer;
+        }
+        .redaction-bar:hover {
+            color: #14171C;
+            background-color: rgba(229, 231, 235, 0.1);
+        }
+        /* Custom scrollbar for horizontal filters */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .glass-card {
+            background: rgba(28, 32, 38, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(107, 143, 113, 0.2);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+        .glow-border:hover {
+            border-color: rgba(107, 143, 113, 0.8);
+            box-shadow: 0 0 15px rgba(107, 143, 113, 0.3), inset 0 0 10px rgba(107, 143, 113, 0.1);
+        }
+        .glow-border-secondary:hover {
+            border-color: rgba(232, 163, 61, 0.8);
+            box-shadow: 0 0 15px rgba(232, 163, 61, 0.3), inset 0 0 10px rgba(232, 163, 61, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md antialiased min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="w-full border-b border-outline bg-background/90 backdrop-blur-sm sticky top-0 z-50">
+<div class="flex justify-between items-center w-full px-margin-desktop py-sm max-w-[1400px] mx-auto">
+<div class="flex items-center gap-lg w-full">
+<a class="font-headline-md text-headline-md uppercase tracking-wider text-on-surface" href="#">
+                    PREPSHARE
+                </a>
+<div class="relative hidden md:flex items-center bg-surface-container border border-outline rounded-lg px-sm py-xs w-full max-w-md group hover:border-primary transition-colors cursor-text">
+<span class="material-symbols-outlined text-on-surface-variant mr-xs" data-icon="search">search</span>
+<span class="font-metadata text-metadata text-on-surface-variant flex-grow">Search reports, tags, cases...</span>
+<div class="flex items-center gap-1 border border-outline rounded px-1.5 py-0.5 bg-surface text-on-surface-variant font-metadata text-[10px]">
+<span>â</span><span>K</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-md shrink-0 ml-auto">
+<button class="hidden md:flex items-center gap-xs px-sm py-xs rounded bg-primary text-on-primary hover:bg-opacity-90 transition-colors font-label-bold text-label-bold">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+<span>NEW REPORT</span>
+</button>
+<!-- Mobile Menu Toggle -->
+<button class="md:hidden text-on-surface">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Layout Grid -->
+<div class="flex-grow flex max-w-[1400px] mx-auto w-full">
+<!-- SideNavBar -->
+<aside class="hidden md:flex flex-col h-[calc(100vh-73px)] w-64 border-r border-outline shrink-0 sticky top-[73px] overflow-y-auto">
+<div class="p-sm border-b border-outline">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full overflow-hidden shrink-0 bg-surface-container border border-outline">
+<img class="w-full h-full object-cover grayscale mix-blend-screen" data-alt="A stark, high-contrast black and white portrait photo of an operative, stylized with a heavy halftone dot pattern and slight static interference, typical of classified dossier photographs. The background is pure white." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4R58UjLfPNmlHY2RbOaeOIn4S8Ynb3XhYotjQ-weN5m4l3Mpg2dQrhoVHd-1H2o-AdngGihFibBh3LlIGqO1ooHnTrMZc2n8Tx_K99t-Qlmh2h_napbBZVzLVU3ruaMoKKTUQAK41sThmUa1GPAD8ny3gVVQFIjMFR_JhcIpYZtom9CeDm63be7DxiMZA3GdbYsBeTSDqajwsGMwsGvG6lHmR7gSGsLed1I4OKnEm8hicd_KI6uRgfw"/>
+</div>
+<div>
+<div class="font-headline-md text-sm text-on-surface leading-tight">OPERATIVE</div>
+<div class="font-metadata text-metadata text-primary mt-0.5">ID: 7729-ALPHA</div>
+</div>
+</div>
+</div>
+<nav class="p-sm border-b border-outline">
+<ul class="flex flex-col gap-1">
+<li>
+<a class="flex items-center gap-sm px-xs py-2 rounded font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="folder_open">folder_open</span>
+                        ARCHIVE
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-sm px-xs py-2 rounded font-label-bold text-label-bold bg-primary/10 text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="description" data-weight="fill" style="font-variation-settings: 'FILL' 1;">description</span>
+                        FIELD REPORTS
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-sm px-xs py-2 rounded font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="assignment">assignment</span>
+                        DEBRIEF
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-sm px-xs py-2 rounded font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="analytics">analytics</span>
+                        INTEL
+                    </a>
+</li>
+</ul>
+</nav>
+<!-- Collapsible Filters -->
+<div class="p-sm flex-grow">
+<div class="flex items-center justify-between text-on-surface font-label-bold text-label-bold mb-md cursor-pointer group">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-[20px]" data-icon="filter_list">filter_list</span>
+<span>FILTERS</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-on-surface transition-colors text-[20px]" data-icon="expand_less">expand_less</span>
+</div>
+<div class="flex flex-col gap-lg">
+<!-- Threat Filter -->
+<div class="flex flex-col gap-sm">
+<span class="font-metadata text-metadata text-on-surface-variant uppercase tracking-wider">THREAT LEVEL</span>
+<div class="flex flex-col gap-2">
+<label class="flex items-center gap-xs cursor-pointer group">
+<input checked="" class="form-radio text-primary bg-surface border-outline focus:ring-primary focus:ring-offset-background" name="threat" type="radio"/>
+<span class="font-label-bold text-label-bold text-on-surface group-hover:text-primary transition-colors">ALL</span>
+</label>
+<label class="flex items-center gap-xs cursor-pointer group">
+<input class="form-radio text-primary bg-surface border-outline focus:ring-primary focus:ring-offset-background" name="threat" type="radio"/>
+<span class="font-label-bold text-label-bold text-on-surface group-hover:text-primary transition-colors">LOW</span>
+</label>
+<label class="flex items-center gap-xs cursor-pointer group">
+<input class="form-radio text-secondary bg-surface border-outline focus:ring-secondary focus:ring-offset-background" name="threat" type="radio"/>
+<span class="font-label-bold text-label-bold text-on-surface group-hover:text-secondary transition-colors">MODERATE</span>
+</label>
+<label class="flex items-center gap-xs cursor-pointer group">
+<input class="form-radio text-error bg-surface border-outline focus:ring-error focus:ring-offset-background" name="threat" type="radio"/>
+<span class="font-label-bold text-label-bold text-on-surface group-hover:text-error transition-colors">SEVERE</span>
+</label>
+</div>
+</div>
+<!-- Sector Filter -->
+<div class="flex flex-col gap-sm">
+<span class="font-metadata text-metadata text-on-surface-variant uppercase tracking-wider">SECTOR</span>
+<div class="flex flex-col gap-2">
+<label class="flex items-center gap-xs cursor-pointer group">
+<input checked="" class="form-checkbox text-primary bg-surface border-outline focus:ring-primary focus:ring-offset-background rounded-sm" type="checkbox"/>
+<span class="font-label-bold text-label-bold text-on-surface group-hover:text-primary transition-colors">ANY</span>
+</label>
+<label class="flex items-center gap-xs cursor-pointer group">
+<input class="form-checkbox text-primary bg-surface border-outline focus:ring-primary focus:ring-offset-background rounded-sm" type="checkbox"/>
+<span class="font-label-bold text-label-bold text-on-surface group-hover:text-primary transition-colors">TECH/SAAS</span>
+</label>
+<label class="flex items-center gap-xs cursor-pointer group">
+<input class="form-checkbox text-primary bg-surface border-outline focus:ring-primary focus:ring-offset-background rounded-sm" type="checkbox"/>
+<span class="font-label-bold text-label-bold text-on-surface group-hover:text-primary transition-colors">FINANCE</span>
+</label>
+<label class="flex items-center gap-xs cursor-pointer group">
+<input class="form-checkbox text-primary bg-surface border-outline focus:ring-primary focus:ring-offset-background rounded-sm" type="checkbox"/>
+<span class="font-label-bold text-label-bold text-on-surface group-hover:text-primary transition-colors">DEFENSE</span>
+</label>
+<label class="flex items-center gap-xs cursor-pointer group">
+<input class="form-checkbox text-primary bg-surface border-outline focus:ring-primary focus:ring-offset-background rounded-sm" type="checkbox"/>
+<span class="font-label-bold text-label-bold text-on-surface group-hover:text-primary transition-colors">HEALTH</span>
+</label>
+</div>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-grow w-full px-margin-mobile md:px-margin-desktop py-md md:py-lg flex flex-col gap-lg bg-background">
+<!-- Header Section -->
+<section class="flex flex-col gap-sm">
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface tracking-tight">
+                    FIELD REPORTS ARCHIVE
+                </h1>
+<p class="font-metadata text-metadata text-on-surface-variant max-w-2xl">
+                    DECLASSIFIED INTERVIEW EXPERIENCES. ACCESS RESTRICTED TO CLEARANCE LEVEL 3 AND ABOVE.
+                </p>
+</section>
+<!-- Mobile Filters Toggle -->
+<section class="md:hidden flex items-center justify-between border-b border-outline pb-md">
+<div class="flex items-center gap-sm text-on-surface font-label-bold text-label-bold">
+<span class="material-symbols-outlined" data-icon="filter_list">filter_list</span>
+<span>FILTERS</span>
+</div>
+<button class="text-primary font-label-bold text-label-bold bg-primary/10 px-sm py-xs rounded">APPLY (0)</button>
+</section>
+<!-- Feed Grid (Asymmetric) -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Report Card 1 - Spans 8 cols -->
+<article class="col-span-1 lg:col-span-8 glass-card rounded-lg p-sm md:p-md relative group transition-all duration-300 glow-border">
+<div class="absolute top-0 right-0 bg-surface-container text-primary font-metadata text-metadata px-xs py-base rounded-tr-lg rounded-bl-lg border-b border-l border-primary/20 backdrop-blur-md">
+                        CASE: #882-X
+                    </div>
+<div class="flex flex-col gap-md h-full">
+<header class="flex flex-col gap-md mt-xs md:mt-0">
+<div class="flex items-center justify-between flex-wrap gap-sm">
+<h2 class="font-headline-md text-headline-md text-on-surface">
+<span class="text-on-surface-variant font-medium text-sm block mb-1">TARGET</span>
+<span class="redaction-bar px-1 rounded">GLOBEX CORP</span>
+</h2>
+<span class="border border-error text-error bg-error/10 font-metadata text-metadata px-2 py-1 rounded uppercase tracking-wide">
+                                    THREAT: SEVERE
+                                </span>
+</div>
+<div class="font-metadata text-metadata text-primary flex items-center gap-md flex-wrap">
+<span class="bg-primary/10 px-2 py-1 rounded">ROUNDS: 5</span>
+<span class="bg-primary/10 px-2 py-1 rounded">ROLE: SR. ENGINEER</span>
+<span class="bg-primary/10 px-2 py-1 rounded text-on-surface-variant">2023.10.24</span>
+</div>
+</header>
+<div class="font-body-md text-body-md text-on-surface/90 leading-relaxed flex-grow">
+                            "The technical screen was standard, but the on-site escalated rapidly. They focused heavily on distributed systems failure modes. Specifically, they asked to design a globally distributed cache with strong consistency requirements. I had to diagram the entire architecture under pressure."
+                        </div>
+<footer class="mt-auto pt-md border-t border-outline flex justify-between items-center">
+<div class="flex items-center gap-xs text-primary bg-primary/5 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-sm" data-icon="thumb_up">thumb_up</span>
+<span class="font-metadata text-metadata">42 HELPFUL</span>
+</div>
+<button class="font-label-bold text-label-bold text-on-surface hover:text-primary flex items-center gap-xs transition-colors">
+                                FULL DEBRIEF <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</footer>
+</div>
+</article>
+<!-- Report Card 2 - Spans 4 cols, dense -->
+<article class="col-span-1 lg:col-span-4 glass-card rounded-lg p-sm relative group transition-all duration-300 glow-border-secondary flex flex-col justify-between">
+<div class="absolute top-0 right-0 bg-surface-container text-secondary font-metadata text-metadata px-xs py-base rounded-tr-lg rounded-bl-lg border-b border-l border-secondary/20 backdrop-blur-md">
+                        CASE: #881-Y
+                    </div>
+<div class="flex flex-col gap-sm h-full">
+<header class="flex flex-col gap-sm mt-xs md:mt-0">
+<h2 class="font-headline-md text-[18px] text-on-surface">
+<span class="text-on-surface-variant font-medium text-xs block mb-1">TARGET</span>
+<span class="redaction-bar px-1 rounded">INITECH</span>
+</h2>
+<div class="font-metadata text-metadata text-secondary flex gap-2 flex-wrap">
+<span class="bg-secondary/10 px-1.5 py-0.5 rounded">R:3</span>
+<span class="bg-secondary/10 px-1.5 py-0.5 rounded">PRODUCT MGR</span>
+</div>
+</header>
+<div class="font-body-sm text-body-sm text-on-surface/80 line-clamp-4 mt-2">
+                            "Behavioral heavy. Lots of 'tell me about a time' questions focused on cross-functional conflict resolution. The case study involved prioritizing a feature backlog with conflicting stakeholder demands. Keep your STAR method tight here."
+                        </div>
+<footer class="mt-auto pt-sm border-t border-outline flex justify-between items-center">
+<span class="border border-secondary text-secondary bg-secondary/10 font-metadata text-metadata px-1.5 py-0.5 rounded uppercase text-[10px]">
+                                MODERATE
+                            </span>
+<button class="font-label-bold text-label-bold text-on-surface hover:text-secondary text-xs transition-colors flex items-center gap-1">
+                                VIEW <span class="material-symbols-outlined text-[14px]" data-icon="open_in_new">open_in_new</span>
+</button>
+</footer>
+</div>
+</article>
+<!-- Report Card 3 - Spans 4 cols -->
+<article class="col-span-1 lg:col-span-4 glass-card rounded-lg p-sm relative group transition-all duration-300 glow-border flex flex-col justify-between">
+<div class="absolute top-0 right-0 bg-surface-container text-on-surface-variant font-metadata text-metadata px-xs py-base rounded-tr-lg rounded-bl-lg border-b border-l border-outline backdrop-blur-md">
+                        CASE: #879-A
+                    </div>
+<div class="flex flex-col gap-sm h-full">
+<header class="flex flex-col gap-sm mt-xs md:mt-0">
+<h2 class="font-headline-md text-[18px] text-on-surface">
+<span class="text-on-surface-variant font-medium text-xs block mb-1">TARGET</span>
+<span class="redaction-bar px-1 rounded">MASSIVE DYNAMIC</span>
+</h2>
+<div class="font-metadata text-metadata text-primary flex gap-2 flex-wrap">
+<span class="bg-primary/10 px-1.5 py-0.5 rounded">R:4</span>
+<span class="bg-primary/10 px-1.5 py-0.5 rounded">DATA SCIENTIST</span>
+</div>
+</header>
+<div class="font-body-sm text-body-sm text-on-surface/80 line-clamp-4 mt-2">
+                            "Live coding in Python focused on data manipulation with Pandas, followed by a statistics deep dive. They asked me to explain p-values to a non-technical stakeholder, which caught me off guard. Brush up on core stat concepts."
+                        </div>
+<footer class="mt-auto pt-sm border-t border-outline flex justify-between items-center">
+<span class="border border-primary text-primary bg-primary/10 font-metadata text-metadata px-1.5 py-0.5 rounded uppercase text-[10px]">
+                                LOW
+                            </span>
+<button class="font-label-bold text-label-bold text-on-surface hover:text-primary text-xs transition-colors flex items-center gap-1">
+                                VIEW <span class="material-symbols-outlined text-[14px]" data-icon="open_in_new">open_in_new</span>
+</button>
+</footer>
+</div>
+</article>
+<!-- Report Card 4 - Spans 8 cols -->
+<article class="col-span-1 lg:col-span-8 glass-card rounded-lg p-sm md:p-md relative group transition-all duration-300 glow-border">
+<div class="absolute top-0 right-0 bg-surface-container text-primary font-metadata text-metadata px-xs py-base rounded-tr-lg rounded-bl-lg border-b border-l border-primary/20 backdrop-blur-md">
+                        CASE: #875-Z
+                    </div>
+<div class="flex flex-col gap-md h-full">
+<header class="flex flex-col gap-md mt-xs md:mt-0">
+<div class="flex items-center justify-between flex-wrap gap-sm">
+<h2 class="font-headline-md text-headline-md text-on-surface">
+<span class="text-on-surface-variant font-medium text-sm block mb-1">TARGET</span>
+<span class="redaction-bar px-1 rounded">WAYNE ENT</span>
+</h2>
+<span class="border border-error text-error bg-error/10 font-metadata text-metadata px-2 py-1 rounded uppercase tracking-wide">
+                                    THREAT: SEVERE
+                                </span>
+</div>
+<div class="font-metadata text-metadata text-primary flex items-center gap-md flex-wrap">
+<span class="bg-primary/10 px-2 py-1 rounded">ROUNDS: 7</span>
+<span class="bg-primary/10 px-2 py-1 rounded">ROLE: SECURITY RSRCH</span>
+<span class="bg-primary/10 px-2 py-1 rounded text-on-surface-variant">2023.09.12</span>
+</div>
+</header>
+<div class="font-body-md text-body-md text-on-surface/90 leading-relaxed flex-grow">
+                            "Grueling process. The practical involved a live CTF environment where I had to identify and exploit vulnerabilities in a mock web application within a 2-hour window. The final round was a panel review of my methodology. The focus was heavily on ethical disclosure and zero-day protocols."
+                        </div>
+<footer class="mt-auto pt-md border-t border-outline flex justify-between items-center">
+<div class="flex items-center gap-xs text-primary bg-primary/5 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-sm" data-icon="thumb_up">thumb_up</span>
+<span class="font-metadata text-metadata">156 HELPFUL</span>
+</div>
+<button class="font-label-bold text-label-bold text-on-surface hover:text-primary flex items-center gap-xs transition-colors">
+                                FULL DEBRIEF <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</footer>
+</div>
+</article>
+</section>
+<!-- Pagination/Load More -->
+<div class="flex justify-center mt-lg pb-md">
+<button class="px-xl py-sm rounded-lg border border-outline bg-surface-container hover:bg-surface-container-high transition-colors group flex flex-col items-center gap-2">
+<span class="font-headline-md text-sm text-on-surface group-hover:text-primary transition-colors">LOAD MORE ARCHIVES</span>
+<span class="font-metadata text-metadata text-on-surface-variant">RECORDS 10-20 OF 452</span>
+</button>
+</div>
+</main>
+</div>
+<!-- Footer -->
+<footer class="w-full border-t border-outline bg-background py-md px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-sm mt-auto z-10 relative">
+<div class="font-metadata text-[10px] uppercase tracking-widest text-on-surface-variant">
+            PREPSHARE ARCHIVAL SYSTEM Â© 2024. ALL DATA DECLASSIFIED UNDER PROTOCOL 19.
+        </div>
+<div class="flex items-center gap-md">
+<a class="font-metadata text-[10px] uppercase tracking-widest text-on-surface-variant hover:text-primary transition-colors" href="#">Terms</a>
+<a class="font-metadata text-[10px] uppercase tracking-widest text-on-surface-variant hover:text-primary transition-colors" href="#">Intelligence Policy</a>
+<a class="font-metadata text-[10px] uppercase tracking-widest text-on-surface-variant hover:text-primary transition-colors" href="#">System Status</a>
+</div>
+</footer>
+</body></html>

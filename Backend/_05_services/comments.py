@@ -1,0 +1,135 @@
+"""Service for the comments resource — business logic only."""
+
+import uuid
+
+from sqlalchemy.orm import Session
+
+from _01_core import logger
+from _03_schemas.comments import CommentCreate, CommentUpdate
+from _04_repositories import (
+    get_post_by_id,
+    get_users_by_ids,
+)
+from _04_repositories.comments import (
+    count_comments_for_post,
+    create_comment,
+    delete_comment,
+    get_comment_by_id,
+    get_comments_for_post,
+    update_comment,
+)
+
+
+def add_comment_to_post(db: Session, current_user, post_id: uuid.UUID, data: CommentCreate):
+    post = get_post_by_id(db, post_id)
+    if not post or post.deleted_at is not None:
+        raise ValueError("Post not found")
+
+    if data.parent_comment_id:
+        parent = get_comment_by_id(db, data.parent_comment_id)
+        if not parent or parent.post_id != post_id:
+            raise ValueError("Parent comment not found on this post")
+
+    comment = create_comment(
+        db,
+        post_id=post_id,
+        user_id=current_user.id,
+        comment_text=data.comment_text,
+        parent_comment_id=data.parent_comment_id,
+    )
+
+    logger.info(f"Comment added: {comment.id} to post {post_id} by user {current_user.id}")
+
+    return {
+        "id": comment.id,
+        "post_id": comment.post_id,
+        "parent_comment_id": comment.parent_comment_id,
+        "comment_text": comment.comment_text,
+        "author": {
+            "user_id": current_user.id,
+            "username": current_user.username,
+            "profile_photo_url": current_user.profile_photo_url,
+        },
+        "created_at": comment.created_at,
+        "updated_at": comment.updated_at,
+    }
+
+
+def list_comments_for_post(db: Session, post_id: uuid.UUID, page: int, limit: int):
+    post = get_post_by_id(db, post_id)
+    if not post or post.deleted_at is not None:
+        raise ValueError("Post not found")
+
+    offset = (page - 1) * limit
+    total = count_comments_for_post(db, post_id)
+    comments = get_comments_for_post(db, post_id, limit=limit, offset=offset)
+
+    user_ids = list({c.user_id for c in comments})
+    users = {u.id: u for u in get_users_by_ids(db, user_ids)}
+
+    items = []
+    for c in comments:
+        u = users.get(c.user_id)
+        author = {
+            "user_id": u.id if u else c.user_id,
+            "username": u.username if u else "[deleted]",
+            "profile_photo_url": u.profile_photo_url if u else None,
+        }
+        items.append({
+            "id": c.id,
+            "post_id": c.post_id,
+            "parent_comment_id": c.parent_comment_id,
+            "comment_text": c.comment_text,
+            "author": author,
+            "created_at": c.created_at,
+            "updated_at": c.updated_at,
+        })
+
+    total_pages = (total + limit - 1) // limit if total else 0
+
+    return {
+        "items": items,
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_previous": page > 1,
+    }
+
+
+def edit_comment_text(db: Session, current_user, comment_id: uuid.UUID, data: CommentUpdate):
+    comment = get_comment_by_id(db, comment_id)
+    if not comment:
+        raise ValueError("Comment not found")
+
+    if comment.user_id != current_user.id:
+        raise ValueError("You don't own this comment")
+
+    updated = update_comment(db, comment, data.comment_text)
+
+    return {
+        "id": updated.id,
+        "post_id": updated.post_id,
+        "parent_comment_id": updated.parent_comment_id,
+        "comment_text": updated.comment_text,
+        "author": {
+            "user_id": current_user.id,
+            "username": current_user.username,
+            "profile_photo_url": current_user.profile_photo_url,
+        },
+        "created_at": updated.created_at,
+        "updated_at": updated.updated_at,
+    }
+
+
+def remove_comment_by_id(db: Session, current_user, comment_id: uuid.UUID):
+    comment = get_comment_by_id(db, comment_id)
+    if not comment:
+        raise ValueError("Comment not found")
+
+    if comment.user_id != current_user.id:
+        raise ValueError("You don't own this comment")
+
+    delete_comment(db, comment)
+    return {"message": "Comment deleted successfully"}

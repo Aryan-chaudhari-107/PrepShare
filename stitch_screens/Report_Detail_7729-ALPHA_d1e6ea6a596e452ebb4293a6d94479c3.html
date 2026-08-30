@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Post Detail - Field Report 7729-ALPHA</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed-variant": "#3e4755",
+                        "on-tertiary-container": "#6f9375",
+                        "on-primary-fixed": "#131c28",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed": "#00210c",
+                        "secondary-container": "#feb64e",
+                        "surface-container-low": "#f5f4ef",
+                        "surface-container-highest": "#e3e3de",
+                        "outline": "#75777c",
+                        "primary-container": "#1b2430",
+                        "tertiary-container": "#062913",
+                        "surface-container-high": "#e9e8e3",
+                        "secondary": "#835400",
+                        "background": "#faf9f4",
+                        "surface-variant": "#e3e3de",
+                        "primary": "#050e1a",
+                        "on-surface": "#1b1c19",
+                        "primary-fixed-dim": "#bec7d7",
+                        "inverse-surface": "#30312e",
+                        "surface-bright": "#faf9f4",
+                        "primary-fixed": "#dae3f4",
+                        "surface-tint": "#565f6d",
+                        "on-secondary-container": "#714800",
+                        "surface": "#faf9f4",
+                        "on-background": "#1b1c19",
+                        "inverse-on-surface": "#f2f1ec",
+                        "on-secondary-fixed-variant": "#643f00",
+                        "on-primary-container": "#828b9a",
+                        "tertiary-fixed-dim": "#aad0ae",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-dim": "#dbdad5",
+                        "on-secondary-fixed": "#2a1800",
+                        "outline-variant": "#c5c6cc",
+                        "on-tertiary-fixed-variant": "#2c4e34",
+                        "on-error-container": "#93000a",
+                        "tertiary": "#001104",
+                        "on-primary": "#ffffff",
+                        "surface-container": "#efeee9",
+                        "secondary-fixed": "#ffddb5",
+                        "error": "#ba1a1a",
+                        "secondary-fixed-dim": "#ffb956",
+                        "tertiary-fixed": "#c5ecc9",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#44474c",
+                        "inverse-primary": "#bec7d7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "24px",
+                        "margin-mobile": "16px",
+                        "xl": "64px",
+                        "sm": "16px",
+                        "gutter": "20px",
+                        "xs": "8px",
+                        "base": "4px",
+                        "lg": "48px",
+                        "margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Courier Prime"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-lg-mobile": ["Courier Prime"],
+                        "headline-md": ["Courier Prime"],
+                        "metadata": ["Courier Prime"],
+                        "label-bold": ["Courier Prime"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "headline-md": ["20px", { "lineHeight": "1.4", "fontWeight": "700" }],
+                        "metadata": ["12px", { "lineHeight": "1.2", "fontWeight": "400" }],
+                        "label-bold": ["14px", { "lineHeight": "1.0", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .redaction-bar {
+            color: transparent;
+            background-color: #050e1a; /* primary */
+            transition: all 0.2s ease;
+            cursor: pointer;
+            user-select: none;
+        }
+        .redaction-bar:hover, .redaction-bar.revealed {
+            color: #1b1c19; /* on-background */
+            background-color: rgba(5, 14, 26, 0.1);
+        }
+        .stamp-hard {
+            border: 2px solid #ba1a1a;
+            color: #ba1a1a;
+            transform: rotate(-2deg);
+        }
+        .stamp-medium {
+            border: 2px solid #835400;
+            color: #835400;
+            transform: rotate(1deg);
+        }
+        .stamp-easy {
+            border: 2px solid #001104;
+            color: #001104;
+            transform: rotate(-1deg);
+        }
+        
+        /* Noise texture for background */
+        .bg-noise {
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background bg-noise font-body-md text-body-md h-screen flex overflow-hidden selection:bg-secondary-container selection:text-on-secondary-container">
+<!-- SideNavBar (Desktop Only) -->
+<nav class="hidden md:flex flex-col h-full p-sm w-64 border-r-2 border-primary bg-surface-container dark:bg-surface-container shrink-0 z-20 relative">
+<div class="mb-lg px-xs">
+<h1 class="font-headline-md text-headline-md text-primary mb-xs">OPERATIVE</h1>
+<p class="font-metadata text-metadata text-on-surface-variant">ID: 7729-ALPHA</p>
+</div>
+<ul class="flex-1 flex flex-col gap-xs">
+<li>
+<a class="flex items-center gap-sm px-sm py-xs text-on-surface-variant hover:bg-surface-container-high hover:bg-secondary-fixed-dim font-metadata text-metadata font-label-bold text-label-bold transition-colors" href="#">
+<span class="material-symbols-outlined">folder_open</span>
+                    ARCHIVE
+                </a>
+</li>
+<li>
+<!-- Active Tab -->
+<a class="flex items-center gap-sm px-sm py-xs bg-secondary-container text-on-secondary-container border-2 border-primary shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-secondary-fixed-dim Active: scale-95 transition-transform font-metadata text-metadata font-label-bold text-label-bold" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">description</span>
+                    FIELD REPORTS
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-sm px-sm py-xs text-on-surface-variant hover:bg-surface-container-high hover:bg-secondary-fixed-dim font-metadata text-metadata font-label-bold text-label-bold transition-colors" href="#">
+<span class="material-symbols-outlined">assignment</span>
+                    DEBRIEF
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-sm px-sm py-xs text-on-surface-variant hover:bg-surface-container-high hover:bg-secondary-fixed-dim font-metadata text-metadata font-label-bold text-label-bold transition-colors" href="#">
+<span class="material-symbols-outlined">analytics</span>
+                    INTEL
+                </a>
+</li>
+</ul>
+<div class="mt-auto">
+<button class="w-full py-xs px-sm border-2 border-primary bg-primary text-on-primary font-label-bold text-label-bold uppercase tracking-wider hover:bg-secondary-container hover:text-on-secondary-container transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none">
+                NEW REPORT
+            </button>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col h-full overflow-hidden relative">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center w-full px-margin-desktop py-xs max-w-[1200px] mx-auto bg-background dark:bg-background w-full border-b-2 border-primary dark:border-primary-fixed-dim border-b-2 border-primary dark:border-primary-fixed-dim z-10 shrink-0">
+<div class="flex items-center gap-md">
+<div class="md:hidden">
+<span class="material-symbols-outlined text-primary text-[24px] cursor-pointer">menu</span>
+</div>
+<div class="font-headline-md text-headline-md uppercase tracking-tighter text-primary dark:text-primary-fixed">
+                    PREPSHARE
+                </div>
+<!-- Search Bar (on_left) -->
+<div class="hidden md:flex items-center border-b-2 border-primary pb-1">
+<span class="material-symbols-outlined text-primary text-[20px] mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 p-0 font-metadata text-metadata text-primary placeholder-on-surface-variant outline-none w-48" placeholder="QUERY ARCHIVE..." type="text"/>
+</div>
+</div>
+<div>
+<button class="font-headline-md text-headline-md font-label-bold text-label-bold text-primary dark:text-primary-fixed hover:bg-secondary-container dark:hover:bg-secondary-container-variant transition-colors px-sm py-xs border-2 border-transparent hover:border-primary">
+                    FILE NEW REPORT
+                </button>
+</div>
+</header>
+<!-- Scrollable Canvas -->
+<main class="flex-1 overflow-y-auto w-full p-margin-mobile md:p-margin-desktop">
+<div class="max-w-[1000px] mx-auto pb-xl">
+<!-- Report Header (Document Meta) -->
+<div class="border-b-2 border-primary pb-md mb-lg relative">
+<div class="absolute top-0 right-0 font-metadata text-metadata text-on-surface-variant border-2 border-primary px-2 py-1 bg-surface-container-highest">
+                        CASE: #7729-ALPHA
+                    </div>
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary mb-md pr-32">
+                        FIELD REPORT 7729-ALPHA
+                    </h1>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-sm">
+<div class="flex flex-col gap-xs">
+<span class="font-metadata text-metadata text-on-surface-variant uppercase">Subject Domain</span>
+<span class="font-label-bold text-label-bold text-primary">Systems Engineering / Distributed Architecture</span>
+</div>
+<div class="flex flex-col gap-xs">
+<span class="font-metadata text-metadata text-on-surface-variant uppercase">Target Entity</span>
+<span class="font-label-bold text-label-bold redaction-bar px-1 self-start" title="Click to unredact">OMNICORP GLOBAL</span>
+</div>
+<div class="flex flex-col gap-xs">
+<span class="font-metadata text-metadata text-on-surface-variant uppercase">Operative / Author</span>
+<span class="font-label-bold text-label-bold redaction-bar px-1 self-start" title="Click to unredact">AGENT J. DOE [REDACTED]</span>
+</div>
+<div class="flex flex-col gap-xs">
+<span class="font-metadata text-metadata text-on-surface-variant uppercase">Temporal Marker</span>
+<span class="font-label-bold text-label-bold text-primary">2023.10.24 14:30:00Z</span>
+</div>
+</div>
+</div>
+<!-- Tabs Navigation -->
+<div class="flex border-b-2 border-primary mb-md overflow-x-auto hide-scrollbar">
+<button class="px-md py-sm font-label-bold text-label-bold uppercase border-2 border-b-0 border-primary bg-primary text-on-primary mr-2 min-w-max">
+                        Phase 1: Screening
+                    </button>
+<button class="px-md py-sm font-label-bold text-label-bold uppercase border-2 border-b-0 border-transparent text-on-surface-variant hover:bg-surface-container-high hover:border-primary hover:text-primary transition-colors mr-2 min-w-max">
+                        Phase 2: Technical
+                    </button>
+<button class="px-md py-sm font-label-bold text-label-bold uppercase border-2 border-b-0 border-transparent text-on-surface-variant hover:bg-surface-container-high hover:border-primary hover:text-primary transition-colors mr-2 min-w-max">
+                        Phase 3: System Design
+                    </button>
+<button class="px-md py-sm font-label-bold text-label-bold uppercase border-2 border-b-0 border-transparent text-on-surface-variant hover:bg-surface-container-high hover:border-primary hover:text-primary transition-colors min-w-max">
+                        Debrief / Outcome
+                    </button>
+</div>
+<!-- Tab Content: Phase 1 -->
+<div class="flex flex-col gap-lg">
+<!-- Context Block -->
+<div class="bg-surface-container p-sm border-l-4 border-primary">
+<p class="font-body-md text-body-md text-on-surface italic">
+                            Initial contact established via visual comms link. Interviewer identified as Staff Engineer, team <span class="redaction-bar px-1">CORE-INFRA</span>. Atmosphere reported as highly structured but informal.
+                        </p>
+</div>
+<!-- Question Item 1 -->
+<div class="border-2 border-primary bg-surface p-md relative shadow-[4px_4px_0px_0px_#050e1a]">
+<div class="absolute -top-3 -left-3 bg-primary text-on-primary font-metadata text-metadata px-2 py-1 border-2 border-primary">
+                            ITEM 001
+                        </div>
+<div class="absolute top-sm right-sm">
+<div class="stamp-easy font-metadata text-metadata px-2 py-1 uppercase font-bold bg-background">
+                                LEVEL: STANDARD
+                            </div>
+</div>
+<h3 class="font-headline-md text-headline-md text-primary mt-sm mb-xs pr-32">
+                            Explain the lifecycle of a request in a typical MVC framework.
+                        </h3>
+<div class="mt-md pt-sm border-t border-outline-variant">
+<span class="font-metadata text-metadata text-on-surface-variant uppercase block mb-xs">Operative Response Transcription:</span>
+<p class="font-body-sm text-body-sm text-on-surface space-y-2">
+                                Output focused on routing mechanisms, controller instantiation, model data fetching, and view rendering. Highlighted potential bottlenecks in synchronous blocking during DB queries.
+                                <br/><br/>
+                                - Discussed middleware interception.<br/>
+                                - Detailed view hydration.<br/>
+                                - Mentioned caching layers (Redis) as an optimization vector.
+                            </p>
+</div>
+</div>
+<!-- Question Item 2 -->
+<div class="border-2 border-primary bg-surface p-md relative shadow-[4px_4px_0px_0px_#050e1a]">
+<div class="absolute -top-3 -left-3 bg-primary text-on-primary font-metadata text-metadata px-2 py-1 border-2 border-primary">
+                            ITEM 002
+                        </div>
+<div class="absolute top-sm right-sm">
+<div class="stamp-medium font-metadata text-metadata px-2 py-1 uppercase font-bold bg-background">
+                                LEVEL: ELEVATED
+                            </div>
+</div>
+<h3 class="font-headline-md text-headline-md text-primary mt-sm mb-xs pr-32">
+                            How do you handle schema migrations in a zero-downtime deployment?
+                        </h3>
+<div class="mt-md pt-sm border-t border-outline-variant">
+<span class="font-metadata text-metadata text-on-surface-variant uppercase block mb-xs">Operative Response Transcription:</span>
+<p class="font-body-sm text-body-sm text-on-surface">
+                                Outlined a multi-phase approach. Phase 1: Add new schema non-destructively. Phase 2: Dual-write to old and new schema. Phase 3: Backfill historical data. Phase 4: Shift read path to new schema. Phase 5: Deprecate old schema. Interviewer seemed satisfied with the defensive posture.
+                            </p>
+</div>
+<!-- Interstitial Image / Diagram representing interview artifact -->
+<div class="mt-sm border-2 border-primary p-2 bg-surface-container-highest">
+<span class="font-metadata text-metadata block mb-1 text-on-surface-variant">ATTACHMENT: ARTIFACT_IMG_01</span>
+<div class="w-full h-48 bg-cover bg-center border-2 border-primary grayscale opacity-80 mix-blend-multiply" data-alt="A stark, high-contrast black and white architectural diagram of a distributed database cluster, drawn in a technical brutalist style. The lines are thick and rigid, resembling a declassified schematic or blueprint. Monospaced annotations are scattered around geometric server nodes. The lighting is flat, emphasizing the graphic nature of the design. The mood is clinical and highly technical." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCDcuuJ-ycxgNWmhiVJCxMHRRpKq9Md5qayhio9sRzFuuZCW1GDY9NW_m68Jr3mekCWv1WFS3VdxmaEwFYqqYkeMwk914ZCAyEilZtRNm5Toq_dlID5qbB_ZH5WCelB432UstrNHoYlNAxokZr5FAze8TfAmue9RBjUvxGnEkz4h5WruYvhqhLViGZtZxgLBDupe_TGHamrE-SUpw2150xuSKiGeHC1qC3B0VftwYB_3WwuyTNib8EbTg')"></div>
+</div>
+</div>
+<!-- Question Item 3 -->
+<div class="border-2 border-primary bg-surface p-md relative shadow-[4px_4px_0px_0px_#050e1a]">
+<div class="absolute -top-3 -left-3 bg-primary text-on-primary font-metadata text-metadata px-2 py-1 border-2 border-primary">
+                            ITEM 003
+                        </div>
+<div class="absolute top-sm right-sm">
+<div class="stamp-hard font-metadata text-metadata px-2 py-1 uppercase font-bold bg-background">
+                                LEVEL: CRITICAL
+                            </div>
+</div>
+<h3 class="font-headline-md text-headline-md text-primary mt-sm mb-xs pr-32">
+                            Design a distributed rate limiter that operates globally across multiple data centers with sub-millisecond latency.
+                        </h3>
+<div class="mt-md pt-sm border-t border-outline-variant">
+<span class="font-metadata text-metadata text-on-surface-variant uppercase block mb-xs">Operative Response Transcription:</span>
+<p class="font-body-sm text-body-sm text-on-surface">
+                                Encountered significant resistance here. Proposed a token bucket algorithm backed by Redis, but interviewer pushed on the latency of cross-region synchronization. Pivoted to a local-first token bucket with asynchronous eventual consistency aggregation via Kafka. 
+                                <br/><br/>
+<span class="bg-error-container text-on-error-container px-1 font-metadata">WARNING FLAG:</span> Operative admits potential weakness in handling edge-case split-brain scenarios during network partitions.
+                            </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<footer class="w-full py-md px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-sm bg-surface-container-lowest dark:bg-surface-container-lowest w-full border-t-2 border-primary border-t-2 border-primary mt-xl shrink-0">
+<div class="font-metadata text-metadata uppercase tracking-widest text-on-surface dark:text-on-surface">
+                    PREPSHARE ARCHIVAL SYSTEM Â© 2024. ALL DATA DECLASSIFIED UNDER PROTOCOL 19.
+                </div>
+<div class="flex gap-md">
+<a class="font-label-bold text-label-bold text-on-surface-variant hover:text-secondary transition-colors" href="#">Terms</a>
+<a class="font-label-bold text-label-bold text-on-surface-variant hover:text-secondary transition-colors" href="#">Intelligence Policy</a>
+<a class="font-label-bold text-label-bold text-on-surface-variant hover:text-secondary transition-colors" href="#">System Status</a>
+</div>
+</footer>
+</main>
+</div>
+<!-- Script for interactive redaction bars -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const redactionBars = document.querySelectorAll('.redaction-bar');
+            redactionBars.forEach(bar => {
+                bar.addEventListener('click', () => {
+                    bar.classList.toggle('revealed');
+                });
+            });
+        });
+    </script>
+</body></html>

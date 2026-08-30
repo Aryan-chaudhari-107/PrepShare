@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Academic Nexus - User Profile</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style data-purpose="typography">
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #F8FAFC;
+    }
+  </style>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col relative pb-20">
+<!-- BEGIN: MainHeader -->
+<header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+<!-- Search -->
+<div class="flex-1 flex items-center">
+<div class="relative w-full max-w-md">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<i class="fa-solid fa-search text-slate-400"></i>
+</div>
+<input class="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition duration-150 ease-in-out" placeholder="Search Academic Nexus..." type="text"/>
+</div>
+</div>
+<!-- Right Nav -->
+<div class="flex items-center space-x-4">
+<button class="p-2 text-slate-500 hover:text-slate-700 relative transition-colors duration-200 rounded-full hover:bg-slate-100">
+<span class="sr-only">View notifications</span>
+<i class="fa-regular fa-bell text-xl"></i>
+<span class="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"></span>
+</button>
+<button class="flex text-sm border-2 border-transparent rounded-full focus:outline-none focus:border-slate-300 transition duration-150 ease-in-out">
+<img alt="Current user avatar" class="h-8 w-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAKxJqNZSY0iDF-YBOOmkDxDYIYgkNh18ppsAMwzYdXqZj3EIvzFOxxVo01b-f9vvomF95bY2DxM61vErd0MyvOz0wUQ0md5cySIT5Onn95qOFZai8VTp9q8AyxV1JA62OVhodGJhen1Lf3yCKNNk533H16IDaLCdJMRw_Vlr-J9_L3WwrsP_g1moePCwvk-04zjpIGdtu5TwIXkVwo3B-pTk5ZGCv5rz4Dtzucc7tiiLWl5_kZ22wV"/>
+</button>
+</div>
+</div>
+</header>
+<!-- END: MainHeader -->
+<!-- BEGIN: MainContent -->
+<main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+<!-- BEGIN: ProfileHeaderCard -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6 relative">
+<!-- Background Banner -->
+<div class="h-32 bg-slate-200 w-full relative">
+<img alt="Banner background" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAvss6VA-Pjgwzh24GQ1HYZZwUMpc-_fAhl3NJ_YVbtAbuOI3ig4lIWNqDZLJJQp7gBfdA0QfIgY-Cohie1bTcDTywmrt8rVktDCH9KAT_As3DbroyPaIPLWJ2nw0x30MXNs4HW_xVPE9YwXYud8YvCxJSI_ga1J1RKF_wGmAAqY4FjkaxwDlGg9oQbYLycYPYFtWs3SlYrqH79a9cG3WmCvKQ4cw6KrJfdSiztQWFPN7IVMFgW8iDi"/>
+</div>
+<div class="px-6 pb-6 pt-0 relative">
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-end -mt-12 sm:-mt-16 mb-4">
+<!-- Avatar & Status -->
+<div class="relative">
+<img alt="Alex Chen Avatar" class="w-24 h-24 sm:w-32 sm:h-32 rounded-xl border-4 border-white shadow-sm object-cover bg-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAeOnxlCY0eLOqOctgejJ68l2Notztsxi-JVht8vdBDNH8DUQ0zdrYxBCuzyr5Mr8HSa-GqDQF7LTq3ZCBYkaVGw31uFQTujiuv3nrNw1CAlVT5Z2MA22_M6___xWYWFF6SrWBCUbrxzVCxAEJhO8vYsnHMuDNXa8NsuzjMdlq8fETaAhsB-O2YYe21kZen1aobGIInRWuWoVqZ4KRTVBW3XFNGc6bhSGxwCdqCBZHXoSSd-RsErHWS"/>
+<div class="absolute bottom-1 right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" title="Online"></div>
+</div>
+<!-- Actions -->
+<div class="flex items-center space-x-3 mt-4 sm:mt-0">
+<button class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-5 rounded-md text-sm transition-colors flex items-center space-x-2">
+<i class="fa-solid fa-user-plus"></i>
+<span>Follow</span>
+</button>
+<button class="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-medium py-2 px-3 rounded-md text-sm transition-colors">
+<i class="fa-regular fa-envelope"></i>
+</button>
+</div>
+</div>
+<!-- User Info -->
+<div class="mb-6">
+<h1 class="text-2xl sm:text-3xl font-bold text-slate-900 flex items-center gap-2">
+            Alex Chen
+          </h1>
+<div class="text-slate-600 flex items-center gap-2 mt-1 mb-3 text-sm sm:text-base">
+<i class="fa-solid fa-graduation-cap text-slate-400"></i>
+<span>MS Computer Science, Stanford Univ.</span>
+</div>
+<p class="text-slate-600 text-sm sm:text-base max-w-3xl leading-relaxed">
+            Passionate about distributed systems and cloud architecture. Actively preparing for FAANG interviews and sharing detailed write-ups of complex algorithm challenges. Let's solve hard problems together.
+          </p>
+</div>
+<!-- Stats -->
+<div class="flex flex-wrap items-center justify-between border-t border-slate-100 pt-5 mt-5">
+<div class="flex space-x-8">
+<div class="flex flex-col">
+<span class="text-xl font-bold text-slate-900">2,450</span>
+<span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Contribution</span>
+</div>
+<div class="flex flex-col">
+<span class="text-xl font-bold text-slate-900">1.2k</span>
+<span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Followers</span>
+</div>
+<div class="flex flex-col">
+<span class="text-xl font-bold text-slate-900">342</span>
+<span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Following</span>
+</div>
+</div>
+<div class="mt-4 sm:mt-0 flex flex-col items-end">
+<span class="text-lg font-bold text-red-500">Top 5%</span>
+<span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ranking</span>
+</div>
+</div>
+</div>
+</div>
+<!-- END: ProfileHeaderCard -->
+<!-- BEGIN: Tabs -->
+<div class="border-b border-slate-200 mb-6 flex justify-between items-center">
+<nav aria-label="Tabs" class="-mb-px flex space-x-8 overflow-x-auto">
+<a aria-current="page" class="border-blue-500 text-blue-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" href="#">
+          Profile
+        </a>
+<a class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2" href="#">
+          My Posts <span class="bg-slate-100 text-slate-600 py-0.5 px-2 rounded-full text-xs">14</span>
+</a>
+<a class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2" href="#">
+          Completed Questions <span class="bg-slate-100 text-slate-600 py-0.5 px-2 rounded-full text-xs">128</span>
+</a>
+</nav>
+<button class="text-slate-500 hover:text-slate-700 text-sm font-medium flex items-center gap-2">
+<i class="fa-solid fa-gear"></i> Settings
+      </button>
+</div>
+<!-- END: Tabs -->
+<!-- BEGIN: ProfileContentGrid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- BEGIN: LeftColumn -->
+<div class="lg:col-span-1 space-y-6">
+<!-- Core Skills -->
+<div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+<h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+<i class="fa-solid fa-code text-blue-500"></i> Core Skills
+          </h2>
+<div class="flex flex-wrap gap-2">
+<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-800">Python</span>
+<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-800">C++</span>
+<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-800">Distributed Systems</span>
+<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-800">AWS</span>
+<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-800">Algorithms</span>
+</div>
+</div>
+<!-- Recent Activity Chart -->
+<div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+<h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+<i class="fa-solid fa-chart-line text-blue-500"></i> Recent Activity
+          </h2>
+<!-- Simulated Bar Chart -->
+<div class="h-32 bg-slate-50 rounded-lg p-2 flex items-end justify-between space-x-1 sm:space-x-2">
+<div class="w-1/6 bg-blue-200 rounded-t-sm h-1/4"></div>
+<div class="w-1/6 bg-blue-300 rounded-t-sm h-2/5"></div>
+<div class="w-1/6 bg-blue-400 rounded-t-sm h-3/4"></div>
+<div class="w-1/6 bg-blue-200 rounded-t-sm h-1/3"></div>
+<div class="w-1/6 bg-blue-500 rounded-t-sm h-full"></div>
+<div class="w-1/6 bg-blue-300 rounded-t-sm h-1/2"></div>
+</div>
+</div>
+</div>
+<!-- END: LeftColumn -->
+<!-- BEGIN: RightColumn -->
+<div class="lg:col-span-2 space-y-6 border-l-0 lg:border-l lg:border-slate-200 lg:pl-6">
+<!-- Experience -->
+<div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+<div class="flex justify-between items-center mb-6">
+<h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
+<i class="fa-solid fa-briefcase text-blue-500"></i> Experience
+            </h2>
+<button class="text-blue-500 hover:text-blue-700"><i class="fa-solid fa-pen"></i></button>
+</div>
+<div class="relative border-l-2 border-slate-200 ml-3 space-y-8 pb-4">
+<!-- Job 1 -->
+<div class="relative pl-6">
+<div class="absolute w-3 h-3 bg-white border-2 border-blue-500 rounded-full -left-[7px] top-1.5"></div>
+<div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-1">
+<h3 class="text-base font-semibold text-slate-900">Software Engineering Intern</h3>
+<span class="text-xs font-medium bg-slate-100 text-slate-600 px-2 py-1 rounded-md mt-1 sm:mt-0 w-fit">May 2023 - Aug 2023</span>
+</div>
+<p class="text-sm text-slate-600 mb-2 flex items-center gap-1.5">
+<i class="fa-regular fa-building text-slate-400"></i> TechCorp Inc.
+              </p>
+<p class="text-sm text-slate-700 leading-relaxed">
+                Developed scalable microservices using Go and gRPC. Improved data processing pipeline efficiency by 30% and implemented robust monitoring using Prometheus and Grafana.
+              </p>
+</div>
+<!-- Job 2 -->
+<div class="relative pl-6">
+<div class="absolute w-3 h-3 bg-white border-2 border-slate-300 rounded-full -left-[7px] top-1.5"></div>
+<div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-1">
+<h3 class="text-base font-semibold text-slate-900">Undergraduate Researcher</h3>
+<span class="text-xs font-medium bg-slate-100 text-slate-600 px-2 py-1 rounded-md mt-1 sm:mt-0 w-fit">Jan 2022 - Dec 2022</span>
+</div>
+<p class="text-sm text-slate-600 mb-2 flex items-center gap-1.5">
+<i class="fa-solid fa-building-columns text-slate-400"></i> University Systems Lab
+              </p>
+<p class="text-sm text-slate-700 leading-relaxed">
+                Conducted research on distributed consensus algorithms. Co-authored a paper on optimizing Paxos for low-latency network environments.
+              </p>
+</div>
+</div>
+</div>
+<!-- Education -->
+<div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-indigo-500">
+<h2 class="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
+<i class="fa-solid fa-graduation-cap text-indigo-500"></i> Education
+          </h2>
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 border border-slate-200">
+<i class="fa-solid fa-building-columns text-slate-500 text-xl"></i>
+</div>
+<div>
+<h3 class="text-base font-semibold text-slate-900">Stanford University</h3>
+<p class="text-sm text-slate-700">Master of Science, Computer Science</p>
+<p class="text-xs text-slate-500 mt-1">Expected Graduation: 2024</p>
+<div class="flex flex-wrap gap-2 mt-3">
+<span class="text-xs bg-slate-50 border border-slate-200 text-slate-600 px-2 py-1 rounded-md">Advanced Algorithms</span>
+<span class="text-xs bg-slate-50 border border-slate-200 text-slate-600 px-2 py-1 rounded-md">Machine Learning</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- END: RightColumn -->
+</div>
+<!-- END: ProfileContentGrid -->
+</main>
+<!-- END: MainContent -->
+<!-- BEGIN: FloatingChatButton -->
+<button class="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center text-xl transition-transform hover:scale-105 z-50 focus:outline-none focus:ring-4 focus:ring-blue-300">
+<i class="fa-solid fa-message"></i>
+</button>
+<!-- END: FloatingChatButton -->
+</body></html>

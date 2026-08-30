@@ -1,0 +1,22 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+alembic
+psycopg2-binary
+python-jose[cryptography]
+passlib==1.7.4
+bcrypt==4.0.1
+pydantic
+pydantic-settings
+python-dotenv
+python-multipart
+email-validator
+slowapi
+
+# ML (v1 / v1.5 / v2 — add as you reach each phase)
+# transformers
+# scikit-learn
+# sentence-transformers
+
+# Dev
+# pytest

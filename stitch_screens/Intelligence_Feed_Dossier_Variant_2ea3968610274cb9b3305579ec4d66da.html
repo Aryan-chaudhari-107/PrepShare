@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Field Report Feed - Prepshare</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#2B2B2B",
+                        "on-primary": "#F0EFE6",
+                        "background": "#F0EFE6",
+                        "surface": "#F0EFE6",
+                        "on-surface": "#2B2B2B",
+                        "surface-bright": "#F0EFE6",
+                        "surface-container": "#E5E4DB",
+                        "surface-container-low": "#EAE9E0",
+                        "surface-container-lowest": "#F0EFE6",
+                        "surface-container-high": "#DFDED5",
+                        "surface-container-highest": "#D9D8CF",
+                        "error": "#93000A",
+                        "on-error": "#FFFFFF",
+                        "error-container": "#FFDAD6",
+                        "on-error-container": "#410002",
+                        "on-surface-variant": "#49454F",
+                        "secondary-container": "#E5E4DB",
+                        "on-secondary-container": "#2B2B2B"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Courier Prime", "monospace"],
+                        "headline-md": ["'Playfair Display'", "serif"],
+                        "body-lg": ["Inter", "sans-serif"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "body-sm": ["Inter", "sans-serif"],
+                        "metadata": ["Courier Prime", "monospace"],
+                        "label-bold": ["Courier Prime", "monospace"]
+                    }
+                }
+            }
+        }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&amp;family=Inter:wght@400;500;600;700&amp;family=Playfair+Display:ital,wght@0,400..900;1,400..900&amp;display=swap" rel="stylesheet"/>
+<style>
+        .redaction-bar {
+            background-color: #2B2B2B;
+            color: transparent;
+            transition: color 0.2s ease, background-color 0.2s ease;
+            cursor: pointer;
+        }
+        .redaction-bar:hover {
+            color: #F0EFE6;
+            background-color: rgba(43, 43, 43, 0.8);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-family: 'Courier Prime', monospace;
+            font-size: 4rem;
+            font-weight: bold;
+            color: rgba(147, 0, 10, 0.05);
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 0;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md antialiased min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="w-full border-b-2 border-primary bg-background dark:bg-background">
+<div class="flex justify-between items-center w-full px-6 py-2 max-w-[1400px] mx-auto">
+<div class="flex items-center gap-6">
+<a class="font-headline-lg text-2xl uppercase tracking-tighter text-primary font-bold" href="#">
+                    PREPSHARE
+                </a>
+<div class="relative hidden md:flex items-center border-b-2 border-primary w-64 group">
+<span class="material-symbols-outlined text-primary ml-2" data-icon="search">search</span>
+<input class="w-full bg-transparent border-none focus:ring-0 font-metadata text-sm text-primary placeholder-primary/70 py-1 px-4 focus:outline-none" placeholder="QUERY ARCHIVE..." type="text"/>
+</div>
+</div>
+<button class="hidden md:flex items-center gap-2 px-4 py-2 border-2 border-primary bg-primary text-on-primary hover:bg-surface-container-high hover:text-primary transition-colors font-label-bold text-sm">
+<span>FILE NEW REPORT</span>
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+<button class="md:hidden text-primary">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+</div>
+</header>
+<!-- Main Layout Grid -->
+<div class="flex-grow flex max-w-[1400px] mx-auto w-full">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col h-full p-4 w-64 border-r-2 border-primary bg-surface-container shrink-0 sticky top-0 h-[calc(100vh-60px)]">
+<div class="mb-8 px-2 pt-2">
+<div class="flex items-center gap-4 mb-2">
+<div class="w-10 h-10 border-2 border-primary rounded-none overflow-hidden shrink-0 bg-surface">
+<img class="w-full h-full object-cover filter grayscale sepia-[0.3]" data-alt="A stark, high-contrast black and white portrait photo of an operative, stylized with a heavy halftone dot pattern and slight static interference, typical of classified dossier photographs. The background is pure white." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4R58UjLfPNmlHY2RbOaeOIn4S8Ynb3XhYotjQ-weN5m4l3Mpg2dQrhoVHd-1H2o-AdngGihFibBh3LlIGqO1ooHnTrMZc2n8Tx_K99t-Qlmh2h_napbBZVzLVU3ruaMoKKTUQAK41sThmUa1GPAD8ny3gVVQFIjMFR_JhcIpYZtom9CeDm63be7DxiMZA3GdbYsBeTSDqajwsGMwsGvG6lHmR7gSGsLed1I4OKnEm8hicd_KI6uRgfw"/>
+</div>
+<div>
+<div class="font-label-bold text-lg text-primary leading-none">OPERATIVE</div>
+<div class="font-metadata text-xs text-primary/70 mt-1">ID: 7729-ALPHA</div>
+</div>
+</div>
+</div>
+<ul class="flex flex-col gap-1 mt-6">
+<li>
+<a class="flex items-center gap-4 px-4 py-2 font-label-bold text-sm text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="folder_open">folder_open</span>
+                        ARCHIVE
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-4 py-2 font-label-bold text-sm bg-surface-container-highest text-primary border-2 border-primary shadow-[4px_4px_0px_0px_rgba(43,43,43,1)] transition-transform scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="description" data-weight="fill" style="font-variation-settings: 'FILL' 1;">description</span>
+                        FIELD REPORTS
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-4 py-2 font-label-bold text-sm text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="assignment">assignment</span>
+                        DEBRIEF
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-4 py-2 font-label-bold text-sm text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                        INTEL
+                    </a>
+</li>
+</ul>
+<div class="mt-auto pt-12 mb-4 px-2">
+<button class="w-full flex justify-center items-center gap-2 px-4 py-2 border-2 border-primary bg-surface text-primary hover:bg-surface-container-high transition-colors font-label-bold text-sm">
+<span>NEW REPORT</span>
+</button>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-grow w-full px-4 md:px-10 py-6 md:py-12 flex flex-col gap-12 bg-surface-bright">
+<!-- Header Section -->
+<section class="flex flex-col gap-4">
+<h1 class="font-headline-lg text-3xl md:text-4xl font-bold text-primary uppercase border-b-4 border-primary pb-2 inline-block w-fit">
+                    FIELD REPORTS ARCHIVE
+                </h1>
+<p class="font-metadata text-sm text-on-surface-variant max-w-2xl">
+                    DECLASSIFIED INTERVIEW EXPERIENCES. ACCESS RESTRICTED TO CLEARANCE LEVEL 3 AND ABOVE.
+                </p>
+</section>
+<!-- Filters Section -->
+<section class="flex flex-col gap-4 border-b-2 border-primary pb-6">
+<div class="flex items-center gap-4 text-primary font-label-bold text-sm">
+<span class="material-symbols-outlined" data-icon="filter_list">filter_list</span>
+<span>FILTER PARAMETERS</span>
+</div>
+<div class="flex flex-col md:flex-row gap-6">
+<!-- Difficulty Stamp Filter -->
+<div class="flex-1 flex flex-col gap-2">
+<span class="font-metadata text-xs text-on-surface-variant">THREAT LEVEL (DIFFICULTY)</span>
+<div class="flex flex-wrap gap-2">
+<button class="px-4 py-1 border-2 border-primary font-label-bold text-sm bg-primary text-on-primary">ALL</button>
+<button class="px-4 py-1 border-2 border-primary font-label-bold text-sm text-primary hover:bg-surface-container-high">LOW</button>
+<button class="px-4 py-1 border-2 border-primary font-label-bold text-sm text-primary hover:bg-surface-container-high">MODERATE</button>
+<button class="px-4 py-1 border-2 border-error font-label-bold text-sm text-error hover:bg-error-container">SEVERE</button>
+</div>
+</div>
+<!-- Industry Filter -->
+<div class="flex-1 flex flex-col gap-2">
+<span class="font-metadata text-xs text-on-surface-variant">SECTOR</span>
+<div class="flex overflow-x-auto hide-scrollbar gap-2 pb-2 md:pb-0">
+<button class="shrink-0 px-4 py-1 border-2 border-primary font-label-bold text-sm bg-primary text-on-primary">ANY</button>
+<button class="shrink-0 px-4 py-1 border-2 border-primary font-label-bold text-sm text-primary hover:bg-surface-container-high">TECH/SAAS</button>
+<button class="shrink-0 px-4 py-1 border-2 border-primary font-label-bold text-sm text-primary hover:bg-surface-container-high">FINANCE</button>
+<button class="shrink-0 px-4 py-1 border-2 border-primary font-label-bold text-sm text-primary hover:bg-surface-container-high">DEFENSE</button>
+<button class="shrink-0 px-4 py-1 border-2 border-primary font-label-bold text-sm text-primary hover:bg-surface-container-high">HEALTH</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Feed Grid (3 Column Dense) -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Report Card 1 -->
+<article class="border-2 border-primary bg-surface p-4 relative group hover:bg-surface-container-low transition-colors flex flex-col justify-between overflow-hidden shadow-[2px_2px_0px_0px_rgba(43,43,43,1)]">
+<div class="watermark">CLASSIFIED</div>
+<div class="absolute top-0 right-0 bg-primary text-on-primary font-metadata text-xs px-2 py-1 border-b-2 border-l-2 border-primary z-10">
+                        CASE: #882-X
+                    </div>
+<div class="flex flex-col gap-4 h-full relative z-10">
+<header class="flex flex-col gap-2 mt-4">
+<div class="flex flex-col gap-1">
+<span class="border-2 border-error text-error font-metadata text-[10px] px-1 py-0.5 uppercase tracking-wide opacity-80 w-fit">
+                                    THREAT: SEVERE
+                                </span>
+<h2 class="font-headline-md text-xl font-bold text-primary leading-tight">
+                                    GLOBEX CORP <br/> <span class="text-sm font-normal text-on-surface-variant font-body-sm block mt-1">SR. ENGINEER - 5 ROUNDS</span>
+</h2>
+</div>
+<div class="font-metadata text-[10px] text-on-surface-variant">
+                                2023.10.24
+                            </div>
+</header>
+<div class="font-body-sm text-sm text-on-surface leading-relaxed flex-grow">
+                            "The technical screen was standard, but the on-site escalated rapidly. They focused heavily on distributed systems failure modes. Specifically, they asked to design a globally distributed cache with strong consistency requirements."
+                        </div>
+<footer class="mt-auto pt-3 border-t border-primary border-dashed flex justify-between items-center">
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]" data-icon="thumb_up">thumb_up</span>
+<span class="font-metadata text-[10px]">42 HELPFUL</span>
+</div>
+<button class="font-label-bold text-xs text-primary hover:underline">
+                                READ DEBRIEF
+                            </button>
+</footer>
+</div>
+</article>
+<!-- Report Card 2 -->
+<article class="border-2 border-primary bg-surface p-4 relative group hover:bg-surface-container-low transition-colors flex flex-col justify-between overflow-hidden shadow-[2px_2px_0px_0px_rgba(43,43,43,1)]">
+<div class="watermark">TOP SECRET</div>
+<div class="absolute top-0 right-0 bg-surface-container-high text-primary font-metadata text-xs px-2 py-1 border-b-2 border-l-2 border-primary z-10">
+                        CASE: #881-Y
+                    </div>
+<div class="flex flex-col gap-4 h-full relative z-10">
+<header class="flex flex-col gap-2 mt-4">
+<div class="flex flex-col gap-1">
+<span class="border-2 border-primary text-primary font-metadata text-[10px] px-1 py-0.5 uppercase tracking-wide w-fit">
+                                    THREAT: MODERATE
+                                </span>
+<h2 class="font-headline-md text-xl font-bold text-primary leading-tight">
+<span class="redaction-bar px-1">INITECH</span> <br/> <span class="text-sm font-normal text-on-surface-variant font-body-sm block mt-1">PRODUCT MGR - 3 ROUNDS</span>
+</h2>
+</div>
+<div class="font-metadata text-[10px] text-on-surface-variant">
+                                2023.10.15
+                            </div>
+</header>
+<div class="font-body-sm text-sm text-on-surface leading-relaxed flex-grow">
+                            "Behavioral heavy. Lots of 'tell me about a time' questions focused on cross-functional conflict resolution. The case study involved prioritizing a feature backlog with conflicting stakeholder demands. Keep your STAR method tight here."
+                        </div>
+<footer class="mt-auto pt-3 border-t border-primary border-dashed flex justify-between items-center">
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]" data-icon="thumb_up">thumb_up</span>
+<span class="font-metadata text-[10px]">18 HELPFUL</span>
+</div>
+<button class="font-label-bold text-xs text-primary hover:underline">
+                                READ DEBRIEF
+                            </button>
+</footer>
+</div>
+</article>
+<!-- Report Card 3 -->
+<article class="border-2 border-primary bg-surface p-4 relative group hover:bg-surface-container-low transition-colors flex flex-col justify-between overflow-hidden shadow-[2px_2px_0px_0px_rgba(43,43,43,1)]">
+<div class="watermark">CLASSIFIED</div>
+<div class="absolute top-0 right-0 bg-surface-container-high text-primary font-metadata text-xs px-2 py-1 border-b-2 border-l-2 border-primary z-10">
+                        CASE: #879-A
+                    </div>
+<div class="flex flex-col gap-4 h-full relative z-10">
+<header class="flex flex-col gap-2 mt-4">
+<div class="flex flex-col gap-1">
+<span class="border-2 border-primary text-primary font-metadata text-[10px] px-1 py-0.5 uppercase tracking-wide w-fit">
+                                    THREAT: LOW
+                                </span>
+<h2 class="font-headline-md text-xl font-bold text-primary leading-tight">
+                                    MASSIVE DYNAMIC <br/> <span class="text-sm font-normal text-on-surface-variant font-body-sm block mt-1">DATA SCIENTIST - 4 ROUNDS</span>
+</h2>
+</div>
+<div class="font-metadata text-[10px] text-on-surface-variant">
+                                2023.10.02
+                            </div>
+</header>
+<div class="font-body-sm text-sm text-on-surface leading-relaxed flex-grow">
+                            "Live coding in Python focused on data manipulation with Pandas, followed by a statistics deep dive. They asked me to explain p-values to a non-technical stakeholder, which caught me off guard."
+                        </div>
+<footer class="mt-auto pt-3 border-t border-primary border-dashed flex justify-between items-center">
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]" data-icon="thumb_up">thumb_up</span>
+<span class="font-metadata text-[10px]">32 HELPFUL</span>
+</div>
+<button class="font-label-bold text-xs text-primary hover:underline">
+                                READ DEBRIEF
+                            </button>
+</footer>
+</div>
+</article>
+<!-- Report Card 4 -->
+<article class="border-2 border-primary bg-surface p-4 relative group hover:bg-surface-container-low transition-colors flex flex-col justify-between overflow-hidden shadow-[2px_2px_0px_0px_rgba(43,43,43,1)]">
+<div class="watermark">TOP SECRET</div>
+<div class="absolute top-0 right-0 bg-primary text-on-primary font-metadata text-xs px-2 py-1 border-b-2 border-l-2 border-primary z-10">
+                        CASE: #875-Z
+                    </div>
+<div class="flex flex-col gap-4 h-full relative z-10">
+<header class="flex flex-col gap-2 mt-4">
+<div class="flex flex-col gap-1">
+<span class="border-2 border-error text-error font-metadata text-[10px] px-1 py-0.5 uppercase tracking-wide opacity-80 w-fit">
+                                    THREAT: SEVERE
+                                </span>
+<h2 class="font-headline-md text-xl font-bold text-primary leading-tight">
+                                    WAYNE ENT <br/> <span class="text-sm font-normal text-on-surface-variant font-body-sm block mt-1">SECURITY RSRCH - 7 ROUNDS</span>
+</h2>
+</div>
+<div class="font-metadata text-[10px] text-on-surface-variant">
+                                2023.09.12
+                            </div>
+</header>
+<div class="font-body-sm text-sm text-on-surface leading-relaxed flex-grow">
+                            "Grueling process. The practical involved a live CTF environment where I had to identify and exploit vulnerabilities in a mock web application within a 2-hour window. Final round was a panel review."
+                        </div>
+<footer class="mt-auto pt-3 border-t border-primary border-dashed flex justify-between items-center">
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]" data-icon="thumb_up">thumb_up</span>
+<span class="font-metadata text-[10px]">156 HELPFUL</span>
+</div>
+<button class="font-label-bold text-xs text-primary hover:underline">
+                                READ DEBRIEF
+                            </button>
+</footer>
+</div>
+</article>
+<!-- Report Card 5 -->
+<article class="border-2 border-primary bg-surface p-4 relative group hover:bg-surface-container-low transition-colors flex flex-col justify-between overflow-hidden shadow-[2px_2px_0px_0px_rgba(43,43,43,1)]">
+<div class="watermark">CLASSIFIED</div>
+<div class="absolute top-0 right-0 bg-surface-container-high text-primary font-metadata text-xs px-2 py-1 border-b-2 border-l-2 border-primary z-10">
+                        CASE: #872-B
+                    </div>
+<div class="flex flex-col gap-4 h-full relative z-10">
+<header class="flex flex-col gap-2 mt-4">
+<div class="flex flex-col gap-1">
+<span class="border-2 border-primary text-primary font-metadata text-[10px] px-1 py-0.5 uppercase tracking-wide w-fit">
+                                    THREAT: MODERATE
+                                </span>
+<h2 class="font-headline-md text-xl font-bold text-primary leading-tight">
+<span class="redaction-bar px-1">CYBERDYNE</span> <br/> <span class="text-sm font-normal text-on-surface-variant font-body-sm block mt-1">UX RESEARCHER - 4 ROUNDS</span>
+</h2>
+</div>
+<div class="font-metadata text-[10px] text-on-surface-variant">
+                                2023.08.30
+                            </div>
+</header>
+<div class="font-body-sm text-sm text-on-surface leading-relaxed flex-grow">
+                            "Focus was heavy on qualitative methods. They asked me to design a research plan for a completely new, hypothetical product line. Be prepared to defend your choice of methodology and sample sizes."
+                        </div>
+<footer class="mt-auto pt-3 border-t border-primary border-dashed flex justify-between items-center">
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]" data-icon="thumb_up">thumb_up</span>
+<span class="font-metadata text-[10px]">67 HELPFUL</span>
+</div>
+<button class="font-label-bold text-xs text-primary hover:underline">
+                                READ DEBRIEF
+                            </button>
+</footer>
+</div>
+</article>
+<!-- Report Card 6 -->
+<article class="border-2 border-primary bg-surface p-4 relative group hover:bg-surface-container-low transition-colors flex flex-col justify-between overflow-hidden shadow-[2px_2px_0px_0px_rgba(43,43,43,1)]">
+<div class="watermark">TOP SECRET</div>
+<div class="absolute top-0 right-0 bg-surface-container-high text-primary font-metadata text-xs px-2 py-1 border-b-2 border-l-2 border-primary z-10">
+                        CASE: #868-C
+                    </div>
+<div class="flex flex-col gap-4 h-full relative z-10">
+<header class="flex flex-col gap-2 mt-4">
+<div class="flex flex-col gap-1">
+<span class="border-2 border-error text-error font-metadata text-[10px] px-1 py-0.5 uppercase tracking-wide opacity-80 w-fit">
+                                    THREAT: SEVERE
+                                </span>
+<h2 class="font-headline-md text-xl font-bold text-primary leading-tight">
+                                    STARK IND. <br/> <span class="text-sm font-normal text-on-surface-variant font-body-sm block mt-1">HARDWARE ENG - 6 ROUNDS</span>
+</h2>
+</div>
+<div class="font-metadata text-[10px] text-on-surface-variant">
+                                2023.08.15
+                            </div>
+</header>
+<div class="font-body-sm text-sm text-on-surface leading-relaxed flex-grow">
+                            "Intense whiteboard sessions on PCB design and signal integrity. They brought in an actual failed prototype and asked me to diagnose the issue on the spot. Very hands-on and practical."
+                        </div>
+<footer class="mt-auto pt-3 border-t border-primary border-dashed flex justify-between items-center">
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]" data-icon="thumb_up">thumb_up</span>
+<span class="font-metadata text-[10px]">112 HELPFUL</span>
+</div>
+<button class="font-label-bold text-xs text-primary hover:underline">
+                                READ DEBRIEF
+                            </button>
+</footer>
+</div>
+</article>
+</section>
+<!-- Pagination/Load More (Folder Tab Style) -->
+<div class="flex justify-center mt-8">
+<button class="relative px-8 py-3 bg-surface hover:bg-surface-container-low transition-colors group flex flex-col items-center gap-1 active:translate-y-1 z-10">
+<!-- Folder tab shape using borders -->
+<div class="absolute inset-0 border-2 border-primary border-b-0 rounded-t-lg -z-10"></div>
+<div class="absolute bottom-0 left-[-20px] right-[-20px] h-0.5 bg-primary z-10 group-active:hidden"></div>
+<span class="font-headline-lg text-lg text-primary font-bold">LOAD NEXT ARCHIVE</span>
+<span class="font-metadata text-xs text-on-surface-variant">RECORDS 10-20 OF 452</span>
+</button>
+</div>
+<div class="h-0.5 bg-primary w-full -mt-[2px]"></div>
+</main>
+</div>
+<!-- Footer -->
+<footer class="w-full border-t-2 border-primary bg-surface-container-lowest py-6 px-6 md:px-10 flex flex-col md:flex-row justify-between items-center gap-4 mt-auto z-10 relative">
+<div class="font-metadata text-xs uppercase tracking-widest text-on-surface">
+            PREPSHARE ARCHIVAL SYSTEM Â© 2024. ALL DATA DECLASSIFIED UNDER PROTOCOL 19.
+        </div>
+<div class="flex items-center gap-6">
+<a class="font-metadata text-xs uppercase tracking-widest text-on-surface-variant hover:text-primary underline-offset-4 hover:underline" href="#">Terms</a>
+<a class="font-metadata text-xs uppercase tracking-widest text-on-surface-variant hover:text-primary underline-offset-4 hover:underline" href="#">Intelligence Policy</a>
+<a class="font-metadata text-xs uppercase tracking-widest text-on-surface-variant hover:text-primary underline-offset-4 hover:underline" href="#">System Status</a>
+</div>
+</footer>
+</body></html>

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Drafting Report - PREPSHARE</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed-variant": "#3e4755",
+                        "on-tertiary-container": "#6f9375",
+                        "on-primary-fixed": "#131c28",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed": "#00210c",
+                        "secondary-container": "#feb64e",
+                        "surface-container-low": "#f5f4ef",
+                        "surface-container-highest": "#e3e3de",
+                        "outline": "#75777c",
+                        "primary-container": "#1b2430",
+                        "tertiary-container": "#062913",
+                        "surface-container-high": "#e9e8e3",
+                        "secondary": "#835400",
+                        "background": "#faf9f4",
+                        "surface-variant": "#e3e3de",
+                        "primary": "#050e1a",
+                        "on-surface": "#1b1c19",
+                        "primary-fixed-dim": "#bec7d7",
+                        "inverse-surface": "#30312e",
+                        "surface-bright": "#faf9f4",
+                        "primary-fixed": "#dae3f4",
+                        "surface-tint": "#565f6d",
+                        "on-secondary-container": "#714800",
+                        "surface": "#faf9f4",
+                        "on-background": "#1b1c19",
+                        "inverse-on-surface": "#f2f1ec",
+                        "on-secondary-fixed-variant": "#643f00",
+                        "on-primary-container": "#828b9a",
+                        "tertiary-fixed-dim": "#aad0ae",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-dim": "#dbdad5",
+                        "on-secondary-fixed": "#2a1800",
+                        "outline-variant": "#c5c6cc",
+                        "on-tertiary-fixed-variant": "#2c4e34",
+                        "on-error-container": "#93000a",
+                        "tertiary": "#001104",
+                        "on-primary": "#ffffff",
+                        "surface-container": "#efeee9",
+                        "secondary-fixed": "#ffddb5",
+                        "error": "#ba1a1a",
+                        "secondary-fixed-dim": "#ffb956",
+                        "tertiary-fixed": "#c5ecc9",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#44474c",
+                        "inverse-primary": "#bec7d7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "24px",
+                        "margin-mobile": "16px",
+                        "xl": "64px",
+                        "sm": "16px",
+                        "gutter": "20px",
+                        "xs": "8px",
+                        "base": "4px",
+                        "lg": "48px",
+                        "margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Courier Prime"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-lg-mobile": ["Courier Prime"],
+                        "headline-md": ["Courier Prime"],
+                        "metadata": ["Courier Prime"],
+                        "label-bold": ["Courier Prime"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "headline-md": ["20px", { "lineHeight": "1.4", "fontWeight": "700" }],
+                        "metadata": ["12px", { "lineHeight": "1.2", "fontWeight": "400" }],
+                        "label-bold": ["14px", { "lineHeight": "1.0", "fontWeight": "700" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .industrial-border {
+            border: 2px solid #050e1a;
+        }
+        .input-border {
+            border-bottom: 2px solid #050e1a;
+        }
+        .stamp-shadow {
+            box-shadow: 4px 4px 0px 0px rgba(5, 14, 26, 1);
+        }
+        .stamp-shadow:active {
+            box-shadow: 0px 0px 0px 0px rgba(5, 14, 26, 1);
+            transform: translate(4px, 4px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen flex flex-col">
+<!-- TopNavBar (Suppressed for Transactional Flow, replaced with a simplified header) -->
+<header class="w-full border-b-2 border-primary bg-background py-xs px-margin-desktop flex justify-between items-center max-w-[1200px] mx-auto">
+<div class="font-headline-md text-headline-md uppercase tracking-tighter text-primary">PREPSHARE</div>
+<button class="font-label-bold text-label-bold text-on-surface-variant flex items-center gap-2 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">close</span>
+            ABORT MISSION
+        </button>
+</header>
+<main class="flex-grow flex flex-col md:flex-row w-full max-w-[1200px] mx-auto p-margin-mobile md:p-margin-desktop gap-md md:gap-xl">
+<!-- Progress Tracker (Left Column) -->
+<aside class="w-full md:w-64 flex-shrink-0 flex flex-col gap-sm">
+<div class="font-headline-md text-headline-md text-primary mb-md">DRAFTING REPORT</div>
+<nav class="flex flex-col gap-xs border-l-2 border-outline-variant pl-sm">
+<!-- Step 1: Active -->
+<div class="flex flex-col gap-base group cursor-default">
+<div class="font-metadata text-metadata text-primary uppercase tracking-widest font-bold">STEP 01</div>
+<div class="font-label-bold text-label-bold text-on-surface">Intelligence &amp; Company Info</div>
+</div>
+<div class="h-md border-l-2 border-outline-variant -ml-[18px] my-xs opacity-50"></div>
+<!-- Step 2: Inactive -->
+<div class="flex flex-col gap-base group opacity-50">
+<div class="font-metadata text-metadata text-on-surface-variant uppercase tracking-widest">STEP 02</div>
+<div class="font-label-bold text-label-bold text-on-surface-variant">Rounds &amp; Questions</div>
+</div>
+<div class="h-md border-l-2 border-outline-variant -ml-[18px] my-xs opacity-50"></div>
+<!-- Step 3: Inactive -->
+<div class="flex flex-col gap-base group opacity-50">
+<div class="font-metadata text-metadata text-on-surface-variant uppercase tracking-widest">STEP 03</div>
+<div class="font-label-bold text-label-bold text-on-surface-variant">Author Privacy &amp; Redaction</div>
+</div>
+</nav>
+<div class="mt-auto pt-xl hidden md:block">
+<div class="bg-surface-container p-sm border-[1px] border-outline">
+<div class="font-metadata text-metadata text-on-surface-variant mb-xs">OPERATIVE ID:</div>
+<div class="font-headline-md text-headline-md text-primary">7729-ALPHA</div>
+</div>
+</div>
+</aside>
+<!-- Form Area (Right Column) -->
+<section class="flex-grow flex flex-col gap-lg bg-surface-container-lowest industrial-border p-md md:p-xl">
+<div class="flex flex-col gap-xs border-b-2 border-primary pb-sm">
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">Intelligence &amp; Company Info</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Establish the target parameters. Provide accurate details to ensure intel is properly indexed in the archive.</p>
+</div>
+<form class="flex flex-col gap-md" onsubmit="event.preventDefault();">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<!-- Target Company -->
+<div class="flex flex-col gap-base">
+<label class="font-metadata text-metadata text-on-surface-variant uppercase" for="company">Target Entity (Company)</label>
+<input class="bg-transparent border-0 input-border focus:ring-0 px-0 font-body-lg text-body-lg text-on-surface placeholder:text-outline focus:border-secondary transition-colors" id="company" placeholder="e.g., Acme Corp" type="text"/>
+</div>
+<!-- Role/Title -->
+<div class="flex flex-col gap-base">
+<label class="font-metadata text-metadata text-on-surface-variant uppercase" for="role">Designation (Role)</label>
+<input class="bg-transparent border-0 input-border focus:ring-0 px-0 font-body-lg text-body-lg text-on-surface placeholder:text-outline focus:border-secondary transition-colors" id="role" placeholder="e.g., Senior Software Engineer" type="text"/>
+</div>
+</div>
+<!-- Location -->
+<div class="flex flex-col gap-base">
+<label class="font-metadata text-metadata text-on-surface-variant uppercase" for="location">Operation Sector (Location)</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-0 top-1/2 -translate-y-1/2 text-outline">location_on</span>
+<input class="bg-transparent border-0 input-border focus:ring-0 pl-8 w-full font-body-lg text-body-lg text-on-surface placeholder:text-outline focus:border-secondary transition-colors" id="location" placeholder="City, Country or Remote" type="text"/>
+</div>
+</div>
+<!-- Date of Interview -->
+<div class="flex flex-col gap-base">
+<label class="font-metadata text-metadata text-on-surface-variant uppercase" for="date">Engagement Date</label>
+<input class="bg-transparent border-0 input-border focus:ring-0 px-0 font-body-lg text-body-lg text-on-surface focus:border-secondary transition-colors" id="date" type="date"/>
+</div>
+<!-- Overall Outcome -->
+<div class="flex flex-col gap-base mt-sm">
+<label class="font-metadata text-metadata text-on-surface-variant uppercase mb-xs">Mission Outcome</label>
+<div class="flex flex-wrap gap-sm">
+<label class="cursor-pointer">
+<input class="peer sr-only" name="outcome" type="radio"/>
+<div class="px-sm py-xs border-[1px] border-outline text-on-surface peer-checked:bg-secondary-container peer-checked:border-primary peer-checked:text-on-secondary-container peer-checked:font-bold transition-all">
+                                Offer Received
+                            </div>
+</label>
+<label class="cursor-pointer">
+<input class="peer sr-only" name="outcome" type="radio"/>
+<div class="px-sm py-xs border-[1px] border-outline text-on-surface peer-checked:bg-surface-dim peer-checked:border-primary peer-checked:text-on-surface peer-checked:font-bold transition-all">
+                                Rejected
+                            </div>
+</label>
+<label class="cursor-pointer">
+<input class="peer sr-only" name="outcome" type="radio"/>
+<div class="px-sm py-xs border-[1px] border-outline text-on-surface peer-checked:bg-surface-dim peer-checked:border-primary peer-checked:text-on-surface peer-checked:font-bold transition-all">
+                                Withdrew
+                            </div>
+</label>
+<label class="cursor-pointer">
+<input class="peer sr-only" name="outcome" type="radio"/>
+<div class="px-sm py-xs border-[1px] border-outline text-on-surface peer-checked:bg-surface-dim peer-checked:border-primary peer-checked:text-on-surface peer-checked:font-bold transition-all">
+                                Pending
+                            </div>
+</label>
+</div>
+</div>
+<!-- Form Actions -->
+<div class="flex justify-between items-center mt-lg pt-sm border-t-2 border-outline-variant">
+<button class="font-label-bold text-label-bold text-on-surface-variant hover:text-primary transition-colors flex items-center gap-xs" type="button">
+<span class="material-symbols-outlined text-[18px]">save</span>
+                        SAVE DRAFT
+                    </button>
+<button class="bg-secondary-container text-on-secondary-container font-label-bold text-label-bold px-md py-sm border-2 border-primary stamp-shadow transition-all flex items-center gap-xs" type="button">
+                        NEXT PHASE
+                        <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</form>
+</section>
+</main>
+<!-- Footer (Suppressed for Transactional Flow, minimal version included if necessary, but leaving out to focus on canvas) -->
+</body></html>
