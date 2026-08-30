@@ -183,8 +183,8 @@ def run_seed():
                 )
             education_ids[uname] = eid
 
-        # 5. SEED 18 HIGH-QUALITY DIVERSE EXPERIENCES ACROSS INDUSTRIES
-        print("[5/7] Seeding 18 industry-diverse interview & hackathon experiences with flexible rounds...", flush=True)
+        # 5. SEED 27 HIGH-QUALITY DIVERSE EXPERIENCES ACROSS INDUSTRIES
+        print("[5/7] Seeding 27 industry-diverse interview & hackathon experiences with flexible rounds...", flush=True)
 
         posts_master = [
             {
@@ -902,6 +902,260 @@ def run_seed():
                         "mode": "offline",
                         "questions": [
                             ("How do you validate source financial data integrity when conflicting filings are identified in vendor audits?", "medium")
+                        ]
+                    }
+                ]
+            },
+            {
+                "title": "Google L4 Systems Engineering Assessment (Autumn 2026)",
+                "slug": "google-l4-systems-engineering-assessment-autumn-2026-21fabb",
+                "category": "campus_placement",
+                "author": "anonymous",
+                "company": "Google Cloud",
+                "role": "Systems Software Engineer",
+                "location": None,
+                "mode": None,
+                "offer": True,
+                "package": 3400000,
+                "currency": "INR",
+                "narrative": "High technical rigor focused on consistency models, consensus, and network partitions.",
+                "tips": "Study Designing Data-Intensive Applications (DDIA) chapters 7, 8, and 9 thoroughly.",
+                "rounds": [
+                    {
+                        "name": "Round 1: Distributed Storage & Consensus",
+                        "tags": "Technical",
+                        "duration": 60,
+                        "mode": "online",
+                        "questions": [
+                            ("Implement Raft consensus leader election and log compaction algorithms in Go/C++.", "hard")
+                        ]
+                    }
+                ]
+            },
+            {
+                "title": "Razorpay Growth & Performance Marketing Specialist Loop",
+                "slug": "razorpay-growth-performance-marketing-loop",
+                "category": "off_campus_placement",
+                "author": "dev_growth",
+                "company": "Razorpay",
+                "role": "Growth Marketing Specialist",
+                "location": "Bengaluru, Karnataka",
+                "mode": "hybrid",
+                "offer": True,
+                "package": 1650000,
+                "currency": "INR",
+                "narrative": "Focused on B2B SaaS paid funnel acquisition, merchant conversion rate optimization (CRO), and cohort retention models.",
+                "tips": "Bring concrete examples of scaling Google/LinkedIn Ad spend while improving Payback Period under 6 months.",
+                "rounds": [
+                    {
+                        "name": "Technical Round 1",
+                        "tags": "Technical",
+                        "duration": 60,
+                        "mode": "online",
+                        "questions": [
+                            ("How would you structure a multi-touch attribution model for self-serve payment gateway signups?", "medium"),
+                            ("Calculate Blended CAC vs Paid CAC if organic referrals represent 40% of incoming merchant volume.", "medium")
+                        ]
+                    },
+                    {
+                        "name": "Technical Round 2",
+                        "tags": "Technical",
+                        "duration": 60,
+                        "mode": "online",
+                        "questions": [
+                            ("Present a 90-day growth roadmap to increase SMB merchant checkout onboarding completion from 62% to 75%.", "hard")
+                        ]
+                    }
+                ]
+            },
+            {
+                "title": "Smart India Internal Campus Hackathon - AI Pathology Diagnostics",
+                "slug": "smart-india-campus-hackathon-ai-diagnostics",
+                "category": "campus_hackathon",
+                "author": "sneha_ai",
+                "company": "Biocon Biologics",
+                "role": "Hackathon Team Lead (Computer Vision)",
+                "location": "Bengaluru, Karnataka",
+                "mode": "onsite",
+                "offer": False,
+                "package": None,
+                "currency": None,
+                "narrative": "Won 1st prize in the 24-hour campus hackathon by training a lightweight Vision Transformer to detect microscopic cellular anomalies on edge devices.",
+                "tips": "Optimize your model quantization early. A model that cannot run in real time on judge hardware will lose points.",
+                "rounds": [
+                    {
+                        "name": "Technical Round 1",
+                        "tags": "Technical",
+                        "duration": 60,
+                        "mode": "offline",
+                        "questions": [
+                            ("How do you handle severe class imbalance in rare clinical pathology datasets without overfitting?", "medium")
+                        ]
+                    },
+                    {
+                        "name": "Technical Round 2",
+                        "tags": "Technical",
+                        "duration": 60,
+                        "mode": "offline",
+                        "questions": [
+                            ("Demonstrate sub-50ms inference latency on Raspberry Pi 4 using INT8 TensorRT quantization.", "hard")
+                        ]
+                    }
+                ]
+            },
+            {
+                "title": "National Green Infrastructure & Sustainable Construction Sprint",
+                "slug": "national-green-infrastructure-sprint",
+                "category": "campus_hackathon",
+                "author": "vikram_civil",
+                "company": "Larsen & Toubro",
+                "role": "Green Building Lead",
+                "location": "Chennai, Tamil Nadu",
+                "mode": "onsite",
+                "offer": False,
+                "package": None,
+                "currency": None,
+                "narrative": "Developed a parametric BIM plugin that calculates embodied carbon footprint during structural modeling and suggests fly-ash concrete substitutions.",
+                "tips": "Have your Life Cycle Assessment (LCA) environmental impact equations ready before hacking begins.",
+                "rounds": [
+                    {
+                        "name": "Technical Round 1",
+                        "tags": "Technical",
+                        "duration": 60,
+                        "mode": "offline",
+                        "questions": [
+                            ("How does replacing 30% Portland cement with ground granulated blast-furnace slag (GGBS) impact 28-day compressive strength?", "medium")
+                        ]
+                    }
+                ]
+            },
+            {
+                "title": "FinTech Campus Innovation Sprint - Algorithmic Escrow",
+                "slug": "fintech-campus-innovation-sprint-escrow",
+                "category": "campus_hackathon",
+                "author": "aadhya_finance",
+                "company": "Apex Capital Partners",
+                "role": "FinTech Product Architect",
+                "location": "Mumbai, Maharashtra",
+                "mode": "remote",
+                "offer": False,
+                "package": None,
+                "currency": None,
+                "narrative": "Built an automated cross-border trade settlement system with zero settlement slippage and real-time FX hedging.",
+                "tips": "Ensure multi-currency decimal precision handling handles rounding edge cases without penny discrepancy.",
+                "rounds": [
+                    {
+                        "name": "Technical Round 1",
+                        "tags": "Technical",
+                        "duration": 60,
+                        "mode": "online",
+                        "questions": [
+                            ("How do you guarantee atomic transaction settlement across disconnected banking APIs during gateway downtime?", "hard")
+                        ]
+                    }
+                ]
+            },
+            {
+                "title": "Autonomous Robotics Sprint - Warehouse AGV Pathfinding",
+                "slug": "autonomous-robotics-sprint-agv-pathfinding",
+                "category": "campus_hackathon",
+                "author": "rohit_mech",
+                "company": "Tata Motors",
+                "role": "Robotics & Kinematics Lead",
+                "location": "Pune, Maharashtra",
+                "mode": "onsite",
+                "offer": False,
+                "package": None,
+                "currency": None,
+                "narrative": "Designed and fabricated a differential-drive automated guided vehicle (AGV) capable of navigating warehouse dynamic obstacles.",
+                "tips": "Tune your PID motor controllers on real floor friction before the final evaluation track.",
+                "rounds": [
+                    {
+                        "name": "Technical Round 1",
+                        "tags": "Technical",
+                        "duration": 60,
+                        "mode": "offline",
+                        "questions": [
+                            ("Derive the non-holonomic motion equations for a differential drive robot with wheel slip compensation.", "hard")
+                        ]
+                    }
+                ]
+            },
+            {
+                "title": "Biotech Genomics Challenge - High-Throughput RNA-Seq Pipeline",
+                "slug": "biotech-genomics-challenge-rna-seq",
+                "category": "off_campus_hackathon",
+                "author": "meera_biomed",
+                "company": "Biocon Biologics",
+                "role": "Bioinformatics Pipeline Lead",
+                "location": "Bengaluru, Karnataka",
+                "mode": "remote",
+                "offer": False,
+                "package": None,
+                "currency": None,
+                "narrative": "Built a serverless Nextflow pipeline processing 50GB RNA-Seq FASTQ datasets for oncology biomarker identification under 12 minutes.",
+                "tips": "Parallelize alignment reads using indexed genome indexes stored in RAM disks.",
+                "rounds": [
+                    {
+                        "name": "Technical Round 1",
+                        "tags": "Technical",
+                        "duration": 60,
+                        "mode": "online",
+                        "questions": [
+                            ("Explain the difference between STAR aligner and Bowtie2 for spliced RNA transcript mapping.", "medium")
+                        ]
+                    }
+                ]
+            },
+            {
+                "title": "Product Teardown League - Consumer Grocery Micro-Fulfillment",
+                "slug": "product-teardown-micro-fulfillment",
+                "category": "off_campus_hackathon",
+                "author": "ananya_pm",
+                "company": "Swiggy",
+                "role": "Product Strategist",
+                "location": "Bengaluru, Karnataka",
+                "mode": "remote",
+                "offer": False,
+                "package": None,
+                "currency": None,
+                "narrative": "Engineered a product teardown predicting 10-minute dark store stocking bottlenecks and proposed a dynamic order batching algorithm.",
+                "tips": "Ground every feature recommendation in unit economics and rider turnaround time.",
+                "rounds": [
+                    {
+                        "name": "Technical Round 1",
+                        "tags": "Technical",
+                        "duration": 60,
+                        "mode": "online",
+                        "questions": [
+                            ("How do you prioritize dark store picker ergonomics vs batch routing efficiency during peak order surges?", "medium")
+                        ]
+                    }
+                ]
+            },
+            {
+                "title": "Confidential Staff Security Architect Evaluation",
+                "slug": "confidential-staff-security-architect-evaluation",
+                "category": "off_campus_placement",
+                "author": "anonymous",
+                "company": "Google Cloud",
+                "role": "Staff Security Engineer (Zero-Trust)",
+                "location": "Bengaluru, Karnataka",
+                "mode": "remote",
+                "offer": True,
+                "package": 4200000,
+                "currency": "INR",
+                "narrative": "Comprehensive evaluation of zero-trust architecture, mutual TLS certificate management, and hardware security module (HSM) attestation.",
+                "tips": "Deeply understand SPIFFE/SPIRE workload identities and OAuth 2.0 token exchange specifications.",
+                "rounds": [
+                    {
+                        "name": "Technical Round 1",
+                        "tags": "Technical",
+                        "duration": 60,
+                        "mode": "online",
+                        "questions": [
+                            ("How do you architect microservice mutual TLS with automated short-lived certificate rotation without connection drops?", "hard"),
+                            ("Explain how to protect against pass-the-hash attacks in hybrid cloud Active Directory environments.", "hard")
                         ]
                     }
                 ]
