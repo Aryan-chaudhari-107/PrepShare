@@ -259,12 +259,12 @@ export const interactionsApi = {
   voteQuestionDifficulty: (questionId: T.UUID, difficulty: "easy" | "medium" | "hard") =>
     apiClient.post<{
       question_id: T.UUID;
-      difficulty: "easy" | "medium" | "hard";
+      difficulty: "easy" | "medium" | "hard" | null;
       easy_count: number;
       medium_count: number;
       hard_count: number;
       message: string;
-    }>(`/questions/${questionId}/vote-difficulty`, { difficulty }),
+    }>(`/questions/${questionId}/vote`, { difficulty }),
 
   getQuestionDifficultyVote: (questionId: T.UUID) =>
     apiClient.get<{
@@ -272,7 +272,7 @@ export const interactionsApi = {
       easy_count: number;
       medium_count: number;
       hard_count: number;
-    }>(`/questions/${questionId}/vote-difficulty`),
+    }>(`/questions/${questionId}/vote`),
 
   toggleCompletedQuestion: (questionId: T.UUID) =>
     apiClient.post<{ completed: boolean; message: string }>(`/questions/${questionId}/complete`),
