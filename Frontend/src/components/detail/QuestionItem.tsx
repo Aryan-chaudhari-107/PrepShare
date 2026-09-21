@@ -11,16 +11,9 @@ import { useToast } from "../../context/ToastContext";
 interface QuestionItemProps {
   question: QuestionOut;
   index: number;
-  onVoteChange?: (
-    questionId: string,
-    easy: number,
-    med: number,
-    hard: number,
-    myVote: "easy" | "medium" | "hard" | null
-  ) => void;
 }
 
-export const QuestionItem: React.FC<QuestionItemProps> = ({ question, index, onVoteChange }) => {
+export const QuestionItem: React.FC<QuestionItemProps> = ({ question, index }) => {
   const { isAuthenticated, openAuthModal } = useAuth();
   const { success, error } = useToast();
   const [completed, setCompleted] = useState(false);
@@ -112,9 +105,6 @@ export const QuestionItem: React.FC<QuestionItemProps> = ({ question, index, onV
           initialEasy={question.easy_count}
           initialMedium={question.medium_count}
           initialHard={question.hard_count}
-          onVoteChange={(easy, med, hard, myVote) =>
-            onVoteChange?.(question.id, easy, med, hard, myVote)
-          }
         />
       </div>
     </motion.div>

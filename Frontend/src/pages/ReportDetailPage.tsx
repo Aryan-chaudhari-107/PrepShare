@@ -143,28 +143,6 @@ export const ReportDetailPage: React.FC = () => {
     }
   };
 
-  const handleQuestionVoteChange = (
-    questionId: string,
-    easy: number,
-    med: number,
-    hard: number
-  ) => {
-    setPost((prev) => {
-      if (!prev || !prev.rounds) return prev;
-      return {
-        ...prev,
-        rounds: prev.rounds.map((round) => ({
-          ...round,
-          questions: (round.questions || []).map((q) =>
-            q.id === questionId
-              ? { ...q, easy_count: easy, medium_count: med, hard_count: hard }
-              : q
-          ),
-        })),
-      };
-    });
-  };
-
   if (loading) {
     return (
       <AppShell>
@@ -198,20 +176,6 @@ export const ReportDetailPage: React.FC = () => {
     const symbol = currency.toUpperCase() === "INR" ? "₹" : "$";
     return `${symbol} ${post.package_amount.toLocaleString()} ${currency.toUpperCase() === "INR" ? "LPA" : ""}`.trim();
   };
-
-  // Compute total difficulty distribution across all questions
-  let totalEasy = 0;
-  let totalMedium = 0;
-  let totalHard = 0;
-  if (post.rounds) {
-    for (const r of post.rounds) {
-      for (const q of r.questions || []) {
-        totalEasy += q.easy_count || 0;
-        totalMedium += q.medium_count || 0;
-        totalHard += q.hard_count || 0;
-      }
-    }
-  }
 
   return (
     <AppShell>
@@ -398,11 +362,7 @@ export const ReportDetailPage: React.FC = () => {
               {post.rounds && post.rounds.length > 0 ? (
                 <div className="flex flex-col gap-4">
                   {post.rounds.map((round) => (
-                    <RoundAccordion
-                      key={round.post_round_id}
-                      round={round}
-                      onQuestionVoteChange={handleQuestionVoteChange}
-                    />
+                    <RoundAccordion key={round.post_round_id} round={round} />
                   ))}
                 </div>
               ) : (
@@ -457,24 +417,6 @@ export const ReportDetailPage: React.FC = () => {
                   <Share2 className="w-4 h-4" />
                   <span>{shareCount}</span>
                 </motion.button>
-
-                {/* Difficulty Distribution */}
-                {(totalEasy > 0 || totalMedium > 0 || totalHard > 0) && (
-                  <div className="flex items-center gap-1.5 pl-3 border-l border-[#e3dccd] hidden sm:flex">
-                    <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#2f7d52]/10 border border-[#2f7d52]/20 text-[#2f7d52] text-xs font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#2f7d52]"></span>
-                      <span>{totalEasy} Easy</span>
-                    </div>
-                    <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#b26a00]/10 border border-[#b26a00]/20 text-[#b26a00] text-xs font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#b26a00]"></span>
-                      <span>{totalMedium} Med</span>
-                    </div>
-                    <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#b5462f]/10 border border-[#b5462f]/20 text-[#b5462f] text-xs font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#b5462f]"></span>
-                      <span>{totalHard} Hard</span>
-                    </div>
-                  </div>
-                )}
               </div>
 
               <div className="flex items-center gap-2 ml-auto">

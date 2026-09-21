@@ -6,19 +6,9 @@ import { QuestionItem } from "./QuestionItem";
 
 interface RoundAccordionProps {
   round: RoundOut;
-  onQuestionVoteChange?: (
-    questionId: string,
-    easy: number,
-    med: number,
-    hard: number,
-    myVote: "easy" | "medium" | "hard" | null
-  ) => void;
 }
 
-export const RoundAccordion: React.FC<RoundAccordionProps> = ({
-  round,
-  onQuestionVoteChange,
-}) => {
+export const RoundAccordion: React.FC<RoundAccordionProps> = ({ round }) => {
   const [expanded, setExpanded] = useState(true);
 
   return (
@@ -81,12 +71,7 @@ export const RoundAccordion: React.FC<RoundAccordionProps> = ({
             <div className="p-4 sm:p-5 flex flex-col gap-3 bg-[#faf7ee]">
               {round.questions.length > 0 ? (
                 round.questions.map((q, idx) => (
-                  <QuestionItem
-                    key={q.id}
-                    question={q}
-                    index={idx}
-                    onVoteChange={onQuestionVoteChange}
-                  />
+                  <QuestionItem key={q.id} question={q} index={idx} />
                 ))
               ) : (
                 <div className="p-6 text-center text-xs text-[#5f6e82] italic bg-white rounded-xl border border-dashed border-[#e3dccd]">
