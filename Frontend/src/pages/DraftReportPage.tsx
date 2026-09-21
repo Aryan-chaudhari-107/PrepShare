@@ -149,18 +149,20 @@ export const DraftReportPage: React.FC = () => {
     }
   };
 
-  // Step 2: Add Round / Question Local Helpers
+  // Step 2: Add Round / Question Local Helpers with immutable updates & unique keys
   const addRound = () => {
     const nextNum = rounds.length + 1;
+    const uniqueId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const qUniqueId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     setRounds((prev) => [
       ...prev,
       {
-        id: `round-${Date.now()}`,
+        id: `round-${uniqueId}`,
         name: `Round ${nextNum}: Technical Evaluation`,
         mode: "online",
         duration_minutes: 45,
         difficulty: "medium",
-        questions: [{ id: `q-${Date.now()}`, question_text: "" }],
+        questions: [{ id: `q-${qUniqueId}`, question_text: "" }],
       },
     ]);
   };
@@ -173,34 +175,78 @@ export const DraftReportPage: React.FC = () => {
     setRounds((prev) => prev.filter((_, i) => i !== roundIndex));
   };
 
+  const updateRoundName = (roundIndex: number, name: string) => {
+    setRounds((prev) =>
+      prev.map((r, rIdx) => (rIdx === roundIndex ? { ...r, name } : r))
+    );
+  };
+
+  const updateRoundMode = (roundIndex: number, mode: "online" | "offline") => {
+    setRounds((prev) =>
+      prev.map((r, rIdx) => (rIdx === roundIndex ? { ...r, mode } : r))
+    );
+  };
+
   const addQuestionToRound = (roundIndex: number) => {
-    setRounds((prev) => {
-      const copy = [...prev];
-      copy[roundIndex].questions.push({
-        id: `q-${Date.now()}`,
-        question_text: "",
-      });
-      return copy;
-    });
+    const uniqueId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    setRounds((prev) =>
+      prev.map((r, rIdx) => {
+        if (rIdx !== roundIndex) return r;
+        return {
+          ...r,
+          questions: [
+            ...r.questions,
+            {
+              id: `q-${uniqueId}`,
+              question_text: "",
+            },
+          ],
+        };
+      })
+    );
   };
 
   const removeQuestionFromRound = (roundIndex: number, qIndex: number) => {
-    setRounds((prev) => {
-      const copy = [...prev];
-      if (copy[roundIndex].questions.length <= 1) return copy;
-      copy[roundIndex].questions = copy[roundIndex].questions.filter((_, i) => i !== qIndex);
-      return copy;
-    });
+    setRounds((prev) =>
+      prev.map((r, rIdx) => {
+        if (rIdx !== roundIndex) return r;
+        if (r.questions.length <= 1) return r;
+        return {
+          ...r,
+          questions: r.questions.filter((_, qIdx) => qIdx !== qIndex),
+        };
+      })
+    );
+  };
+
+  const updateQuestionText = (roundIndex: number, qIndex: number, text: string) => {
+    setRounds((prev) =>
+      prev.map((r, rIdx) => {
+        if (rIdx !== roundIndex) return r;
+        return {
+          ...r,
+          questions: r.questions.map((q, qIdx) =>
+            qIdx === qIndex ? { ...q, question_text: text } : q
+          ),
+        };
+      })
+    );
   };
 
   const handleQuestionFileUpload = async (roundIndex: number, qIndex: number, file: File) => {
     try {
       const res = await uploadsApi.uploadFile(file);
-      setRounds((prev) => {
-        const copy = [...prev];
-        copy[roundIndex].questions[qIndex].attachment_url = res.data.url;
-        return copy;
-      });
+      setRounds((prev) =>
+        prev.map((r, rIdx) => {
+          if (rIdx !== roundIndex) return r;
+          return {
+            ...r,
+            questions: r.questions.map((q, qIdx) =>
+              qIdx === qIndex ? { ...q, attachment_url: res.data.url } : q
+            ),
+          };
+        })
+      );
       success("Attachment uploaded.", "File Uploaded");
     } catch (err: any) {
       error(err.response?.data?.detail || "Failed to upload question attachment.");
@@ -643,11 +689,7 @@ export const DraftReportPage: React.FC = () => {
                         type="text"
                         required
                         value={round.name}
-                        onChange={(e) => {
-                          const copy = [...rounds];
-                          copy[rIndex].name = e.target.value;
-                          setRounds(copy);
-                        }}
+                        onChange={(e) => updateRoundName(rIndex, e.target.value)}
                         placeholder="e.g. Technical Round 1: DSA & Problem Solving"
                         className="p-2.5 bg-white border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] outline-none focus:ring-1 focus:ring-[#3f6f52]"
                       />
@@ -657,11 +699,7 @@ export const DraftReportPage: React.FC = () => {
                       <label className="text-xs font-bold text-[#0f1926]">Mode</label>
                       <select
                         value={round.mode}
-                        onChange={(e) => {
-                          const copy = [...rounds];
-                          copy[rIndex].mode = e.target.value as "online" | "offline";
-                          setRounds(copy);
-                        }}
+                        onChange={(e) => updateRoundMode(rIndex, e.target.value as "online" | "offline")}
                         className="p-2.5 bg-white border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] outline-none"
                       >
                         <option value="online">Virtual / Online</option>
@@ -686,11 +724,7 @@ export const DraftReportPage: React.FC = () => {
                             rows={2}
                             required
                             value={q.question_text}
-                            onChange={(e) => {
-                              const copy = [...rounds];
-                              copy[rIndex].questions[qIndex].question_text = e.target.value;
-                              setRounds(copy);
-                            }}
+                            onChange={(e) => updateQuestionText(rIndex, qIndex, e.target.value)}
                             placeholder="Problem statement, algorithmic constraints, or system design questions..."
                             className="flex-grow p-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] outline-none focus:ring-1 focus:ring-[#3f6f52] focus:bg-white resize-none"
                           />
