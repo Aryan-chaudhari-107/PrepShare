@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { notificationsApi } from "../../api";
+import { getMediaUrl } from "../../utils/media";
 
 interface SideNavBarProps {
   isMobile?: boolean;
@@ -71,7 +72,7 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({ isMobile = false, onClos
               <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-[#3f6f52] text-white font-bold flex items-center justify-center text-sm shadow-sm group-hover:bg-[#345c44] transition-colors">
                 {user.profile_photo_url ? (
                   <img
-                    src={user.profile_photo_url}
+                    src={getMediaUrl(user.profile_photo_url)}
                     alt={user.username}
                     className="w-full h-full object-cover"
                   />

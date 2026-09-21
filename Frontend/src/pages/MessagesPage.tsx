@@ -15,6 +15,7 @@ import { useToast } from "../context/ToastContext";
 import { chatApi, usersApi } from "../api";
 import { ConversationOut, MessageOut, UserSearchItem } from "../types";
 import { Modal } from "../components/common/Modal";
+import { getMediaUrl } from "../utils/media";
 
 export const MessagesPage: React.FC = () => {
   const { user, isAuthenticated, openAuthModal } = useAuth();
@@ -244,7 +245,7 @@ export const MessagesPage: React.FC = () => {
                       <div className="relative shrink-0">
                         <div className="w-10 h-10 rounded-full overflow-hidden bg-[#3f6f52] flex items-center justify-center font-bold text-white text-xs border border-[#3f6f52]/30 shadow-sm">
                           {p.profile_photo_url ? (
-                            <img src={p.profile_photo_url} alt={p.username} className="w-full h-full object-cover" />
+                            <img src={getMediaUrl(p.profile_photo_url)} alt={p.username} className="w-full h-full object-cover" />
                           ) : (
                             <span>{p.username.slice(0, 2).toUpperCase()}</span>
                           )}
@@ -300,7 +301,7 @@ export const MessagesPage: React.FC = () => {
                     <div className="w-10 h-10 rounded-full overflow-hidden bg-[#3f6f52] flex items-center justify-center font-bold text-white text-xs border border-[#3f6f52]/30">
                       {selectedConv.other_participant.profile_photo_url ? (
                         <img
-                          src={selectedConv.other_participant.profile_photo_url}
+                          src={getMediaUrl(selectedConv.other_participant.profile_photo_url)}
                           alt={selectedConv.other_participant.username}
                           className="w-full h-full object-cover"
                         />
@@ -457,7 +458,7 @@ export const MessagesPage: React.FC = () => {
                 >
                   <div className="w-9 h-9 rounded-full bg-[#3f6f52] flex items-center justify-center font-bold text-white text-xs border border-[#3f6f52]/30 shrink-0">
                     {u.profile_photo_url ? (
-                      <img src={u.profile_photo_url} alt={u.username} className="w-full h-full object-cover rounded-full" />
+                      <img src={getMediaUrl(u.profile_photo_url)} alt={u.username} className="w-full h-full object-cover rounded-full" />
                     ) : (
                       <span>{u.username.slice(0, 2).toUpperCase()}</span>
                     )}

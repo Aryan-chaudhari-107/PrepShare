@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { CheckCircle2, Circle, ShieldCheck, Paperclip, HelpCircle } from "lucide-react";
 import { QuestionOut } from "../../types";
 import { DifficultyVoter } from "./DifficultyVoter";
+import { getMediaUrl } from "../../utils/media";
 import { interactionsApi } from "../../api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
@@ -86,7 +87,7 @@ export const QuestionItem: React.FC<QuestionItemProps> = ({ question, index }) =
       {question.attachment_url && (
         <div className="p-3 bg-[#faf7ee] rounded-xl border border-[#e3dccd] text-xs">
           <a
-            href={question.attachment_url}
+            href={getMediaUrl(question.attachment_url)}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[#2f6b47] hover:text-[#3f6f52] flex items-center gap-2 font-medium transition-colors"

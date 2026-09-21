@@ -15,6 +15,7 @@ import {
   Menu,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { getMediaUrl } from "../../utils/media";
 
 interface TopNavBarProps {
   onSearch?: (query: string) => void;
@@ -167,7 +168,7 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
                 >
                   {user?.profile_photo_url ? (
                     <img
-                      src={user.profile_photo_url}
+                      src={getMediaUrl(user.profile_photo_url)}
                       alt={user.username}
                       className="w-full h-full object-cover"
                     />

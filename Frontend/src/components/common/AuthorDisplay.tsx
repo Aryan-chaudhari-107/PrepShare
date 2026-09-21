@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { EyeOff, ShieldCheck } from "lucide-react";
 import { AuthorOut } from "../../types";
+import { getMediaUrl } from "../../utils/media";
 
 interface AuthorDisplayProps {
   author?: AuthorOut | null;
@@ -54,7 +55,7 @@ export const AuthorDisplay: React.FC<AuthorDisplayProps> = ({
       >
         {author.profile_photo_url ? (
           <img
-            src={author.profile_photo_url}
+            src={getMediaUrl(author.profile_photo_url)}
             alt={author.username}
             className="w-full h-full object-cover"
           />

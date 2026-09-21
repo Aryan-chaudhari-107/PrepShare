@@ -38,6 +38,7 @@ import {
 } from "../types";
 import { Modal } from "../components/common/Modal";
 import { PostCard } from "../components/feed/PostCard";
+import { getMediaUrl } from "../utils/media";
 
 export const ProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId?: string }>();
@@ -323,15 +324,39 @@ export const ProfilePage: React.FC = () => {
         >
           <div className="flex flex-col gap-4 flex-1 relative z-10">
             <div className="flex items-center gap-5 flex-wrap">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-[#3f6f52]/30 bg-[#3f6f52] flex items-center justify-center text-white text-2xl font-bold shrink-0 shadow-sm">
+              <div className="relative group w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-[#3f6f52]/30 bg-[#3f6f52] flex items-center justify-center text-white text-2xl font-bold shrink-0 shadow-sm">
                 {profile.profile_photo_url ? (
                   <img
-                    src={profile.profile_photo_url}
+                    src={getMediaUrl(profile.profile_photo_url)}
                     alt={profile.username}
                     className="w-full h-full object-cover"
                   />
                 ) : (
                   <span>{profile.username.slice(0, 2).toUpperCase()}</span>
+                )}
+                {isSelf && (
+                  <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center cursor-pointer transition-opacity text-white text-[10px] font-semibold gap-1">
+                    <Camera className="w-4 h-4" />
+                    <span>Change</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          const res = await uploadsApi.uploadFile(file);
+                          await usersApi.updateMyProfile({ profile_photo_url: res.data.url });
+                          success("Profile photo updated!", "Photo Saved");
+                          if (refreshUser) refreshUser();
+                          loadData();
+                        } catch (err: any) {
+                          error(err.response?.data?.detail || "Photo upload failed.");
+                        }
+                      }}
+                    />
+                  </label>
                 )}
               </div>
 
@@ -666,7 +691,7 @@ export const ProfilePage: React.FC = () => {
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full overflow-hidden bg-[#f3eee1] border border-[#e3dccd] flex items-center justify-center font-bold text-[#0f1926] text-xl shrink-0">
               {editPhotoUrl ? (
-                <img src={editPhotoUrl} alt="Avatar" className="w-full h-full object-cover" />
+                <img src={getMediaUrl(editPhotoUrl)} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
                 <span>{profile.username.slice(0, 2).toUpperCase()}</span>
               )}
