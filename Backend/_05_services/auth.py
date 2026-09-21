@@ -59,10 +59,13 @@ def request_otp(db, data: RequestOTP):
         purpose="email_verification",
     )
 
-    send_otp_email(data.email, raw_otp)
+    delivered = send_otp_email(data.email, raw_otp)
     logger.info(f"OTP sent to {mask_email(data.email)}")
 
-    return {"message": "OTP sent to your email"}
+    resp = {"message": "OTP sent to your email"}
+    if not delivered:
+        resp["dev_code"] = raw_otp
+    return resp
 
 
 def verify_and_register(db, data: VerifyAndRegister):
@@ -133,10 +136,13 @@ def forgot_password(db, data: RequestOTP):
         purpose="password_reset",
     )
 
-    send_otp_email(data.email, raw_otp)
+    delivered = send_otp_email(data.email, raw_otp)
     logger.info(f"Password reset OTP sent to {mask_email(data.email)}")
 
-    return {"message": "If that email is registered, an OTP has been sent"}
+    resp = {"message": "If that email is registered, an OTP has been sent"}
+    if not delivered:
+        resp["dev_code"] = raw_otp
+    return resp
 
 
 def reset_password(db, data: ResetPassword):

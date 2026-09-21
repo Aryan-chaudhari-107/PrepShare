@@ -6,7 +6,7 @@ from email.mime.text import MIMEText
 from _01_core import logger, settings
 
 
-def send_otp_email(to_email: str, otp_code: str):
+def send_otp_email(to_email: str, otp_code: str) -> bool:
     """Send verification OTP via configured SMTP service with development fallback."""
     subject = "Your PrepShare verification code"
     body = (
@@ -23,12 +23,12 @@ def send_otp_email(to_email: str, otp_code: str):
 
     if settings.SMTP_HOST and settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
         try:
-            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=5) as server:
+            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=2) as server:
                 server.starttls()
                 server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
                 server.sendmail(from_addr, to_email, message.as_string())
                 logger.info(f"OTP email successfully dispatched via SMTP to {to_email}")
-                return
+                return True
         except Exception as e:
             logger.warning(
                 f"SMTP delivery to {to_email} encountered an issue: {e}. "
@@ -36,4 +36,6 @@ def send_otp_email(to_email: str, otp_code: str):
             )
 
     logger.info(f"[DEV/LOCAL OTP DISPATCH] To: {to_email} | Code: {otp_code}")
+    print(f"\n=======================================================\n[PREPSHARE VERIFICATION CODE] {to_email} -> {otp_code}\n=======================================================\n", flush=True)
+    return False
 

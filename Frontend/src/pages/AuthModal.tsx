@@ -67,13 +67,19 @@ export const AuthModal: React.FC = () => {
     }
     setLoading(true);
     try {
+      let res: any;
       if (mode === "forgot") {
-        await authApi.forgotPassword({ email });
+        res = await authApi.forgotPassword({ email });
       } else {
-        await authApi.requestOtp({ email });
+        res = await authApi.requestOtp({ email });
       }
       setOtpSent(true);
-      success(`6-digit code sent to ${email}`, "Code Dispatched");
+      if (res?.data?.dev_code) {
+        setOtp(res.data.dev_code);
+        success(`Verification code generated: ${res.data.dev_code}`, "Code Ready");
+      } else {
+        success(`6-digit code sent to ${email}`, "Code Dispatched");
+      }
     } catch (err: any) {
       error(err.response?.data?.detail || "Failed to send verification code.");
     } finally {
