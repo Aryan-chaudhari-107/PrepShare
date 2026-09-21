@@ -1,4 +1,5 @@
 import React from "react";
+import { Building, Globe } from "lucide-react";
 
 interface CategoryBadgeProps {
   category: string;
@@ -9,7 +10,7 @@ interface CategoryBadgeProps {
 export const CategoryBadge: React.FC<CategoryBadgeProps> = ({
   category,
   className = "",
-  size = "xs",
+  size = "sm",
 }) => {
   const isCampus = category.toLowerCase().includes("campus") && !category.toLowerCase().includes("off");
 
@@ -17,32 +18,33 @@ export const CategoryBadge: React.FC<CategoryBadgeProps> = ({
     switch (cat.toLowerCase()) {
       case "campus_placement":
       case "campus-placement":
-        return "CAMPUS";
+        return "Campus Placement";
       case "off_campus_placement":
       case "off-campus-placement":
-        return "OFF-CAMPUS";
+        return "Off-Campus";
       case "campus_hackathon":
       case "campus-hackathon":
-        return "CAMPUS HACKATHON";
+        return "Campus Hackathon";
       case "off_campus_hackathon":
       case "off-campus-hackathon":
-        return "OFF-CAMPUS HACKATHON";
+        return "Off-Campus Hackathon";
       default:
-        return cat.replace(/_/g, " ").toUpperCase();
+        return cat.replace(/_/g, " ");
     }
   };
 
   const sizeClasses = {
-    xs: "text-[10px] px-2 py-0.5 font-bold tracking-wider",
-    sm: "text-xs px-2.5 py-1 font-bold tracking-wider",
-    md: "text-sm px-3 py-1.5 font-bold",
+    xs: "text-[12px] px-2.5 py-1 font-semibold",
+    sm: "text-[13.5px] px-3 py-1.5 font-semibold",
+    md: "text-[14.5px] px-3.5 py-1.5 font-semibold",
   };
 
   if (isCampus) {
     return (
       <span
-        className={`inline-flex items-center rounded-full bg-[#7C3AED]/10 text-[#7C3AED] border border-[#7C3AED]/20 uppercase ${sizeClasses[size]} ${className}`}
+        className={`inline-flex items-center gap-1.5 rounded-full bg-[#3f6f52]/10 text-[#2f6b47] border border-[#3f6f52]/25 shadow-xs ${sizeClasses[size]} ${className}`}
       >
+        <Building className="w-3.5 h-3.5 shrink-0 text-[#2f6b47]" />
         {formatCategory(category)}
       </span>
     );
@@ -50,8 +52,9 @@ export const CategoryBadge: React.FC<CategoryBadgeProps> = ({
 
   return (
     <span
-      className={`inline-flex items-center rounded-full bg-[#0EA5E9]/10 text-[#0EA5E9] border border-[#0EA5E9]/20 uppercase ${sizeClasses[size]} ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full bg-[#3f6f9e]/10 text-[#2b587a] border border-[#3f6f9e]/25 shadow-xs ${sizeClasses[size]} ${className}`}
     >
+      <Globe className="w-3.5 h-3.5 shrink-0 text-[#3f6f9e]" />
       {formatCategory(category)}
     </span>
   );

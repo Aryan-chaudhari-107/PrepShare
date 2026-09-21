@@ -1,34 +1,40 @@
-﻿# Python
+# Python & Virtual Environments
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-backend/venv/
-backend/.venv/
+Backend/venv/
+Backend/.venv/
 venv/
 .venv/
 *.egg-info/
 alembic/versions/*.pyc
+.ruff_cache/
+.pytest_cache/
 
-# Node / Frontend
-frontend/node_modules/
-frontend/dist/
-frontend/dist-ssr/
+# Node & Frontend
+Frontend/node_modules/
+Frontend/dist/
+Frontend/dist-ssr/
+node_modules/
+dist/
+dist-ssr/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Environment
+# Environment & Secrets (NEVER COMMIT)
 .env
-.env.local
-.env.production
-.env*.local
+.env.*
+!.env.example
+!.env.production.example
 
 # Editor & OS
 .vscode/
 .idea/
+.claude/
 .DS_Store
 *.suo
 *.ntvs*
@@ -37,12 +43,14 @@ pnpm-debug.log*
 *.sw?
 Thumbs.db
 
-# Logs & temp
+# Logs & Temporary Artifacts
 logs/
+Backend/logs/
 *.log
 *.zip
 test_results.json
+regression_results.json
 
-# Static uploads
-backend/static/uploads/*
-!backend/static/uploads/.gitkeep
+# Static Uploads (preserve folder structure with .gitkeep)
+Backend/static/uploads/*
+!Backend/static/uploads/.gitkeep

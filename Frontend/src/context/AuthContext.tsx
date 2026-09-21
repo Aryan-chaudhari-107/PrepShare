@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { UserProfile } from "../types";
 import { usersApi } from "../api";
 
@@ -25,7 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<"login" | "register">("login");
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       const res = await usersApi.getMyProfile();
       setUser(res.data);
@@ -36,7 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (token) {
@@ -54,9 +54,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     window.addEventListener("auth_token_expired", handleExpired);
     return () => window.removeEventListener("auth_token_expired", handleExpired);
-  }, [token]);
+  }, [token, fetchProfile]);
 
-  const login = async (newToken: string) => {
+  const login = useCallback(async (newToken: string) => {
     localStorage.setItem("prepshare_token", newToken);
     setToken(newToken);
     setIsLoading(true);
@@ -67,45 +67,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
       setIsAuthModalOpen(false);
     }
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem("prepshare_token");
     setToken(null);
     setUser(null);
-  };
+  }, []);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     if (token) {
       await fetchProfile();
     }
-  };
+  }, [token, fetchProfile]);
 
-  const openAuthModal = (mode: "login" | "register" = "login") => {
+  const openAuthModal = useCallback((mode: "login" | "register" = "login") => {
     setAuthModalMode(mode);
     setIsAuthModalOpen(true);
-  };
+  }, []);
 
-  const closeAuthModal = () => {
+  const closeAuthModal = useCallback(() => {
     setIsAuthModalOpen(false);
-  };
+  }, []);
+
+  const contextValue = useMemo<AuthContextType>(
+    () => ({
+      user,
+      token,
+      isAuthenticated: !!user && !!token,
+      isLoading,
+      login,
+      logout,
+      refreshUser,
+      openAuthModal,
+      closeAuthModal,
+      isAuthModalOpen,
+      authModalMode,
+    }),
+    [
+      user,
+      token,
+      isLoading,
+      login,
+      logout,
+      refreshUser,
+      openAuthModal,
+      closeAuthModal,
+      isAuthModalOpen,
+      authModalMode,
+    ]
+  );
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isAuthenticated: !!user && !!token,
-        isLoading,
-        login,
-        logout,
-        refreshUser,
-        openAuthModal,
-        closeAuthModal,
-        isAuthModalOpen,
-        authModalMode,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

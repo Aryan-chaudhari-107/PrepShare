@@ -1,5 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  Briefcase,
+  Globe,
+  School,
+  Building2,
+  MapPin,
+  ArrowRight,
+  ArrowLeft,
+  Trash2,
+  Plus,
+  Paperclip,
+  Send,
+  CheckCircle2,
+  XCircle,
+  FileEdit,
+  GraduationCap,
+  Shield,
+} from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { Company } from "../types";
 import { postsApi, companiesApi, uploadsApi } from "../api";
@@ -71,6 +90,12 @@ export const DraftReportPage: React.FC = () => {
   const [jobRole, setJobRole] = useState("Software Development Engineer");
   const [packageAmount, setPackageAmount] = useState<string>("1200000");
   const [currency, setCurrency] = useState("INR");
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      openAuthModal("login");
+    }
+  }, [isAuthenticated, openAuthModal]);
 
   useEffect(() => {
     companiesApi
@@ -262,176 +287,186 @@ export const DraftReportPage: React.FC = () => {
 
   return (
     <AppShell>
-      <main className="max-w-4xl mx-auto px-4 md:px-8 py-8 w-full flex flex-col gap-8 flex-1">
+      <main className="max-w-4xl mx-auto px-4 md:px-8 py-8 w-full flex flex-col gap-6 flex-1">
         {/* Step Breadcrumbs */}
-        <div className="flex items-center justify-between border-b border-border-subtle pb-4">
+        <div className="flex flex-wrap items-center justify-between border-b border-[#e3dccd] pb-5 gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-on-surface">Share Interview Experience</h1>
-            <p className="text-xs text-on-surface-variant mt-1">
-              Help fellow students by detailing your real interview rounds and questions.
+            <div className="flex items-center gap-2 text-xs font-semibold text-[#2f6b47] mb-1">
+              <FileEdit className="w-4 h-4 text-[#3f6f52]" />
+              <span className="uppercase tracking-wider">CREATOR WORKSPACE</span>
+            </div>
+            <h1 className="text-2xl font-bold text-[#0f1926]">Share Interview Experience</h1>
+            <p className="text-xs text-[#5f6e82] mt-0.5">
+              Help fellow students and candidates by detailing your real interview rounds and questions.
             </p>
           </div>
           <div className="flex items-center gap-2 text-xs font-semibold">
             <span
-              className={`px-3 py-1 rounded-full ${
-                step === 1 ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"
+              className={`px-3 py-1 rounded-full transition-all ${
+                step === 1
+                  ? "bg-[#3f6f52] text-white shadow-sm font-bold"
+                  : "bg-[#f3eee1] text-[#5f6e82] border border-[#e3dccd]"
               }`}
             >
               1. Basic Info
             </span>
-            <span className="text-outline">→</span>
+            <span className="text-[#5f6e82]/50">→</span>
             <span
-              className={`px-3 py-1 rounded-full ${
-                step === 2 ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"
+              className={`px-3 py-1 rounded-full transition-all ${
+                step === 2
+                  ? "bg-[#3f6f52] text-white shadow-sm font-bold"
+                  : "bg-[#f3eee1] text-[#5f6e82] border border-[#e3dccd]"
               }`}
             >
               2. Rounds
             </span>
-            <span className="text-outline">→</span>
+            <span className="text-[#5f6e82]/50">→</span>
             <span
-              className={`px-3 py-1 rounded-full ${
-                step === 3 ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"
+              className={`px-3 py-1 rounded-full transition-all ${
+                step === 3
+                  ? "bg-[#3f6f52] text-white shadow-sm font-bold"
+                  : "bg-[#f3eee1] text-[#5f6e82] border border-[#e3dccd]"
               }`}
             >
-              3. Review & Publish
+              3. Publish
             </span>
           </div>
         </div>
 
         {/* STEP 1 FORM */}
         {step === 1 && (
-          <form
+          <motion.form
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             onSubmit={handleStep1Submit}
-            className="bg-surface-elevated rounded-2xl border border-border-subtle p-6 sm:p-8 shadow-sm flex flex-col gap-6"
+            className="bg-white rounded-2xl border border-[#e3dccd] p-6 sm:p-8 shadow-sm flex flex-col gap-6"
           >
-            {/* Category Cards (Stitch 2x2 Layout) */}
+            {/* Category Cards (2x2 Layout) */}
             <div className="flex flex-col gap-3">
-              <label className="text-sm font-bold text-on-surface">Select Category *</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="text-xs font-bold text-[#0f1926] uppercase tracking-wider">Select Category *</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 {/* Campus Placement */}
                 <label
                   onClick={() => setPostCategory("campus_placement")}
-                  className={`cursor-pointer rounded-xl border-2 p-4 flex flex-col gap-2 transition-all ${
+                  className={`cursor-pointer rounded-2xl border-2 p-4 flex flex-col gap-1.5 transition-all ${
                     postCategory === "campus_placement"
-                      ? "border-primary bg-primary-container/10 shadow-sm"
-                      : "border-border-subtle hover:border-outline-variant bg-surface"
+                      ? "border-[#3f6f52] bg-[#3f6f52]/10 shadow-sm"
+                      : "border-[#e3dccd] hover:border-[#3f6f52]/50 bg-white"
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[#7C3AED]">work</span>
-                    <span className="font-bold text-sm text-on-surface">Campus Placement</span>
+                    <Briefcase className="w-4 h-4 text-[#3f6f52]" />
+                    <span className="font-bold text-sm text-[#0f1926]">Campus Placement</span>
                   </div>
-                  <p className="text-xs text-on-surface-variant">
-                    Interview processes and recruitment drives held at your college.
+                  <p className="text-xs text-[#5f6e82]">
+                    Interview processes and recruitment drives held on your college campus.
                   </p>
                 </label>
 
                 {/* Off-Campus Placement */}
                 <label
                   onClick={() => setPostCategory("off_campus_placement")}
-                  className={`cursor-pointer rounded-xl border-2 p-4 flex flex-col gap-2 transition-all ${
+                  className={`cursor-pointer rounded-2xl border-2 p-4 flex flex-col gap-1.5 transition-all ${
                     postCategory === "off_campus_placement"
-                      ? "border-primary bg-primary-container/10 shadow-sm"
-                      : "border-border-subtle hover:border-outline-variant bg-surface"
+                      ? "border-[#3f6f52] bg-[#3f6f52]/10 shadow-sm"
+                      : "border-[#e3dccd] hover:border-[#3f6f52]/50 bg-white"
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[#0EA5E9]">public</span>
-                    <span className="font-bold text-sm text-on-surface">Off-Campus Placement</span>
+                    <Globe className="w-4 h-4 text-[#3f6f9e]" />
+                    <span className="font-bold text-sm text-[#0f1926]">Off-Campus Placement</span>
                   </div>
-                  <p className="text-xs text-on-surface-variant">
-                    Independent career applications, direct referrals, and external interviews.
+                  <p className="text-xs text-[#5f6e82]">
+                    Independent career applications, direct referrals, and external hiring.
                   </p>
                 </label>
 
                 {/* Campus Hackathon */}
                 <label
                   onClick={() => setPostCategory("campus_hackathon")}
-                  className={`cursor-pointer rounded-xl border-2 p-4 flex flex-col gap-2 transition-all ${
+                  className={`cursor-pointer rounded-2xl border-2 p-4 flex flex-col gap-1.5 transition-all ${
                     postCategory === "campus_hackathon"
-                      ? "border-primary bg-primary-container/10 shadow-sm"
-                      : "border-border-subtle hover:border-outline-variant bg-surface"
+                      ? "border-[#3f6f52] bg-[#3f6f52]/10 shadow-sm"
+                      : "border-[#e3dccd] hover:border-[#3f6f52]/50 bg-white"
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[#7C3AED]">school</span>
-                    <span className="font-bold text-sm text-on-surface">Campus Hackathon</span>
+                    <School className="w-4 h-4 text-[#b26a00]" />
+                    <span className="font-bold text-sm text-[#0f1926]">Campus Hackathon</span>
                   </div>
-                  <p className="text-xs text-on-surface-variant">
-                    Experience from university and internal institution-hosted hackathons.
+                  <p className="text-xs text-[#5f6e82]">
+                    Experience from university-hosted and internal collegiate hackathons.
                   </p>
                 </label>
 
                 {/* Off-Campus Hackathon */}
                 <label
                   onClick={() => setPostCategory("off_campus_hackathon")}
-                  className={`cursor-pointer rounded-xl border-2 p-4 flex flex-col gap-2 transition-all ${
+                  className={`cursor-pointer rounded-2xl border-2 p-4 flex flex-col gap-1.5 transition-all ${
                     postCategory === "off_campus_hackathon"
-                      ? "border-primary bg-primary-container/10 shadow-sm"
-                      : "border-border-subtle hover:border-outline-variant bg-surface"
+                      ? "border-[#3f6f52] bg-[#3f6f52]/10 shadow-sm"
+                      : "border-[#e3dccd] hover:border-[#3f6f52]/50 bg-white"
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[#0EA5E9]">business</span>
-                    <span className="font-bold text-sm text-on-surface">Off-Campus Hackathon</span>
+                    <Building2 className="w-4 h-4 text-[#b26a00]" />
+                    <span className="font-bold text-sm text-[#0f1926]">Off-Campus Hackathon</span>
                   </div>
-                  <p className="text-xs text-on-surface-variant">
+                  <p className="text-xs text-[#5f6e82]">
                     External, corporate, national, or open global hackathon evaluations.
                   </p>
                 </label>
               </div>
             </div>
 
-            <div className="h-px bg-border-subtle my-1"></div>
+            <div className="h-px bg-[#e3dccd] my-1"></div>
 
             {/* Title */}
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-on-surface">Experience Title *</label>
+              <label className="text-xs font-bold text-[#0f1926]">Experience Title *</label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Google Software Engineer Intern Interview Experience 2024"
-                className="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-sm text-on-surface placeholder-on-surface-variant/50 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                className="w-full bg-[#f3eee1] border border-[#e3dccd] rounded-xl px-4 py-3 text-xs sm:text-sm text-[#0f1926] placeholder-[#5f6e82] focus:ring-1 focus:ring-[#3f6f52] focus:border-[#3f6f52] focus:bg-white outline-none transition-all"
               />
             </div>
 
             {/* Basic Info Fields (2x2 Grid) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Company Field */}
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1.5">
                 <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold text-on-surface">Company / Organization</label>
+                  <label className="text-xs font-bold text-[#0f1926]">Company / Organization</label>
                   <button
                     type="button"
                     onClick={() => setShowNewCompanyInput(!showNewCompanyInput)}
-                    className="text-[11px] text-primary font-semibold hover:underline"
+                    className="text-[11px] text-[#2f6b47] font-semibold hover:underline"
                   >
                     {showNewCompanyInput ? "Select Existing" : "+ Add New"}
                   </button>
                 </div>
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">
-                    domain
-                  </span>
+                  <Building2 className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#5f6e82] pointer-events-none" />
                   {showNewCompanyInput ? (
                     <input
                       type="text"
                       value={newCompanyName}
                       onChange={(e) => setNewCompanyName(e.target.value)}
                       placeholder="e.g. Google, Microsoft, Amazon"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface placeholder-on-surface-variant/50 focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] placeholder-[#5f6e82] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none"
                     />
                   ) : (
                     <select
                       value={selectedCompanyId}
                       onChange={(e) => setSelectedCompanyId(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none cursor-pointer"
                     >
-                      <option value="">-- Select Company (Optional) --</option>
+                      <option value="" className="bg-white text-[#0f1926]">-- Select Company (Optional) --</option>
                       {companies.map((c) => (
-                        <option key={c.id} value={c.id}>
+                        <option key={c.id} value={c.id} className="bg-white text-[#0f1926]">
                           {c.name} {c.industry ? `(${c.industry})` : ""}
                         </option>
                       ))}
@@ -441,77 +476,71 @@ export const DraftReportPage: React.FC = () => {
               </div>
 
               {/* College Field */}
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold text-on-surface">
-                  College / University {isCampus && <span className="text-[#7C3AED]">*</span>}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-[#0f1926]">
+                  College / University {isCampus && <span className="text-[#3f6f52]">*</span>}
                 </label>
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">
-                    account_balance
-                  </span>
+                  <GraduationCap className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#5f6e82] pointer-events-none" />
                   <input
                     type="text"
                     value={collegeName}
                     onChange={(e) => setCollegeName(e.target.value)}
                     placeholder="e.g. MIT, Stanford, IIT Bombay"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface placeholder-on-surface-variant/50 focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] placeholder-[#5f6e82] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none"
                   />
                 </div>
               </div>
 
               {/* Job Role Field */}
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold text-on-surface">Job Role / Position</label>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-[#0f1926]">Job Role / Position</label>
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">
-                    badge
-                  </span>
+                  <Briefcase className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#5f6e82] pointer-events-none" />
                   <input
                     type="text"
                     value={jobRole}
                     onChange={(e) => setJobRole(e.target.value)}
                     placeholder="e.g. Software Engineer Intern"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface placeholder-on-surface-variant/50 focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] placeholder-[#5f6e82] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none"
                   />
                 </div>
               </div>
 
               {/* Location */}
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold text-on-surface">Location / Work Mode</label>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-[#0f1926]">Location / Work Mode</label>
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">
-                    location_on
-                  </span>
+                  <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#5f6e82] pointer-events-none" />
                   <input
                     type="text"
                     value={workLocation}
                     onChange={(e) => setWorkLocation(e.target.value)}
                     placeholder="e.g. Bengaluru / Remote"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface placeholder-on-surface-variant/50 focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] placeholder-[#5f6e82] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none"
                   />
                 </div>
               </div>
 
               {/* Year of Study or Experience */}
               {isCampus ? (
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold text-on-surface">Year of Study</label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-[#0f1926]">Year of Study</label>
                   <select
                     value={yearOfStudy}
                     onChange={(e) => setYearOfStudy(parseInt(e.target.value, 10))}
-                    className="w-full px-4 py-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none cursor-pointer"
                   >
-                    <option value={1}>1st Year (Undergraduate)</option>
-                    <option value={2}>2nd Year (Undergraduate)</option>
-                    <option value={3}>3rd Year (Pre-final)</option>
-                    <option value={4}>4th Year (Final Year)</option>
-                    <option value={5}>Postgraduate / Masters</option>
+                    <option value={1} className="bg-white text-[#0f1926]">1st Year (Undergraduate)</option>
+                    <option value={2} className="bg-white text-[#0f1926]">2nd Year (Undergraduate)</option>
+                    <option value={3} className="bg-white text-[#0f1926]">3rd Year (Pre-final)</option>
+                    <option value={4} className="bg-white text-[#0f1926]">4th Year (Final Year)</option>
+                    <option value={5} className="bg-white text-[#0f1926]">Postgraduate / Masters</option>
                   </select>
                 </div>
               ) : (
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold text-on-surface">Years of Experience</label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-[#0f1926]">Years of Experience</label>
                   <input
                     type="number"
                     step="0.5"
@@ -519,73 +548,78 @@ export const DraftReportPage: React.FC = () => {
                     value={experienceYears}
                     onChange={(e) => setExperienceYears(e.target.value)}
                     placeholder="e.g. 2.5"
-                    className="w-full px-4 py-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface placeholder-on-surface-variant/50 focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] placeholder-[#5f6e82] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none"
                   />
                 </div>
               )}
             </div>
 
             {/* Anonymity Switch */}
-            <div className="p-4 rounded-xl border border-border-subtle bg-surface flex items-center justify-between gap-4 mt-1">
+            <div className="p-4 rounded-xl border border-[#e3dccd] bg-[#faf7ee] flex items-center justify-between gap-4">
               <div className="flex flex-col">
-                <span className="text-sm font-bold text-on-surface">Post Anonymously</span>
-                <span className="text-xs text-on-surface-variant">
+                <span className="text-xs sm:text-sm font-bold text-[#0f1926] flex items-center gap-1.5">
+                  <Shield className="w-4 h-4 text-[#3f6f52]" />
+                  Post Anonymously
+                </span>
+                <span className="text-[11px] text-[#5f6e82] mt-0.5">
                   Protect identity. Your name, avatar, and profile handle will be fully redacted.
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setIsAnonymous(!isAnonymous)}
-                className={`w-12 h-7 rounded-full p-1 transition-colors flex items-center ${
-                  isAnonymous ? "bg-primary" : "bg-surface-container border border-outline-variant"
+                className={`w-12 h-6 rounded-full p-0.5 transition-colors flex items-center ${
+                  isAnonymous ? "bg-[#3f6f52]" : "bg-[#e3dccd]"
                 }`}
               >
                 <div
-                  className={`w-5 h-5 rounded-full bg-surface-elevated shadow-md transition-transform ${
-                    isAnonymous ? "translate-x-5" : "translate-x-0"
+                  className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
+                    isAnonymous ? "translate-x-6" : "translate-x-0"
                   }`}
                 />
               </button>
             </div>
 
             {/* Step 1 Submit Button */}
-            <div className="flex justify-end pt-4 border-t border-border-subtle">
+            <div className="flex justify-end pt-4 border-t border-[#e3dccd]">
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-3 bg-primary text-on-primary font-semibold text-sm rounded-xl hover:bg-primary-container transition-all active:scale-95 flex items-center gap-2 shadow-sm disabled:opacity-50"
+                className="px-6 py-2.5 bg-[#3f6f52] hover:bg-[#345c44] text-white font-semibold text-xs rounded-xl transition-all active:scale-95 flex items-center gap-2 shadow-sm disabled:opacity-50"
               >
                 <span>Continue to Rounds</span>
-                <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
-          </form>
+          </motion.form>
         )}
 
         {/* STEP 2 FORM */}
         {step === 2 && (
-          <form
+          <motion.form
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             onSubmit={handleStep2Submit}
-            className="bg-surface-elevated rounded-2xl border border-border-subtle p-6 sm:p-8 shadow-sm flex flex-col gap-6"
+            className="bg-white rounded-2xl border border-[#e3dccd] p-6 sm:p-8 shadow-sm flex flex-col gap-6"
           >
-            <div className="flex justify-between items-center border-b border-border-subtle pb-4">
+            <div className="flex justify-between items-center border-b border-[#e3dccd] pb-4">
               <div>
-                <h2 className="text-xl font-bold text-on-surface">Interview Rounds & Questions</h2>
-                <p className="text-xs text-on-surface-variant mt-0.5">
-                  Record each round's format and the specific questions or challenges asked.
+                <h2 className="text-lg font-bold text-[#0f1926]">Interview Rounds & Questions</h2>
+                <p className="text-xs text-[#5f6e82] mt-0.5">
+                  Record each round's format and the specific technical challenges asked.
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-5">
               {rounds.map((round, rIndex) => (
                 <div
                   key={round.id}
-                  className="bg-surface rounded-2xl border border-border-subtle p-5 sm:p-6 shadow-sm flex flex-col gap-5"
+                  className="bg-[#faf7ee] rounded-2xl border border-[#e3dccd] p-5 shadow-xs flex flex-col gap-4"
                 >
-                  <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-                    <span className="text-sm font-bold text-primary flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center text-xs">
+                  <div className="flex items-center justify-between border-b border-[#e3dccd] pb-3">
+                    <span className="text-xs font-bold text-[#2f6b47] flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-lg bg-[#3f6f52] text-white flex items-center justify-center text-xs font-bold">
                         {rIndex + 1}
                       </span>
                       <span>Round #{rIndex + 1}</span>
@@ -594,17 +628,17 @@ export const DraftReportPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => removeRound(rIndex)}
-                        className="text-xs font-semibold text-error hover:underline flex items-center gap-1"
+                        className="text-xs font-semibold text-[#b5462f] hover:underline flex items-center gap-1 transition-colors"
                       >
-                        <span className="material-symbols-outlined text-sm">delete</span>
-                        Remove Round
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Remove Round</span>
                       </button>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="sm:col-span-2 flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-on-surface">Round Name / Focus *</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="sm:col-span-2 flex flex-col gap-1">
+                      <label className="text-xs font-bold text-[#0f1926]">Round Name / Focus *</label>
                       <input
                         type="text"
                         required
@@ -615,12 +649,12 @@ export const DraftReportPage: React.FC = () => {
                           setRounds(copy);
                         }}
                         placeholder="e.g. Technical Round 1: DSA & Problem Solving"
-                        className="p-3 bg-surface-elevated border border-outline-variant rounded-xl text-xs text-on-surface outline-none focus:ring-1 focus:ring-primary"
+                        className="p-2.5 bg-white border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] outline-none focus:ring-1 focus:ring-[#3f6f52]"
                       />
                     </div>
 
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-on-surface">Mode</label>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-bold text-[#0f1926]">Mode</label>
                       <select
                         value={round.mode}
                         onChange={(e) => {
@@ -628,7 +662,7 @@ export const DraftReportPage: React.FC = () => {
                           copy[rIndex].mode = e.target.value as "online" | "offline";
                           setRounds(copy);
                         }}
-                        className="p-3 bg-surface-elevated border border-outline-variant rounded-xl text-xs text-on-surface outline-none"
+                        className="p-2.5 bg-white border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] outline-none"
                       >
                         <option value="online">Virtual / Online</option>
                         <option value="offline">On-Site / Offline</option>
@@ -638,14 +672,14 @@ export const DraftReportPage: React.FC = () => {
 
                   {/* Questions in round */}
                   <div className="flex flex-col gap-3 pt-2">
-                    <label className="text-xs font-bold text-on-surface">
+                    <label className="text-xs font-bold text-[#0f1926]">
                       Questions / Challenges Asked
                     </label>
 
                     {round.questions.map((q, qIndex) => (
-                      <div key={q.id} className="flex flex-col gap-2 p-3 bg-surface-container-low/60 rounded-xl border border-border-subtle/70">
+                      <div key={q.id} className="flex flex-col gap-2 p-3 bg-white rounded-xl border border-[#e3dccd]">
                         <div className="flex gap-2 items-start">
-                          <span className="w-6 h-6 rounded-lg bg-surface-container flex items-center justify-center font-bold text-[11px] text-on-surface-variant shrink-0 mt-2">
+                          <span className="w-6 h-6 rounded-lg bg-[#f3eee1] flex items-center justify-center font-bold text-[11px] text-[#5f6e82] shrink-0 mt-2">
                             Q{qIndex + 1}
                           </span>
                           <textarea
@@ -657,25 +691,25 @@ export const DraftReportPage: React.FC = () => {
                               copy[rIndex].questions[qIndex].question_text = e.target.value;
                               setRounds(copy);
                             }}
-                            placeholder="Problem statement, inputs/outputs, algorithmic constraints, or system design questions..."
-                            className="flex-grow p-3 bg-surface-elevated border border-outline-variant rounded-xl text-xs text-on-surface outline-none focus:ring-1 focus:ring-primary resize-none"
+                            placeholder="Problem statement, algorithmic constraints, or system design questions..."
+                            className="flex-grow p-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] outline-none focus:ring-1 focus:ring-[#3f6f52] focus:bg-white resize-none"
                           />
                           {round.questions.length > 1 && (
                             <button
                               type="button"
                               onClick={() => removeQuestionFromRound(rIndex, qIndex)}
-                              className="p-2 text-on-surface-variant hover:text-error transition-colors mt-2"
+                              className="p-2 text-[#5f6e82] hover:text-[#b5462f] transition-colors mt-2"
                               title="Remove Question"
                             >
-                              <span className="material-symbols-outlined text-base">close</span>
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           )}
                         </div>
 
                         {/* Attachment Upload Row */}
                         <div className="flex items-center gap-3 pl-8 text-xs">
-                          <label className="cursor-pointer inline-flex items-center gap-1 text-primary hover:underline font-semibold">
-                            <span className="material-symbols-outlined text-base">attach_file</span>
+                          <label className="cursor-pointer inline-flex items-center gap-1.5 text-[#2f6b47] hover:underline font-semibold transition-colors">
+                            <Paperclip className="w-3.5 h-3.5" />
                             <span>{q.attachment_url ? "Replace Attachment" : "Attach Diagram / PDF"}</span>
                             <input
                               type="file"
@@ -688,8 +722,8 @@ export const DraftReportPage: React.FC = () => {
                             />
                           </label>
                           {q.attachment_url && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-medium truncate max-w-xs">
-                              <span className="material-symbols-outlined text-xs">check_circle</span>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#3f6f52]/10 border border-[#3f6f52]/20 text-[#2f6b47] text-[11px] font-medium truncate max-w-xs">
+                              <CheckCircle2 className="w-3 h-3" />
                               <span className="truncate">{q.attachment_url.split("/").pop()}</span>
                             </span>
                           )}
@@ -700,10 +734,10 @@ export const DraftReportPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => addQuestionToRound(rIndex)}
-                      className="self-start px-3 py-1.5 rounded-lg border border-border-subtle bg-surface-elevated text-xs font-semibold text-primary hover:bg-surface-container transition-all flex items-center gap-1 mt-1"
+                      className="self-start px-3 py-1.5 rounded-xl border border-[#e3dccd] bg-white text-xs font-semibold text-[#2f6b47] hover:bg-[#f3eee1] transition-all flex items-center gap-1.5 mt-1"
                     >
-                      <span className="material-symbols-outlined text-sm">add</span>
-                      Add Another Question
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Another Question</span>
                     </button>
                   </div>
                 </div>
@@ -712,72 +746,75 @@ export const DraftReportPage: React.FC = () => {
               <button
                 type="button"
                 onClick={addRound}
-                className="w-full py-3.5 rounded-xl border border-dashed border-primary/40 bg-primary-container/5 hover:bg-primary-container/10 text-xs font-bold text-primary transition-all flex items-center justify-center gap-1.5"
+                className="w-full py-3 rounded-xl border border-dashed border-[#3f6f52]/40 bg-[#3f6f52]/5 hover:bg-[#3f6f52]/10 text-xs font-bold text-[#2f6b47] transition-all flex items-center justify-center gap-1.5"
               >
-                <span className="material-symbols-outlined text-base">add_circle</span>
-                Add Another Round
+                <Plus className="w-4 h-4" />
+                <span>Add Another Round</span>
               </button>
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-border-subtle">
+            <div className="flex justify-between items-center pt-4 border-t border-[#e3dccd]">
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="px-4 py-2.5 rounded-xl border border-border-subtle text-xs font-semibold text-on-surface-variant hover:bg-surface-container"
+                className="px-4 py-2 rounded-xl border border-[#e3dccd] text-xs font-semibold text-[#2b3a4f] hover:bg-[#f3eee1] flex items-center gap-1.5 transition-colors"
               >
-                ← Back to Step 1
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Step 1</span>
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2.5 bg-primary text-on-primary font-semibold text-xs rounded-xl hover:bg-primary-container transition-all active:scale-95 flex items-center gap-2 shadow-sm disabled:opacity-50"
+                className="px-6 py-2 bg-[#3f6f52] hover:bg-[#345c44] text-white font-semibold text-xs rounded-xl transition-all active:scale-95 flex items-center gap-2 shadow-sm disabled:opacity-50"
               >
                 <span>Continue to Review</span>
-                <span className="material-symbols-outlined text-base">arrow_forward</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
-          </form>
+          </motion.form>
         )}
 
         {/* STEP 3 FORM */}
         {step === 3 && (
-          <form
+          <motion.form
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             onSubmit={handleStep3Publish}
-            className="bg-surface-elevated rounded-2xl border border-border-subtle p-6 sm:p-8 shadow-sm flex flex-col gap-6"
+            className="bg-white rounded-2xl border border-[#e3dccd] p-6 sm:p-8 shadow-sm flex flex-col gap-6"
           >
-            <div className="border-b border-border-subtle pb-4">
-              <h2 className="text-xl font-bold text-on-surface">Experience Review & Narrative</h2>
-              <p className="text-xs text-on-surface-variant mt-0.5">
+            <div className="border-b border-[#e3dccd] pb-4">
+              <h2 className="text-lg font-bold text-[#0f1926]">Experience Review & Narrative</h2>
+              <p className="text-xs text-[#5f6e82] mt-0.5">
                 Share your overall experience narrative, outcome, and advice for future candidates.
               </p>
             </div>
 
             {/* Offer Received Toggle */}
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-on-surface">Outcome / Offer Status *</label>
-              <div className="grid grid-cols-2 gap-4">
+              <label className="text-xs font-bold text-[#0f1926]">Outcome / Offer Status *</label>
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setIsOfferReceived(true)}
-                  className={`p-4 rounded-xl border-2 flex items-center gap-3 transition-all ${
+                  className={`p-3.5 rounded-xl border-2 flex items-center gap-2.5 transition-all ${
                     isOfferReceived
-                      ? "border-[#22C55E] bg-[#22C55E]/10 text-[#15803d] font-bold shadow-sm"
-                      : "border-border-subtle bg-surface text-on-surface-variant"
+                      ? "border-[#2f7d52] bg-[#2f7d52]/10 text-[#2f7d52] font-bold shadow-sm"
+                      : "border-[#e3dccd] bg-white text-[#5f6e82]"
                   }`}
                 >
-                  <span className="material-symbols-outlined text-xl text-[#22C55E]">check_circle</span>
+                  <CheckCircle2 className="w-4 h-4 text-[#2f7d52]" />
                   <span className="text-xs sm:text-sm">Offer Received</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsOfferReceived(false)}
-                  className={`p-4 rounded-xl border-2 flex items-center gap-3 transition-all ${
+                  className={`p-3.5 rounded-xl border-2 flex items-center gap-2.5 transition-all ${
                     !isOfferReceived
-                      ? "border-error bg-error/10 text-error font-bold shadow-sm"
-                      : "border-border-subtle bg-surface text-on-surface-variant"
+                      ? "border-[#b5462f] bg-[#b5462f]/10 text-[#b5462f] font-bold shadow-sm"
+                      : "border-[#e3dccd] bg-white text-[#5f6e82]"
                   }`}
                 >
-                  <span className="material-symbols-outlined text-xl text-error">cancel</span>
+                  <XCircle className="w-4 h-4 text-[#b5462f]" />
                   <span className="text-xs sm:text-sm">No Offer</span>
                 </button>
               </div>
@@ -785,25 +822,25 @@ export const DraftReportPage: React.FC = () => {
 
             {/* Package & Role if Offer Received */}
             {isOfferReceived && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 animate-in fade-in">
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold text-on-surface">Offered Position *</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-[#0f1926]">Offered Position *</label>
                   <input
                     type="text"
                     required
                     value={jobRole}
                     onChange={(e) => setJobRole(e.target.value)}
                     placeholder="e.g. Associate Software Engineer"
-                    className="p-3 bg-surface border border-outline-variant rounded-xl text-xs text-on-surface outline-none focus:ring-1 focus:ring-primary"
+                    className="p-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] outline-none focus:ring-1 focus:ring-[#3f6f52] focus:bg-white"
                   />
                 </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold text-on-surface">Total Package / CTC</label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-[#0f1926]">Total Package / CTC</label>
                   <div className="flex gap-2">
                     <select
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
-                      className="p-3 bg-surface border border-outline-variant rounded-xl text-xs text-on-surface w-24 outline-none"
+                      className="p-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] w-24 outline-none"
                     >
                       <option value="INR">INR (₹)</option>
                       <option value="USD">USD ($)</option>
@@ -815,7 +852,7 @@ export const DraftReportPage: React.FC = () => {
                       value={packageAmount}
                       onChange={(e) => setPackageAmount(e.target.value)}
                       placeholder="e.g. 1800000"
-                      className="flex-grow p-3 bg-surface border border-outline-variant rounded-xl text-xs text-on-surface outline-none focus:ring-1 focus:ring-primary"
+                      className="flex-grow p-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] outline-none focus:ring-1 focus:ring-[#3f6f52] focus:bg-white"
                     />
                   </div>
                 </div>
@@ -823,8 +860,8 @@ export const DraftReportPage: React.FC = () => {
             )}
 
             {/* Experience Text */}
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-on-surface">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-[#0f1926]">
                 Overall Interview Experience Narrative *
               </label>
               <textarea
@@ -832,44 +869,45 @@ export const DraftReportPage: React.FC = () => {
                 required
                 value={experienceText}
                 onChange={(e) => setExperienceText(e.target.value)}
-                placeholder="Detail your timeline, how the interviewers conducted themselves, technical depth, and what strategies helped you the most..."
-                className="p-3.5 bg-surface border border-outline-variant rounded-xl text-xs text-on-surface leading-relaxed outline-none focus:ring-1 focus:ring-primary resize-none"
+                placeholder="Detail your timeline, how the interviewers conducted themselves, technical depth, and strategies that helped..."
+                className="p-3 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] leading-relaxed outline-none focus:ring-1 focus:ring-[#3f6f52] focus:bg-white resize-none"
               />
             </div>
 
             {/* Preparation Tips */}
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-on-surface">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-[#0f1926]">
                 Key Preparation Tips & Recommended Topics
               </label>
               <textarea
                 rows={3}
                 value={tips}
                 onChange={(e) => setTips(e.target.value)}
-                placeholder="Important algorithms, system design topics, standard mock interview resources, or mistakes to avoid..."
-                className="p-3.5 bg-surface border border-outline-variant rounded-xl text-xs text-on-surface leading-relaxed outline-none focus:ring-1 focus:ring-primary resize-none"
+                placeholder="Important algorithms, system design topics, mock resources, or common pitfalls to avoid..."
+                className="p-3 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] leading-relaxed outline-none focus:ring-1 focus:ring-[#3f6f52] focus:bg-white resize-none"
               />
             </div>
 
             {/* Publish Actions */}
-            <div className="flex justify-between items-center pt-4 border-t border-border-subtle">
+            <div className="flex justify-between items-center pt-4 border-t border-[#e3dccd]">
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                className="px-4 py-2.5 rounded-xl border border-border-subtle text-xs font-semibold text-on-surface-variant hover:bg-surface-container"
+                className="px-4 py-2 rounded-xl border border-[#e3dccd] text-xs font-semibold text-[#2b3a4f] hover:bg-[#f3eee1] flex items-center gap-1.5 transition-colors"
               >
-                ← Back to Step 2
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Step 2</span>
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-8 py-3 bg-primary text-on-primary font-bold text-xs rounded-xl hover:bg-primary-container transition-all active:scale-95 shadow-md flex items-center gap-2 disabled:opacity-50"
+                className="px-6 py-2.5 bg-[#3f6f52] hover:bg-[#345c44] text-white font-bold text-xs rounded-xl transition-all active:scale-95 shadow-sm flex items-center gap-2 disabled:opacity-50"
               >
-                <span className="material-symbols-outlined text-base">send</span>
+                <Send className="w-3.5 h-3.5" />
                 <span>{loading ? "Publishing..." : "Publish Experience"}</span>
               </button>
             </div>
-          </form>
+          </motion.form>
         )}
       </main>
     </AppShell>

@@ -1,4 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Mail,
+  Lock,
+  User as UserIcon,
+  KeyRound,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Loader2,
+  CheckCircle2,
+} from "lucide-react";
 import { Modal } from "../components/common/Modal";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
@@ -10,6 +22,7 @@ export const AuthModal: React.FC = () => {
 
   const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Form states
   const [identifier, setIdentifier] = useState("");
@@ -21,8 +34,11 @@ export const AuthModal: React.FC = () => {
   const [newPassword, setNewPassword] = useState("");
 
   // Sync mode with context
-  React.useEffect(() => {
-    if (authModalMode) setMode(authModalMode);
+  useEffect(() => {
+    if (authModalMode) {
+      setMode(authModalMode);
+      setOtpSent(false);
+    }
   }, [authModalMode]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -57,7 +73,7 @@ export const AuthModal: React.FC = () => {
         await authApi.requestOtp({ email });
       }
       setOtpSent(true);
-      success(`6-digit code sent to ${email}`, "Code Sent");
+      success(`6-digit code sent to ${email}`, "Code Dispatched");
     } catch (err: any) {
       error(err.response?.data?.detail || "Failed to send verification code.");
     } finally {
@@ -108,230 +124,343 @@ export const AuthModal: React.FC = () => {
       onClose={closeAuthModal}
       title={
         mode === "login"
-          ? "Sign In to PrepShare"
+          ? "Welcome Back"
           : mode === "register"
-          ? "Create Your Account"
+          ? "Join PrepShare"
           : "Reset Password"
       }
-      subtitle="Connect with students and explore real interview questions"
+      subtitle={
+        mode === "login"
+          ? "Sign in to access curated questions, bookmarks, and mentorship"
+          : mode === "register"
+          ? "Create a free account to unlock real student interview insights"
+          : "Enter your registered email to receive a secure recovery code"
+      }
       maxWidth="max-w-md"
     >
-      {mode === "login" && (
-        <form onSubmit={handleLogin} className="flex flex-col gap-4 text-xs">
-          <div className="flex flex-col gap-1.5">
-            <label className="font-bold text-on-surface">Email or Username</label>
-            <input
-              type="text"
-              required
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="e.g. student@college.edu or alex_24"
-              className="p-3 bg-surface border border-outline-variant rounded-xl text-xs text-on-surface outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
+      {/* Mode Selector Tabs */}
+      <div className="flex rounded-xl bg-[#f3eee1] p-1 mb-6 border border-[#e3dccd]">
+        <button
+          type="button"
+          onClick={() => {
+            setMode("login");
+            setOtpSent(false);
+          }}
+          className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+            mode === "login"
+              ? "bg-[#3f6f52] text-white shadow-xs"
+              : "text-[#5f6e82] hover:text-[#0f1926]"
+          }`}
+        >
+          Sign In
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setMode("register");
+            setOtpSent(false);
+          }}
+          className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+            mode === "register"
+              ? "bg-[#3f6f52] text-white shadow-xs"
+              : "text-[#5f6e82] hover:text-[#0f1926]"
+          }`}
+        >
+          Create Account
+        </button>
+      </div>
 
-          <div className="flex flex-col gap-1.5">
-            <div className="flex justify-between items-center">
-              <label className="font-bold text-on-surface">Password</label>
-              <button
-                type="button"
-                onClick={() => setMode("forgot")}
-                className="text-[11px] text-primary hover:underline font-medium"
-              >
-                Forgot password?
-              </button>
-            </div>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••••••"
-              className="p-3 bg-surface border border-outline-variant rounded-xl text-xs text-on-surface outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 mt-1 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary-container transition-all active:scale-95 shadow-sm disabled:opacity-50"
+      <AnimatePresence mode="wait">
+        {mode === "login" && (
+          <motion.form
+            key="login"
+            initial={{ opacity: 0, x: -15 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 15 }}
+            transition={{ duration: 0.15 }}
+            onSubmit={handleLogin}
+            className="flex flex-col gap-4 text-xs"
           >
-            {loading ? "Signing in..." : "Sign In"}
-          </button>
-
-          <div className="text-center pt-3 border-t border-border-subtle text-xs text-on-surface-variant">
-            Don't have an account?{" "}
-            <button
-              type="button"
-              onClick={() => {
-                setMode("register");
-                setOtpSent(false);
-              }}
-              className="font-bold text-primary underline"
-            >
-              Sign Up
-            </button>
-          </div>
-        </form>
-      )}
-
-      {mode === "register" && (
-        <form onSubmit={handleRegister} className="flex flex-col gap-4 text-xs">
-          <div className="flex flex-col gap-1.5">
-            <label className="font-bold text-on-surface">Email Address</label>
-            <div className="flex gap-2">
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="student@college.edu"
-                className="flex-grow p-3 bg-surface border border-outline-variant rounded-xl text-xs text-on-surface outline-none focus:ring-1 focus:ring-primary"
-              />
-              <button
-                type="button"
-                onClick={handleRequestOtp}
-                disabled={loading || !email}
-                className="px-3.5 py-3 rounded-xl bg-primary-container/10 border border-primary/20 text-primary font-bold text-xs hover:bg-primary-container/20 disabled:opacity-50 shrink-0"
-              >
-                {otpSent ? "Resend" : "Send Code"}
-              </button>
-            </div>
-          </div>
-
-          {otpSent && (
-            <div className="flex flex-col gap-1.5 animate-in fade-in">
-              <label className="font-bold text-on-surface">6-Digit Verification Code</label>
-              <input
-                type="text"
-                required
-                maxLength={6}
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.trim())}
-                placeholder="123456"
-                className="p-3 bg-surface border border-outline-variant rounded-xl text-xs text-on-surface outline-none focus:ring-1 focus:ring-primary text-center tracking-widest font-mono"
-              />
-            </div>
-          )}
-
-          <div className="flex flex-col gap-1.5">
-            <label className="font-bold text-on-surface">Username</label>
-            <input
-              type="text"
-              required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g. alex_student"
-              className="p-3 bg-surface border border-outline-variant rounded-xl text-xs text-on-surface outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="font-bold text-on-surface">Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••••••"
-              className="p-3 bg-surface border border-outline-variant rounded-xl text-xs text-on-surface outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading || !otpSent}
-            className="w-full py-3 mt-1 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary-container transition-all active:scale-95 shadow-sm disabled:opacity-50"
-          >
-            {loading ? "Creating Account..." : "Create Account"}
-          </button>
-
-          <div className="text-center pt-3 border-t border-border-subtle text-xs text-on-surface-variant">
-            Already have an account?{" "}
-            <button
-              type="button"
-              onClick={() => setMode("login")}
-              className="font-bold text-primary underline"
-            >
-              Sign In
-            </button>
-          </div>
-        </form>
-      )}
-
-      {mode === "forgot" && (
-        <form onSubmit={handleResetPassword} className="flex flex-col gap-4 text-xs">
-          <div className="flex flex-col gap-1.5">
-            <label className="font-bold text-on-surface">Recovery Email</label>
-            <div className="flex gap-2">
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="student@college.edu"
-                className="flex-grow p-3 bg-surface border border-outline-variant rounded-xl text-xs text-on-surface outline-none focus:ring-1 focus:ring-primary"
-              />
-              <button
-                type="button"
-                onClick={handleRequestOtp}
-                disabled={loading || !email}
-                className="px-3.5 py-3 rounded-xl bg-primary-container/10 border border-primary/20 text-primary font-bold text-xs hover:bg-primary-container/20 disabled:opacity-50 shrink-0"
-              >
-                {otpSent ? "Resend" : "Send Code"}
-              </button>
-            </div>
-          </div>
-
-          {otpSent && (
-            <>
-              <div className="flex flex-col gap-1.5 animate-in fade-in">
-                <label className="font-bold text-on-surface">6-Digit Code</label>
+            <div className="flex flex-col gap-1.5">
+              <label className="font-semibold text-[#0f1926]">Email or Username</label>
+              <div className="relative">
+                <UserIcon className="w-4 h-4 text-[#5f6e82] absolute left-3.5 top-3.5" />
                 <input
                   type="text"
                   required
-                  maxLength={6}
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.trim())}
-                  placeholder="123456"
-                  className="p-3 bg-surface border border-outline-variant rounded-xl text-xs text-on-surface outline-none focus:ring-1 focus:ring-primary text-center tracking-widest font-mono"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder="student@college.edu or alex_24"
+                  className="w-full pl-10 pr-3.5 py-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] placeholder-[#5f6e82] focus:outline-none focus:border-[#3f6f52] focus:ring-2 focus:ring-[#3f6f52]/20 transition-all"
                 />
               </div>
+            </div>
 
-              <div className="flex flex-col gap-1.5 animate-in fade-in">
-                <label className="font-bold text-on-surface">New Password</label>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex justify-between items-center">
+                <label className="font-semibold text-[#0f1926]">Password</label>
+                <button
+                  type="button"
+                  onClick={() => setMode("forgot")}
+                  className="text-[11px] text-[#2f6b47] hover:text-[#3f6f52] font-medium transition-colors cursor-pointer"
+                >
+                  Forgot password?
+                </button>
+              </div>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-[#5f6e82] absolute left-3.5 top-3.5" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="p-3 bg-surface border border-outline-variant rounded-xl text-xs text-on-surface outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full pl-10 pr-10 py-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] placeholder-[#5f6e82] focus:outline-none focus:border-[#3f6f52] focus:ring-2 focus:ring-[#3f6f52]/20 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-3 text-[#5f6e82] hover:text-[#0f1926] cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 mt-2 rounded-xl bg-[#3f6f52] hover:bg-[#345c44] text-white font-bold text-xs active:scale-[0.98] shadow-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Signing In...</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign In</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </motion.form>
+        )}
+
+        {mode === "register" && (
+          <motion.form
+            key="register"
+            initial={{ opacity: 0, x: 15 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -15 }}
+            transition={{ duration: 0.15 }}
+            onSubmit={handleRegister}
+            className="flex flex-col gap-4 text-xs"
+          >
+            <div className="flex flex-col gap-1.5">
+              <label className="font-semibold text-[#0f1926]">College or Personal Email</label>
+              <div className="flex gap-2">
+                <div className="relative flex-grow">
+                  <Mail className="w-4 h-4 text-[#5f6e82] absolute left-3.5 top-3.5" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="student@college.edu"
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] placeholder-[#5f6e82] focus:outline-none focus:border-[#3f6f52] focus:ring-2 focus:ring-[#3f6f52]/20 transition-all"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRequestOtp}
+                  disabled={loading || !email}
+                  className="px-3.5 py-2.5 rounded-xl bg-[#3f6f52]/10 border border-[#3f6f52]/25 text-[#2f6b47] font-semibold text-xs hover:bg-[#3f6f52]/20 active:scale-95 disabled:opacity-50 shrink-0 transition-all cursor-pointer"
+                >
+                  {otpSent ? "Resend" : "Send OTP"}
+                </button>
+              </div>
+            </div>
+
+            {otpSent && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="flex flex-col gap-1.5"
+              >
+                <div className="flex justify-between items-center">
+                  <label className="font-semibold text-[#0f1926] flex items-center gap-1.5 text-[#2f7d52]">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> 6-Digit OTP Code
+                  </label>
+                  <span className="text-[10px] text-[#5f6e82]">Check inbox & spam</span>
+                </div>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-[#5f6e82] absolute left-3.5 top-3.5" />
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.trim())}
+                    placeholder="123456"
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#f3eee1] border border-[#2f7d52]/50 rounded-xl text-xs text-[#2f7d52] placeholder-[#5f6e82] focus:outline-none focus:ring-2 focus:ring-[#2f7d52]/20 tracking-widest font-mono text-center font-bold"
+                  />
+                </div>
+              </motion.div>
+            )}
+
+            <div className="flex flex-col gap-1.5">
+              <label className="font-semibold text-[#0f1926]">Username</label>
+              <div className="relative">
+                <UserIcon className="w-4 h-4 text-[#5f6e82] absolute left-3.5 top-3.5" />
+                <input
+                  type="text"
+                  required
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="e.g. alex_student"
+                  className="w-full pl-10 pr-3.5 py-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] placeholder-[#5f6e82] focus:outline-none focus:border-[#3f6f52] focus:ring-2 focus:ring-[#3f6f52]/20 transition-all"
                 />
               </div>
+            </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 mt-1 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary-container transition-all active:scale-95 shadow-sm disabled:opacity-50"
-              >
-                {loading ? "Updating..." : "Reset Password"}
-              </button>
-            </>
-          )}
+            <div className="flex flex-col gap-1.5">
+              <label className="font-semibold text-[#0f1926]">Password</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-[#5f6e82] absolute left-3.5 top-3.5" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                  className="w-full pl-10 pr-10 py-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] placeholder-[#5f6e82] focus:outline-none focus:border-[#3f6f52] focus:ring-2 focus:ring-[#3f6f52]/20 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-3 text-[#5f6e82] hover:text-[#0f1926] cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
 
-          <div className="text-center pt-3 border-t border-border-subtle text-xs text-on-surface-variant">
-            Remember your credentials?{" "}
             <button
-              type="button"
-              onClick={() => setMode("login")}
-              className="font-bold text-primary underline"
+              type="submit"
+              disabled={loading || !otpSent}
+              className="w-full py-3 mt-2 rounded-xl bg-[#3f6f52] hover:bg-[#345c44] text-white font-bold text-xs active:scale-[0.98] shadow-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
             >
-              Sign In
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Verifying & Creating...</span>
+                </>
+              ) : (
+                <span>Complete Registration</span>
+              )}
             </button>
-          </div>
-        </form>
-      )}
+          </motion.form>
+        )}
+
+        {mode === "forgot" && (
+          <motion.form
+            key="forgot"
+            initial={{ opacity: 0, x: 15 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -15 }}
+            transition={{ duration: 0.15 }}
+            onSubmit={handleResetPassword}
+            className="flex flex-col gap-4 text-xs"
+          >
+            <div className="flex flex-col gap-1.5">
+              <label className="font-semibold text-[#0f1926]">Recovery Email</label>
+              <div className="flex gap-2">
+                <div className="relative flex-grow">
+                  <Mail className="w-4 h-4 text-[#5f6e82] absolute left-3.5 top-3.5" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="student@college.edu"
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] placeholder-[#5f6e82] focus:outline-none focus:border-[#3f6f52] focus:ring-2 focus:ring-[#3f6f52]/20 transition-all"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRequestOtp}
+                  disabled={loading || !email}
+                  className="px-3.5 py-2.5 rounded-xl bg-[#3f6f52]/10 border border-[#3f6f52]/25 text-[#2f6b47] font-semibold text-xs hover:bg-[#3f6f52]/20 active:scale-95 disabled:opacity-50 shrink-0 transition-all cursor-pointer"
+                >
+                  {otpSent ? "Resend" : "Send Code"}
+                </button>
+              </div>
+            </div>
+
+            {otpSent && (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-semibold text-[#0f1926]">6-Digit Code</label>
+                  <div className="relative">
+                    <KeyRound className="w-4 h-4 text-[#5f6e82] absolute left-3.5 top-3.5" />
+                    <input
+                      type="text"
+                      required
+                      maxLength={6}
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.trim())}
+                      placeholder="123456"
+                      className="w-full pl-10 pr-3.5 py-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] placeholder-[#5f6e82] focus:outline-none focus:border-[#3f6f52] focus:ring-2 focus:ring-[#3f6f52]/20 tracking-widest font-mono text-center font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-semibold text-[#0f1926]">New Password</label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-[#5f6e82] absolute left-3.5 top-3.5" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="••••••••••••"
+                      className="w-full pl-10 pr-10 py-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] placeholder-[#5f6e82] focus:outline-none focus:border-[#3f6f52] focus:ring-2 focus:ring-[#3f6f52]/20 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-3 text-[#5f6e82] hover:text-[#0f1926] cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 mt-2 rounded-xl bg-[#3f6f52] hover:bg-[#345c44] text-white font-bold text-xs active:scale-[0.98] shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {loading ? "Updating Password..." : "Update Password"}
+                </button>
+              </>
+            )}
+
+            <div className="text-center pt-3 border-t border-[#e3dccd] text-xs text-[#5f6e82]">
+              Remember your credentials?{" "}
+              <button
+                type="button"
+                onClick={() => setMode("login")}
+                className="font-semibold text-[#2f6b47] hover:underline cursor-pointer"
+              >
+                Sign In
+              </button>
+            </div>
+          </motion.form>
+        )}
+      </AnimatePresence>
     </Modal>
   );
 };

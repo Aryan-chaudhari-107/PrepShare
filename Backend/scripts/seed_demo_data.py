@@ -1145,12 +1145,12 @@ def run_seed():
                 "offer": True,
                 "package": 4200000,
                 "currency": "INR",
-                "narrative": "Comprehensive evaluation of zero-trust architecture, mutual TLS certificate management, and hardware security module (HSM) attestation.",
+                "narrative": "Comprehensive evaluation of cybersecurity zero-trust architecture, mutual TLS certificate management, and hardware security module (HSM) attestation.",
                 "tips": "Deeply understand SPIFFE/SPIRE workload identities and OAuth 2.0 token exchange specifications.",
                 "rounds": [
                     {
                         "name": "Technical Round 1",
-                        "tags": "Technical",
+                        "tags": "Technical, Cybersecurity, Zero-Trust, Cloud Security",
                         "duration": 60,
                         "mode": "online",
                         "questions": [

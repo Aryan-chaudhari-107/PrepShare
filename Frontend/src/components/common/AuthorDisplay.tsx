@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { EyeOff, ShieldCheck } from "lucide-react";
 import { AuthorOut } from "../../types";
 
 interface AuthorDisplayProps {
@@ -18,26 +19,24 @@ export const AuthorDisplay: React.FC<AuthorDisplayProps> = ({
   const isAnon = isAnonymous || !author;
 
   const avatarSizes = {
-    sm: "w-8 h-8 text-xs",
-    md: "w-10 h-10 text-sm",
-    lg: "w-12 h-12 text-base",
+    sm: "w-10 h-10 text-xs",
+    md: "w-11 h-11 sm:w-12 sm:h-12 text-sm",
+    lg: "w-13 h-13 text-base",
   };
 
   if (isAnon) {
     return (
       <div className="flex items-center gap-3">
         <div
-          className={`${avatarSizes[size]} rounded-full border border-border-subtle bg-surface-container text-on-surface-variant font-semibold flex items-center justify-center shrink-0`}
+          className={`${avatarSizes[size]} rounded-full border border-[#e3dccd] bg-[#f3eee1] text-[#5f6e82] font-semibold flex items-center justify-center shrink-0 shadow-xs`}
         >
-          <span className="material-symbols-outlined text-base text-outline">
-            visibility_off
-          </span>
+          <EyeOff className="w-5 h-5 text-[#5f6e82]" />
         </div>
-        <div className="flex flex-col">
-          <span className="text-sm font-semibold text-on-surface">
+        <div className="flex flex-col justify-center">
+          <span className="text-[16px] font-semibold text-[#0f1926] flex items-center gap-1 leading-tight">
             Anonymous Student
           </span>
-          <span className="text-xs text-outline">Verified Experience</span>
+          <span className="text-[13.5px] text-[#5f6e82] leading-tight mt-0.5">Verified Experience</span>
         </div>
       </div>
     );
@@ -48,10 +47,10 @@ export const AuthorDisplay: React.FC<AuthorDisplayProps> = ({
   return (
     <Link
       to={`/users/${author.user_id}`}
-      className="flex items-center gap-3 group hover:opacity-90 transition-opacity"
+      className="flex items-center gap-3 group transition-transform active:scale-98"
     >
       <div
-        className={`${avatarSizes[size]} rounded-full border border-border-subtle overflow-hidden shrink-0 bg-surface-container flex items-center justify-center font-bold text-primary`}
+        className={`${avatarSizes[size]} rounded-full border border-[#e3dccd] overflow-hidden shrink-0 bg-[#3f6f52] text-white flex items-center justify-center font-bold shadow-xs group-hover:scale-105 transition-transform`}
       >
         {author.profile_photo_url ? (
           <img
@@ -63,17 +62,17 @@ export const AuthorDisplay: React.FC<AuthorDisplayProps> = ({
           <span>{initials}</span>
         )}
       </div>
-      <div className="flex flex-col">
-        <span className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">
+      <div className="flex flex-col justify-center">
+        <span className="text-[16px] font-semibold text-[#0f1926] group-hover:text-[#3f6f52] transition-colors flex items-center gap-1.5 leading-tight">
           @{author.username}
+          <ShieldCheck className="w-4 h-4 text-[#2f6b47] shrink-0" />
         </span>
         {score !== undefined ? (
-          <span className="text-xs text-outline">Score: {score.toLocaleString()}</span>
+          <span className="text-[13.5px] text-[#5f6e82] leading-tight mt-0.5">Score: {score.toLocaleString()} pts</span>
         ) : (
-          <span className="text-xs text-primary font-medium">Contributor</span>
+          <span className="text-[13.5px] text-[#2f6b47] font-medium leading-tight mt-0.5">Verified Contributor</span>
         )}
       </div>
     </Link>
   );
 };
-

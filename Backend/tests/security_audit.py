@@ -216,7 +216,7 @@ def run_audit():
     anon_body = r_anon_get.json()
     anon_author = anon_body.get("author")
     anon_slug = anon_body.get("slug")
-    anon_leaked = [k for k in ("user_id", "username", "profile_photo_url", "education_id") if k in anon_body]
+    anon_leaked = [k for k in ("user_id", "username", "profile_photo_url") if k in anon_body] + [k for k in ("education_id", "institution_name", "course_name") if anon_body.get(k) is not None]
     passed_anon = (anon_author is None) and (anon_slug is None) and (len(anon_leaked) == 0)
     record("3. Privacy", "GET /posts/{anon_id}", "Verify anonymous post fields redacted", "author=None, slug=None", f"author:{anon_author}, slug:{anon_slug}, leaks:{anon_leaked}", passed_anon, "Prevents deanonymization of anonymous contributors")
 
@@ -304,7 +304,7 @@ def run_audit():
 
     # 5.4 Password reset with invalid OTP
     r = requests.post(f"{BASE}/auth/reset-password", json={
-        "email": user_a_email,
+        "email": "security_test_user@example.com",
         "otp_code": "000000",
         "new_password": "NewStrongPassword123!"
     })

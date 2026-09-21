@@ -1,4 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import {
+  MessageSquare,
+  MessageSquarePlus,
+  Search,
+  Send,
+  RefreshCw,
+  Check,
+  CheckCheck,
+  Inbox,
+} from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
@@ -164,50 +174,54 @@ export const MessagesPage: React.FC = () => {
     <AppShell>
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-6 w-full flex flex-col flex-1 h-[calc(100vh-5rem)]">
         {/* Messages Card Container (Split Panel) */}
-        <div className="bg-surface-elevated rounded-2xl border border-border-subtle shadow-sm flex flex-1 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-[#e3dccd] shadow-sm flex flex-1 overflow-hidden">
           {/* Left Panel: Conversation List (35%) */}
-          <aside className="w-full md:w-80 lg:w-96 border-r border-border-subtle flex flex-col bg-surface-container-low/50">
+          <aside className="w-full md:w-80 lg:w-96 border-r border-[#e3dccd] flex flex-col bg-[#faf7ee]">
             {/* Header / Search */}
-            <div className="p-4 border-b border-border-subtle flex flex-col gap-3">
+            <div className="p-4 border-b border-[#e3dccd] flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <h1 className="text-base font-bold text-on-surface flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary text-xl">forum</span>
+                <h1 className="text-sm sm:text-base font-bold text-[#0f1926] flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-[#3f6f52]" />
                   <span>Messages</span>
                 </h1>
                 <button
                   type="button"
-                  onClick={() => setIsNewChatOpen(true)}
-                  className="px-3 py-1.5 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary-container transition-all flex items-center gap-1 shadow-sm active:scale-95"
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      openAuthModal("login");
+                      return;
+                    }
+                    setIsNewChatOpen(true);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-[#3f6f52] hover:bg-[#345c44] text-white text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
                 >
-                  <span className="material-symbols-outlined text-sm">edit_square</span>
+                  <MessageSquarePlus className="w-3.5 h-3.5" />
                   <span>New Chat</span>
                 </button>
               </div>
 
               <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-base">
-                  search
-                </span>
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#5f6e82] pointer-events-none" />
                 <input
                   type="text"
                   value={searchFilter}
                   onChange={(e) => setSearchFilter(e.target.value)}
                   placeholder="Filter conversations..."
-                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-surface border border-outline-variant text-xs text-on-surface placeholder-on-surface-variant/50 focus:ring-2 focus:ring-primary outline-none"
+                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#f3eee1] border border-[#e3dccd] text-xs text-[#0f1926] placeholder-[#5f6e82] focus:ring-1 focus:ring-[#3f6f52] focus:border-[#3f6f52] focus:bg-white outline-none transition-all"
                 />
               </div>
             </div>
 
             {/* Conversation List Scroll Area */}
-            <div className="flex-1 overflow-y-auto divide-y divide-border-subtle/50">
+            <div className="flex-1 overflow-y-auto divide-y divide-[#e3dccd] custom-scrollbar">
               {loadingConvs ? (
                 <div className="p-4 flex flex-col gap-3">
                   {[1, 2, 3].map((n) => (
                     <div key={n} className="flex items-center gap-3 animate-pulse p-2">
-                      <div className="w-10 h-10 rounded-full bg-surface-container"></div>
+                      <div className="w-10 h-10 rounded-full bg-[#f3eee1]"></div>
                       <div className="flex-1 space-y-1.5">
-                        <div className="w-24 h-3 bg-surface-container rounded"></div>
-                        <div className="w-36 h-2.5 bg-surface-container rounded"></div>
+                        <div className="w-24 h-3 bg-[#f3eee1] rounded"></div>
+                        <div className="w-36 h-2.5 bg-[#f3eee1]/70 rounded"></div>
                       </div>
                     </div>
                   ))}
@@ -221,14 +235,14 @@ export const MessagesPage: React.FC = () => {
                       key={conv.id}
                       type="button"
                       onClick={() => setSelectedConvId(conv.id)}
-                      className={`w-full text-left p-4 flex items-center gap-3 transition-colors ${
+                      className={`w-full text-left p-3.5 flex items-center gap-3 transition-colors ${
                         isSelected
-                          ? "bg-primary-container/10 border-l-4 border-primary"
-                          : "hover:bg-surface-container/60"
+                          ? "bg-[#3f6f52]/10 border-l-4 border-[#3f6f52]"
+                          : "hover:bg-white"
                       }`}
                     >
                       <div className="relative shrink-0">
-                        <div className="w-11 h-11 rounded-full overflow-hidden bg-surface-container flex items-center justify-center font-bold text-primary text-sm border border-border-subtle">
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-[#3f6f52] flex items-center justify-center font-bold text-white text-xs border border-[#3f6f52]/30 shadow-sm">
                           {p.profile_photo_url ? (
                             <img src={p.profile_photo_url} alt={p.username} className="w-full h-full object-cover" />
                           ) : (
@@ -236,7 +250,7 @@ export const MessagesPage: React.FC = () => {
                           )}
                         </div>
                         {conv.unread_count > 0 && (
-                          <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center border-2 border-surface">
+                          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#3f6f52] text-white text-[9px] font-bold flex items-center justify-center border-2 border-white">
                             {conv.unread_count}
                           </span>
                         )}
@@ -244,16 +258,16 @@ export const MessagesPage: React.FC = () => {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-0.5">
-                          <h3 className="text-xs font-bold text-on-surface truncate">
+                          <h3 className="text-xs font-bold text-[#0f1926] truncate">
                             {p.full_name || `@${p.username}`}
                           </h3>
                           {conv.last_message && (
-                            <span className="text-[10px] text-outline">
+                            <span className="text-[10px] text-[#5f6e82]">
                               {new Date(conv.last_message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-on-surface-variant truncate">
+                        <p className="text-[11px] text-[#5f6e82] truncate">
                           {conv.last_message ? conv.last_message.message_text : "No messages yet"}
                         </p>
                       </div>
@@ -261,13 +275,13 @@ export const MessagesPage: React.FC = () => {
                   );
                 })
               ) : (
-                <div className="p-8 text-center flex flex-col items-center justify-center gap-2 text-on-surface-variant">
-                  <span className="material-symbols-outlined text-3xl text-outline">chat_bubble_outline</span>
+                <div className="p-8 text-center flex flex-col items-center justify-center gap-2 text-[#5f6e82]">
+                  <Inbox className="w-7 h-7 text-[#5f6e82]" />
                   <p className="text-xs">No active conversations found.</p>
                   <button
                     type="button"
                     onClick={() => setIsNewChatOpen(true)}
-                    className="text-xs text-primary font-semibold hover:underline mt-1"
+                    className="text-xs text-[#2f6b47] font-semibold hover:underline mt-1"
                   >
                     Start a new conversation
                   </button>
@@ -277,13 +291,13 @@ export const MessagesPage: React.FC = () => {
           </aside>
 
           {/* Right Panel: Active Chat Thread (65%) */}
-          <section className="flex-1 flex flex-col bg-surface">
+          <section className="flex-1 flex flex-col bg-[#faf7ee]/50">
             {selectedConv ? (
               <>
                 {/* Active Chat Header */}
-                <div className="p-4 border-b border-border-subtle flex items-center justify-between bg-surface-elevated">
+                <div className="p-4 border-b border-[#e3dccd] flex items-center justify-between bg-white">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full overflow-hidden bg-surface-container flex items-center justify-center font-bold text-primary text-sm border border-border-subtle">
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-[#3f6f52] flex items-center justify-center font-bold text-white text-xs border border-[#3f6f52]/30">
                       {selectedConv.other_participant.profile_photo_url ? (
                         <img
                           src={selectedConv.other_participant.profile_photo_url}
@@ -295,10 +309,10 @@ export const MessagesPage: React.FC = () => {
                       )}
                     </div>
                     <div>
-                      <h2 className="text-sm font-bold text-on-surface">
+                      <h2 className="text-sm font-bold text-[#0f1926]">
                         {selectedConv.other_participant.full_name || selectedConv.other_participant.username}
                       </h2>
-                      <p className="text-[11px] text-on-surface-variant">
+                      <p className="text-[11px] text-[#5f6e82]">
                         @{selectedConv.other_participant.username}
                       </p>
                     </div>
@@ -308,19 +322,19 @@ export const MessagesPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => loadMessages(selectedConv.id)}
-                      className="p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container transition-all"
+                      className="p-2 text-[#5f6e82] hover:text-[#0f1926] rounded-xl hover:bg-[#f3eee1] transition-all"
                       title="Refresh messages"
                     >
-                      <span className="material-symbols-outlined text-base">refresh</span>
+                      <RefreshCw className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
 
                 {/* Messages Scroll Area */}
-                <div className="flex-1 p-6 overflow-y-auto flex flex-col gap-4 bg-[#F8FAFC]/50">
+                <div className="flex-1 p-5 overflow-y-auto flex flex-col gap-3 custom-scrollbar">
                   {loadingMsgs ? (
                     <div className="flex-1 flex items-center justify-center">
-                      <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
+                      <div className="animate-spin w-6 h-6 border-2 border-[#3f6f52] border-t-transparent rounded-full"></div>
                     </div>
                   ) : messages.length > 0 ? (
                     messages.map((msg) => {
@@ -335,17 +349,21 @@ export const MessagesPage: React.FC = () => {
                           <div
                             className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm ${
                               isMe
-                                ? "bg-primary text-white rounded-br-none"
-                                : "bg-surface-elevated text-on-surface border border-border-subtle rounded-bl-none"
+                                ? "bg-[#3f6f52] text-white rounded-br-none"
+                                : "bg-white text-[#0f1926] border border-[#e3dccd] rounded-bl-none"
                             }`}
                           >
                             <p className="whitespace-pre-wrap">{msg.message_text}</p>
                           </div>
-                          <span className="text-[10px] text-outline mt-1 px-1 flex items-center gap-1">
+                          <span className="text-[10px] text-[#5f6e82] mt-1 px-1 flex items-center gap-1">
                             {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             {isMe && (
-                              <span className="material-symbols-outlined text-xs">
-                                {msg.is_read ? "done_all" : "done"}
+                              <span>
+                                {msg.is_read ? (
+                                  <CheckCheck className="w-3 h-3 text-[#3f6f52]" />
+                                ) : (
+                                  <Check className="w-3 h-3 text-[#5f6e82]" />
+                                )}
                               </span>
                             )}
                           </span>
@@ -353,8 +371,8 @@ export const MessagesPage: React.FC = () => {
                       );
                     })
                   ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center text-on-surface-variant gap-2">
-                      <span className="material-symbols-outlined text-4xl text-outline">mark_chat_unread</span>
+                    <div className="flex-1 flex flex-col items-center justify-center text-center text-[#5f6e82] gap-2">
+                      <MessageSquare className="w-8 h-8 text-[#5f6e82]" />
                       <p className="text-xs">No messages yet. Send a greeting to begin!</p>
                     </div>
                   )}
@@ -364,38 +382,44 @@ export const MessagesPage: React.FC = () => {
                 {/* Message Input Composer */}
                 <form
                   onSubmit={handleSendMessage}
-                  className="p-4 border-t border-border-subtle bg-surface-elevated flex items-center gap-3"
+                  className="p-3.5 border-t border-[#e3dccd] bg-white flex items-center gap-2.5"
                 >
                   <input
                     type="text"
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     placeholder="Write a message..."
-                    className="flex-1 px-4 py-3 bg-surface border border-outline-variant rounded-xl text-xs sm:text-sm text-on-surface placeholder-on-surface-variant/50 focus:ring-2 focus:ring-primary outline-none"
+                    className="flex-1 px-4 py-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs sm:text-sm text-[#0f1926] placeholder-[#5f6e82] focus:ring-1 focus:ring-[#3f6f52] focus:border-[#3f6f52] focus:bg-white outline-none transition-all"
                   />
                   <button
                     type="submit"
                     disabled={!inputText.trim() || sending}
-                    className="px-5 py-3 rounded-xl bg-primary text-white font-bold text-xs hover:bg-primary-container disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                    className="px-4 py-2.5 rounded-xl bg-[#3f6f52] hover:bg-[#345c44] text-white font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
                   >
                     <span>Send</span>
-                    <span className="material-symbols-outlined text-sm">send</span>
+                    <Send className="w-3.5 h-3.5" />
                   </button>
                 </form>
               </>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-on-surface-variant gap-3">
-                <div className="w-16 h-16 rounded-2xl bg-surface-container flex items-center justify-center text-primary">
-                  <span className="material-symbols-outlined text-3xl">chat</span>
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-[#5f6e82] gap-3">
+                <div className="w-16 h-16 rounded-2xl bg-[#3f6f52]/10 border border-[#3f6f52]/20 flex items-center justify-center text-[#3f6f52]">
+                  <MessageSquare className="w-8 h-8" />
                 </div>
-                <h3 className="text-sm font-bold text-on-surface">No Conversation Selected</h3>
-                <p className="text-xs max-w-sm">
+                <h3 className="text-sm font-bold text-[#0f1926]">No Conversation Selected</h3>
+                <p className="text-xs max-w-sm text-[#5f6e82]">
                   Select an existing conversation from the list or start a new direct chat with peers and candidates.
                 </p>
                 <button
                   type="button"
-                  onClick={() => setIsNewChatOpen(true)}
-                  className="mt-2 px-4 py-2 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary-container transition-all shadow-sm"
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      openAuthModal("login");
+                      return;
+                    }
+                    setIsNewChatOpen(true);
+                  }}
+                  className="mt-2 px-4 py-2 rounded-xl bg-[#3f6f52] hover:bg-[#345c44] text-white text-xs font-semibold transition-all shadow-sm"
                 >
                   Start New Chat
                 </button>
@@ -409,31 +433,29 @@ export const MessagesPage: React.FC = () => {
       <Modal isOpen={isNewChatOpen} onClose={() => setIsNewChatOpen(false)} title="Start New Conversation">
         <div className="flex flex-col gap-4">
           <div className="relative">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">
-              search
-            </span>
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#5f6e82]" />
             <input
               type="text"
               value={userQuery}
               onChange={(e) => setUserQuery(e.target.value)}
               placeholder="Search by username or name..."
-              className="w-full pl-10 pr-4 py-3 bg-surface border border-outline-variant rounded-xl text-sm text-on-surface placeholder-on-surface-variant/50 focus:ring-2 focus:ring-primary outline-none"
+              className="w-full pl-9 pr-4 py-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs sm:text-sm text-[#0f1926] placeholder-[#5f6e82] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none"
               autoFocus
             />
           </div>
 
-          <div className="max-h-60 overflow-y-auto divide-y divide-border-subtle flex flex-col">
+          <div className="max-h-60 overflow-y-auto divide-y divide-[#e3dccd] custom-scrollbar flex flex-col">
             {searchingUsers ? (
-              <div className="p-4 text-center text-xs text-on-surface-variant">Searching registered users...</div>
+              <div className="p-4 text-center text-xs text-[#5f6e82] animate-pulse">Searching registered users...</div>
             ) : searchResults.length > 0 ? (
               searchResults.map((u) => (
                 <button
                   key={u.id}
                   type="button"
                   onClick={() => handleStartChatWithUser(u.id)}
-                  className="p-3 text-left flex items-center gap-3 hover:bg-surface-container transition-colors rounded-xl"
+                  className="p-3 text-left flex items-center gap-3 hover:bg-[#f3eee1] transition-colors rounded-xl"
                 >
-                  <div className="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-primary text-xs border border-border-subtle shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-[#3f6f52] flex items-center justify-center font-bold text-white text-xs border border-[#3f6f52]/30 shrink-0">
                     {u.profile_photo_url ? (
                       <img src={u.profile_photo_url} alt={u.username} className="w-full h-full object-cover rounded-full" />
                     ) : (
@@ -441,16 +463,16 @@ export const MessagesPage: React.FC = () => {
                     )}
                   </div>
                   <div className="flex-1 truncate">
-                    <p className="text-xs font-bold text-on-surface truncate">{u.full_name || u.username}</p>
-                    <p className="text-[11px] text-on-surface-variant truncate">@{u.username}</p>
+                    <p className="text-xs font-bold text-[#0f1926] truncate">{u.full_name || u.username}</p>
+                    <p className="text-[11px] text-[#5f6e82] truncate">@{u.username}</p>
                   </div>
-                  <span className="text-xs text-primary font-semibold">Message</span>
+                  <span className="text-xs text-[#2f6b47] font-semibold">Message</span>
                 </button>
               ))
             ) : userQuery.trim() ? (
-              <div className="p-4 text-center text-xs text-on-surface-variant italic">No users found matching "{userQuery}".</div>
+              <div className="p-4 text-center text-xs text-[#5f6e82] italic">No users found matching "{userQuery}".</div>
             ) : (
-              <div className="p-4 text-center text-xs text-on-surface-variant">Type a username to find candidates and colleagues.</div>
+              <div className="p-4 text-center text-xs text-[#5f6e82]">Type a username to find candidates and colleagues.</div>
             )}
           </div>
         </div>

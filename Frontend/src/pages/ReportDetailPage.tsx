@@ -1,5 +1,24 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import confetti from "canvas-confetti";
+import {
+  ArrowLeft,
+  Heart,
+  Bookmark,
+  Share2,
+  Flag,
+  Lightbulb,
+  Building2,
+  Briefcase,
+  MapPin,
+  Banknote,
+  CheckCircle2,
+  MessageSquare,
+  Layers,
+  ShieldAlert,
+  X,
+} from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { AuthorDisplay } from "../components/common/AuthorDisplay";
 import { CategoryBadge } from "../components/common/CategoryBadge";
@@ -42,6 +61,18 @@ export const ReportDetailPage: React.FC = () => {
       setPost(data);
       setLikeCount(data.view_count || 0);
       setShareCount(data.share_count || 0);
+
+      // Trigger celebration confetti if candidate received an offer!
+      if (data.is_offer_received) {
+        try {
+          confetti({
+            particleCount: 40,
+            spread: 60,
+            origin: { y: 0.25 },
+            colors: ["#6366F1", "#8B5CF6", "#10B981", "#EC4899"],
+          });
+        } catch {}
+      }
 
       // Fetch like and bookmark states if available
       try {
@@ -116,9 +147,9 @@ export const ReportDetailPage: React.FC = () => {
     return (
       <AppShell>
         <div className="max-w-[1600px] mx-auto py-12 px-4 sm:px-6 lg:px-8 xl:px-10 flex flex-col gap-6 animate-pulse">
-          <div className="h-8 bg-surface-container rounded-xl w-1/3"></div>
-          <div className="h-48 bg-surface-container rounded-2xl w-full"></div>
-          <div className="h-64 bg-surface-container rounded-2xl w-full"></div>
+          <div className="h-8 bg-slate-800 rounded-xl w-1/3"></div>
+          <div className="h-48 bg-slate-800/80 rounded-2xl w-full"></div>
+          <div className="h-64 bg-slate-800/80 rounded-2xl w-full"></div>
         </div>
       </AppShell>
     );
@@ -165,17 +196,18 @@ export const ReportDetailPage: React.FC = () => {
       <div className="flex-1 flex flex-col md:flex-row w-full max-w-[1600px] mx-auto min-h-[calc(100vh-64px)] px-4 sm:px-6 lg:px-8 xl:px-10">
         {/* Left Panel: Discussion / Comments (35% on desktop, toggleable modal/drawer on mobile) */}
         <aside
-          className={`w-full md:w-[35%] border-r border-border-subtle bg-surface-elevated split-scroll overflow-y-auto ${
+          className={`w-full md:w-[35%] border-r border-[#e3dccd] bg-[#faf7ee]/80 split-scroll overflow-y-auto ${
             mobileDiscussionOpen ? "block" : "hidden md:flex flex-col"
           }`}
         >
           {/* Mobile close button */}
-          <div className="md:hidden p-3 border-b border-border-subtle flex justify-end">
+          <div className="md:hidden p-3 border-b border-[#e3dccd] flex justify-end">
             <button
               onClick={() => setMobileDiscussionOpen(false)}
-              className="text-xs font-semibold text-primary px-3 py-1 bg-surface-container rounded-lg"
+              className="text-xs font-semibold text-[#2f6b47] px-3 py-1 bg-white border border-[#e3dccd] rounded-lg flex items-center gap-1 cursor-pointer"
             >
-              Back to Experience ✕
+              <span>Back to Experience</span>
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
           <CommentSection
@@ -185,22 +217,22 @@ export const ReportDetailPage: React.FC = () => {
         </aside>
 
         {/* Right Panel: Main Post Context (65% on desktop, full width on mobile) */}
-        <section className="flex-1 w-full md:w-[65%] bg-background split-scroll overflow-y-auto p-4 md:p-8 flex flex-col gap-6">
+        <section className="flex-1 w-full md:w-[65%] split-scroll overflow-y-auto p-4 md:p-8 flex flex-col gap-6">
           {/* Breadcrumb Navigation */}
-          <div className="flex items-center justify-between text-xs text-on-surface-variant">
+          <div className="flex items-center justify-between text-xs text-[#5f6e82]">
             <Link
               to="/"
-              className="flex items-center gap-1 text-primary hover:underline font-semibold"
+              className="flex items-center gap-1.5 text-[#2f6b47] hover:text-[#3f6f52] font-semibold transition-colors group"
             >
-              <span className="material-symbols-outlined text-sm">arrow_back</span>
+              <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
               <span>Back to Feed</span>
             </Link>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setMobileDiscussionOpen(!mobileDiscussionOpen)}
-                className="md:hidden flex items-center gap-1 px-3 py-1 rounded-full bg-primary text-on-primary text-xs font-semibold"
+                className="md:hidden flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#3f6f52] hover:bg-[#345c44] text-white text-xs font-semibold shadow-sm cursor-pointer"
               >
-                <span className="material-symbols-outlined text-sm">chat_bubble</span>
+                <MessageSquare className="w-3.5 h-3.5" />
                 <span>Discussion ({commentCount})</span>
               </button>
             </div>
@@ -208,25 +240,36 @@ export const ReportDetailPage: React.FC = () => {
 
           {/* Draft Notice if viewing own unpublished draft */}
           {isDraft && (
-            <div className="p-4 rounded-xl border border-secondary bg-secondary-container/20 text-on-surface flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-xs font-semibold text-secondary">
-                <span className="material-symbols-outlined text-base">info</span>
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 rounded-xl border border-[#b26a00]/30 bg-[#b26a00]/10 text-[#0f1926] flex flex-wrap items-center justify-between gap-3"
+            >
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#b26a00]">
+                <ShieldAlert className="w-4 h-4" />
                 <span>Draft Experience — Visible only to you</span>
               </div>
               <Link
                 to="/draft"
-                className="px-3 py-1 rounded-lg bg-primary text-on-primary font-semibold text-xs shadow-sm"
+                className="px-3.5 py-1.5 rounded-xl bg-[#3f6f52] hover:bg-[#345c44] text-white font-semibold text-xs shadow-sm"
               >
                 Resume Drafting →
               </Link>
-            </div>
+            </motion.div>
           )}
 
-          {/* Post Header Card (Stitch layout) */}
-          <article className="bg-surface-elevated rounded-2xl border border-border-subtle p-6 shadow-sm flex flex-col gap-6">
-            <div className="flex flex-col gap-4">
+          {/* Post Header Card */}
+          <motion.article
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl border border-[#e3dccd] p-6 sm:p-7 shadow-sm flex flex-col gap-6 relative overflow-hidden"
+          >
+            {/* Top right decorative glow */}
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-[#3f6f52]/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+
+            <div className="flex flex-col gap-4 relative z-10">
               {/* Top Row: Author, Status, Category, Date */}
-              <div className="flex items-center justify-between w-full flex-wrap gap-4">
+              <div className="flex items-center justify-between w-full flex-wrap gap-3">
                 <div className="flex items-center gap-3">
                   <AuthorDisplay
                     author={post.author}
@@ -237,37 +280,34 @@ export const ReportDetailPage: React.FC = () => {
 
                 <div className="flex items-center gap-2.5 shrink-0 ml-auto">
                   {post.is_offer_received ? (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#22C55E]/10 text-[#15803d] text-xs font-bold border border-[#22C55E]/20">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#2f7d52]/10 text-[#2f7d52] text-xs font-bold border border-[#2f7d52]/20 shadow-xs">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#2f7d52]" />
                       Offer Received
                     </span>
                   ) : (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant text-xs font-medium">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f3eee1] border border-[#e3dccd] text-[#5f6e82] text-xs font-medium">
                       Interview Logged
                     </span>
                   )}
                   <CategoryBadge category={post.post_category} />
-                  <span className="text-xs text-outline">{formattedDate}</span>
+                  <span className="text-xs text-[#5f6e82]">{formattedDate}</span>
                 </div>
               </div>
 
               {/* Metadata Row: Company, Role, Compensation, Location */}
-              <div className="flex items-center gap-3 md:gap-4 flex-wrap text-xs sm:text-sm text-on-surface-variant border-y border-border-subtle py-3 mt-1">
+              <div className="flex items-center gap-3 md:gap-4 flex-wrap text-xs sm:text-sm text-[#5f6e82] border-y border-[#e3dccd] py-3 mt-1">
                 {post.company_name && (
-                  <div className="flex items-center gap-1.5 font-semibold text-on-surface">
-                    <span className="material-symbols-outlined text-primary text-base select-none">
-                      business
-                    </span>
+                  <div className="flex items-center gap-1.5 font-semibold text-[#0f1926]">
+                    <Building2 className="w-4 h-4 text-[#3f6f52] shrink-0" />
                     <span>{post.company_name}</span>
                   </div>
                 )}
 
                 {post.job_role && (
                   <>
-                    <div className="w-px h-3.5 bg-border-subtle hidden sm:block"></div>
-                    <div className="flex items-center gap-1.5 font-medium text-primary">
-                      <span className="material-symbols-outlined text-primary text-base select-none">
-                        work
-                      </span>
+                    <div className="w-px h-3.5 bg-[#e3dccd] hidden sm:block"></div>
+                    <div className="flex items-center gap-1.5 font-medium text-[#b26a00]">
+                      <Briefcase className="w-4 h-4 text-[#b26a00] shrink-0" />
                       <span>{post.job_role}</span>
                     </div>
                   </>
@@ -275,11 +315,9 @@ export const ReportDetailPage: React.FC = () => {
 
                 {formattedPackage() && (
                   <>
-                    <div className="w-px h-3.5 bg-border-subtle hidden sm:block"></div>
-                    <div className="flex items-center gap-1.5 font-medium text-on-surface-variant">
-                      <span className="material-symbols-outlined text-primary text-base select-none">
-                        payments
-                      </span>
+                    <div className="w-px h-3.5 bg-[#e3dccd] hidden sm:block"></div>
+                    <div className="flex items-center gap-1.5 font-semibold text-[#2f7d52] bg-[#2f7d52]/10 px-2.5 py-0.5 rounded-full border border-[#2f7d52]/20">
+                      <Banknote className="w-4 h-4 text-[#2f7d52] shrink-0" />
                       <span>{formattedPackage()}</span>
                     </div>
                   </>
@@ -287,11 +325,9 @@ export const ReportDetailPage: React.FC = () => {
 
                 {post.work_location && (
                   <>
-                    <div className="w-px h-3.5 bg-border-subtle hidden sm:block"></div>
-                    <div className="flex items-center gap-1.5 text-xs text-outline">
-                      <span className="material-symbols-outlined text-outline text-base select-none">
-                        location_on
-                      </span>
+                    <div className="w-px h-3.5 bg-[#e3dccd] hidden sm:block"></div>
+                    <div className="flex items-center gap-1.5 text-xs text-[#5f6e82]">
+                      <MapPin className="w-4 h-4 text-[#5f6e82] shrink-0" />
                       <span>{post.work_location}</span>
                     </div>
                   </>
@@ -299,25 +335,25 @@ export const ReportDetailPage: React.FC = () => {
               </div>
 
               {/* Post Title */}
-              <h1 className="text-2xl sm:text-3xl font-bold text-on-surface leading-tight tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0f1926] leading-tight tracking-tight">
                 {post.title}
               </h1>
 
               {/* Narrative Experience Text */}
               {post.experience_text && (
-                <div className="text-sm sm:text-base text-on-surface leading-relaxed whitespace-pre-wrap mt-2 font-normal">
+                <div className="text-sm sm:text-base text-[#2b3a4f] leading-relaxed whitespace-pre-wrap mt-2 font-normal">
                   {post.experience_text}
                 </div>
               )}
 
               {/* Tips & Strategy Section */}
               {post.tips && (
-                <div className="p-4 rounded-xl bg-primary-container/10 border border-primary/20 text-xs sm:text-sm text-on-surface flex flex-col gap-1.5 mt-2">
-                  <div className="flex items-center gap-1.5 font-bold text-primary">
-                    <span className="material-symbols-outlined text-base">lightbulb</span>
+                <div className="p-5 rounded-2xl bg-[#faf7ee] border border-[#3f6f52]/25 text-xs sm:text-sm text-[#0f1926] flex flex-col gap-2 mt-2">
+                  <div className="flex items-center gap-2 font-bold text-[#2f6b47]">
+                    <Lightbulb className="w-4 h-4 text-[#b26a00]" />
                     <span>Candidate Tips & Preparation Strategy</span>
                   </div>
-                  <p className="leading-relaxed whitespace-pre-wrap text-on-surface-variant">
+                  <p className="leading-relaxed whitespace-pre-wrap text-[#2b3a4f]">
                     {post.tips}
                   </p>
                 </div>
@@ -325,10 +361,14 @@ export const ReportDetailPage: React.FC = () => {
             </div>
 
             {/* Rounds and Questions Section */}
-            <div className="flex flex-col gap-4 mt-2">
-              <h2 className="text-lg font-bold text-on-surface flex items-center justify-between border-b border-border-subtle pb-2">
-                <span>Interview Rounds & Questions</span>
-                <span className="text-xs font-semibold text-primary bg-primary-container/10 px-2.5 py-0.5 rounded-full">
+            <div className="flex flex-col gap-4 mt-2 relative z-10">
+              <h2 className="text-base sm:text-lg font-bold text-[#0f1926] flex items-center justify-between border-b border-[#e3dccd] pb-3">
+                <span className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-[#3f6f52]" />
+                  <span>Interview Rounds & Questions</span>
+                </span>
+                <span className="text-xs font-semibold text-[#2f6b47] bg-[#3f6f52]/10 border border-[#3f6f52]/20 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <Layers className="w-3 h-3" />
                   {post.rounds?.length || 0} {post.rounds?.length === 1 ? "Round" : "Rounds"}
                 </span>
               </h2>
@@ -340,71 +380,72 @@ export const ReportDetailPage: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div className="p-8 rounded-xl border border-dashed border-border-subtle bg-surface text-center text-xs text-on-surface-variant">
+                <div className="p-8 rounded-xl border border-dashed border-[#e3dccd] bg-[#faf7ee] text-center text-xs text-[#5f6e82]">
                   No individual rounds or questions were recorded in this report.
                 </div>
               )}
             </div>
 
             {/* Engagement & Action Toolbar */}
-            <footer className="flex items-center justify-between pt-4 border-t border-border-subtle flex-wrap gap-4">
-              <div className="flex items-center gap-6 flex-wrap">
+            <footer className="flex items-center justify-between pt-4 border-t border-[#e3dccd] flex-wrap gap-4 relative z-10">
+              <div className="flex items-center gap-5 flex-wrap">
                 {/* Like Button */}
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={handleToggleLike}
-                  className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold transition-all active:scale-95 ${
+                  className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                     liked
-                      ? "text-error"
-                      : "text-on-surface-variant hover:text-error"
+                      ? "text-[#b5462f]"
+                      : "text-[#5f6e82] hover:text-[#b5462f]"
                   }`}
                   title={liked ? "Unlike" : "Like"}
                 >
-                  <span
-                    className="material-symbols-outlined text-xl"
-                    style={{ fontVariationSettings: liked ? "'FILL' 1" : "'FILL' 0" }}
-                  >
-                    favorite
-                  </span>
+                  <Heart
+                    className={`w-4 h-4 ${liked ? "fill-[#b5462f] text-[#b5462f]" : ""}`}
+                  />
                   <span>{likeCount}</span>
-                </button>
+                </motion.button>
 
                 {/* Comment Count / Jump */}
                 <button
                   type="button"
                   onClick={() => setMobileDiscussionOpen(true)}
-                  className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors"
+                  className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#5f6e82] hover:text-[#3f6f52] transition-colors cursor-pointer"
                   title="Discussion"
                 >
-                  <span className="material-symbols-outlined text-xl">chat_bubble</span>
+                  <MessageSquare className="w-4 h-4" />
                   <span>{commentCount}</span>
                 </button>
 
                 {/* Share Button */}
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={handleShare}
-                  className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors"
+                  className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#5f6e82] hover:text-[#3f6f52] transition-colors cursor-pointer"
                   title="Share"
                 >
-                  <span className="material-symbols-outlined text-xl">share</span>
+                  <Share2 className="w-4 h-4" />
                   <span>{shareCount}</span>
-                </button>
+                </motion.button>
 
                 {/* Difficulty Distribution */}
                 {(totalEasy > 0 || totalMedium > 0 || totalHard > 0) && (
-                  <div className="flex items-center gap-1.5 pl-2 border-l border-border-subtle hidden sm:flex">
-                    <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#22C55E]/10 border border-[#22C55E]/20 text-[#15803d] text-xs font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E]"></span>
-                      <span>{totalEasy}</span>
+                  <div className="flex items-center gap-1.5 pl-3 border-l border-[#e3dccd] hidden sm:flex">
+                    <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#2f7d52]/10 border border-[#2f7d52]/20 text-[#2f7d52] text-xs font-bold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#2f7d52]"></span>
+                      <span>{totalEasy} Easy</span>
                     </div>
-                    <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#F59E0B]/10 border border-[#F59E0B]/20 text-[#b45309] text-xs font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]"></span>
-                      <span>{totalMedium}</span>
+                    <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#b26a00]/10 border border-[#b26a00]/20 text-[#b26a00] text-xs font-bold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#b26a00]"></span>
+                      <span>{totalMedium} Med</span>
                     </div>
-                    <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-error/10 border border-error/20 text-error text-xs font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-error"></span>
-                      <span>{totalHard}</span>
+                    <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#b5462f]/10 border border-[#b5462f]/20 text-[#b5462f] text-xs font-bold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#b5462f]"></span>
+                      <span>{totalHard} Hard</span>
                     </div>
                   </div>
                 )}
@@ -412,26 +453,27 @@ export const ReportDetailPage: React.FC = () => {
 
               <div className="flex items-center gap-2 ml-auto">
                 {/* Bookmark Button */}
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={handleToggleBookmark}
-                  className={`p-2 rounded-full transition-all active:scale-95 ${
+                  className={`p-2 rounded-xl transition-all cursor-pointer ${
                     bookmarked
-                      ? "text-primary bg-primary-container/10"
-                      : "text-on-surface-variant hover:text-primary hover:bg-surface-container"
+                      ? "text-[#b26a00] bg-[#b26a00]/15 border border-[#b26a00]/30"
+                      : "text-[#5f6e82] hover:text-[#b26a00] hover:bg-[#f3eee1]"
                   }`}
                   title={bookmarked ? "Saved in Bookmarks" : "Save Bookmark"}
                 >
-                  <span
-                    className="material-symbols-outlined text-xl"
-                    style={{ fontVariationSettings: bookmarked ? "'FILL' 1" : "'FILL' 0" }}
-                  >
-                    bookmark
-                  </span>
-                </button>
+                  <Bookmark
+                    className={`w-4 h-4 ${bookmarked ? "fill-[#b26a00] text-[#b26a00]" : ""}`}
+                  />
+                </motion.button>
 
                 {/* Moderation Flag Button */}
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={() => {
                     if (!isAuthenticated) {
@@ -440,14 +482,14 @@ export const ReportDetailPage: React.FC = () => {
                     }
                     setReportModalOpen(true);
                   }}
-                  className="p-2 rounded-full text-on-surface-variant hover:text-error hover:bg-error-container/20 transition-all active:scale-95"
+                  className="p-2 rounded-xl text-[#5f6e82] hover:text-[#b5462f] hover:bg-[#b5462f]/10 transition-all cursor-pointer"
                   title="Report Inappropriate Content"
                 >
-                  <span className="material-symbols-outlined text-xl">flag</span>
-                </button>
+                  <Flag className="w-4 h-4" />
+                </motion.button>
               </div>
             </footer>
-          </article>
+          </motion.article>
         </section>
       </div>
 
@@ -461,4 +503,3 @@ export const ReportDetailPage: React.FC = () => {
     </AppShell>
   );
 };
-

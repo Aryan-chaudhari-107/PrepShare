@@ -1,4 +1,17 @@
 import React from "react";
+import {
+  SlidersHorizontal,
+  Search,
+  Layers,
+  GraduationCap,
+  BookOpen,
+  Building2,
+  Factory,
+  MapPin,
+  BadgeCheck,
+  Tag,
+  X,
+} from "lucide-react";
 import { FilterMetadata, PostFeedFilterParams } from "../../types";
 
 interface FilterSidebarProps {
@@ -28,25 +41,28 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
     { value: "off_campus_hackathon", label: "Off-Campus Hackathon" },
   ];
 
+  const selectClassName =
+    "w-full h-[44px] bg-[#f3eee1] border border-[#e3dccd] rounded-xl px-3.5 text-[15px] text-[#0f1926] focus:outline-none focus:border-[#3f6f52] focus:ring-2 focus:ring-[#3f6f52]/20 focus:bg-white transition-all cursor-pointer";
+
   return (
     <aside
-      className={`flex flex-col gap-5 ${
+      className={`flex flex-col gap-6 ${
         isMobileDrawer
-          ? "w-full p-6 bg-surface-elevated"
-          : "w-[270px] lg:w-[280px] shrink-0 bg-surface-elevated rounded-2xl border border-border-subtle p-5 shadow-sm sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto"
+          ? "w-full p-6 bg-[#faf7ee]"
+          : "w-full shrink-0 bg-white rounded-2xl border border-[#e3dccd] p-6 shadow-sm sticky top-[96px] max-h-[calc(100vh-7rem)] overflow-y-auto custom-scrollbar"
       }`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-primary text-xl select-none">
-            tune
-          </span>
-          <h3 className="font-bold text-sm text-on-surface uppercase tracking-wider">
+      <div className="flex items-center justify-between border-b border-[#e3dccd] pb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-[#3f6f52]/10 border border-[#3f6f52]/20 flex items-center justify-center text-[#2f6b47]">
+            <SlidersHorizontal className="w-4 h-4" />
+          </div>
+          <h3 className="font-bold text-[15px] text-[#0f1926] uppercase tracking-wider">
             Filters
           </h3>
           {activeFilterCount > 0 && (
-            <span className="bg-primary text-on-primary text-[10px] font-bold px-2 py-0.5 rounded-full">
+            <span className="bg-[#3f6f52] text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow-xs">
               {activeFilterCount}
             </span>
           )}
@@ -56,27 +72,27 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
           {activeFilterCount > 0 && (
             <button
               onClick={onClearFilters}
-              className="text-xs font-semibold text-primary hover:underline"
+              className="text-[14px] font-semibold text-[#2f6b47] hover:text-[#3f6f52] transition-colors cursor-pointer"
             >
-              Clear all
+              Reset
             </button>
           )}
           {isMobileDrawer && onCloseMobileDrawer && (
             <button
               onClick={onCloseMobileDrawer}
-              className="p-1 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
+              className="p-1.5 rounded-xl text-[#5f6e82] hover:text-[#0f1926] hover:bg-[#f3eee1] transition-colors cursor-pointer"
               aria-label="Close filters"
             >
-              <span className="material-symbols-outlined text-lg">close</span>
+              <X className="w-5 h-5" />
             </button>
           )}
         </div>
       </div>
 
       {/* 1. Keyword / Search */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm text-outline">search</span>
+      <div className="space-y-2">
+        <label className="text-[15px] font-semibold text-[#0f1926] flex items-center gap-2">
+          <Search className="w-4 h-4 text-[#5f6e82]" />
           Keyword Search
         </label>
         <div className="relative">
@@ -84,36 +100,34 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
             type="text"
             value={filters.search || ""}
             onChange={(e) => onFilterChange("search", e.target.value)}
-            placeholder="Role, college, skill, company..."
-            className="w-full bg-surface border border-border-subtle rounded-xl py-2 px-3 pl-8 text-xs text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+            placeholder="Role, college, skill..."
+            className="w-full h-[44px] bg-[#f3eee1] border border-[#e3dccd] rounded-xl px-3.5 pl-9 text-[15px] text-[#0f1926] placeholder:text-[#5f6e82] focus:outline-none focus:border-[#3f6f52] focus:ring-2 focus:ring-[#3f6f52]/20 focus:bg-white transition-all"
           />
-          <span className="material-symbols-outlined absolute left-2.5 top-2.5 text-outline text-sm pointer-events-none">
-            manage_search
-          </span>
+          <Search className="w-4 h-4 text-[#5f6e82] absolute left-3 top-3.5 pointer-events-none" />
           {filters.search && (
             <button
               onClick={() => onFilterChange("search", "")}
-              className="absolute right-2.5 top-2.5 text-outline hover:text-on-surface"
+              className="absolute right-3 top-3.5 text-[#5f6e82] hover:text-[#0f1926] cursor-pointer"
             >
-              <span className="material-symbols-outlined text-xs">close</span>
+              <X className="w-4 h-4" />
             </button>
           )}
         </div>
       </div>
 
       {/* 2. Category */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm text-outline">category</span>
+      <div className="space-y-2">
+        <label className="text-[15px] font-semibold text-[#0f1926] flex items-center gap-2">
+          <Layers className="w-4 h-4 text-[#5f6e82]" />
           Experience Type
         </label>
         <select
           value={filters.post_category || ""}
           onChange={(e) => onFilterChange("post_category", e.target.value)}
-          className="w-full bg-surface border border-border-subtle rounded-xl py-2 px-3 text-xs text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all cursor-pointer"
+          className={selectClassName}
         >
           {categories.map((c) => (
-            <option key={c.value} value={c.value}>
+            <option key={c.value} value={c.value} className="bg-white text-[#0f1926]">
               {c.label}
             </option>
           ))}
@@ -121,19 +135,19 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
       </div>
 
       {/* 3. College / University */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm text-outline">school</span>
+      <div className="space-y-2">
+        <label className="text-[15px] font-semibold text-[#0f1926] flex items-center gap-2">
+          <GraduationCap className="w-4 h-4 text-[#5f6e82]" />
           College / University
         </label>
         <select
           value={filters.institution_name || ""}
           onChange={(e) => onFilterChange("institution_name", e.target.value)}
-          className="w-full bg-surface border border-border-subtle rounded-xl py-2 px-3 text-xs text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all cursor-pointer"
+          className={selectClassName}
         >
-          <option value="">All Colleges</option>
+          <option value="" className="bg-white text-[#0f1926]">All Colleges</option>
           {metadata?.colleges?.map((col) => (
-            <option key={col} value={col}>
+            <option key={col} value={col} className="bg-white text-[#0f1926]">
               {col}
             </option>
           ))}
@@ -141,19 +155,19 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
       </div>
 
       {/* 4. Course / Discipline */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm text-outline">menu_book</span>
+      <div className="space-y-2">
+        <label className="text-[15px] font-semibold text-[#0f1926] flex items-center gap-2">
+          <BookOpen className="w-4 h-4 text-[#5f6e82]" />
           Course / Discipline
         </label>
         <select
           value={filters.course || ""}
           onChange={(e) => onFilterChange("course", e.target.value)}
-          className="w-full bg-surface border border-border-subtle rounded-xl py-2 px-3 text-xs text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all cursor-pointer"
+          className={selectClassName}
         >
-          <option value="">All Disciplines</option>
+          <option value="" className="bg-white text-[#0f1926]">All Disciplines</option>
           {metadata?.courses?.map((crs) => (
-            <option key={crs} value={crs}>
+            <option key={crs} value={crs} className="bg-white text-[#0f1926]">
               {crs}
             </option>
           ))}
@@ -161,19 +175,19 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
       </div>
 
       {/* 5. Company */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm text-outline">business</span>
+      <div className="space-y-2">
+        <label className="text-[15px] font-semibold text-[#0f1926] flex items-center gap-2">
+          <Building2 className="w-4 h-4 text-[#5f6e82]" />
           Company
         </label>
         <select
           value={filters.company_name || ""}
           onChange={(e) => onFilterChange("company_name", e.target.value)}
-          className="w-full bg-surface border border-border-subtle rounded-xl py-2 px-3 text-xs text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all cursor-pointer"
+          className={selectClassName}
         >
-          <option value="">All Companies</option>
+          <option value="" className="bg-white text-[#0f1926]">All Companies</option>
           {metadata?.companies?.map((comp) => (
-            <option key={comp} value={comp}>
+            <option key={comp} value={comp} className="bg-white text-[#0f1926]">
               {comp}
             </option>
           ))}
@@ -181,19 +195,19 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
       </div>
 
       {/* 6. Industry */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm text-outline">domain</span>
+      <div className="space-y-2">
+        <label className="text-[15px] font-semibold text-[#0f1926] flex items-center gap-2">
+          <Factory className="w-4 h-4 text-[#5f6e82]" />
           Industry
         </label>
         <select
           value={filters.industry || ""}
           onChange={(e) => onFilterChange("industry", e.target.value)}
-          className="w-full bg-surface border border-border-subtle rounded-xl py-2 px-3 text-xs text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all cursor-pointer"
+          className={selectClassName}
         >
-          <option value="">All Industries</option>
+          <option value="" className="bg-white text-[#0f1926]">All Industries</option>
           {metadata?.industries?.map((ind) => (
-            <option key={ind} value={ind}>
+            <option key={ind} value={ind} className="bg-white text-[#0f1926]">
               {ind}
             </option>
           ))}
@@ -201,59 +215,39 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
       </div>
 
       {/* 7. Location */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm text-outline">location_on</span>
+      <div className="space-y-2">
+        <label className="text-[15px] font-semibold text-[#0f1926] flex items-center gap-2">
+          <MapPin className="w-4 h-4 text-[#5f6e82]" />
           Location
         </label>
         <select
           value={filters.work_location || ""}
           onChange={(e) => onFilterChange("work_location", e.target.value)}
-          className="w-full bg-surface border border-border-subtle rounded-xl py-2 px-3 text-xs text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all cursor-pointer"
+          className={selectClassName}
         >
-          <option value="">All Locations</option>
+          <option value="" className="bg-white text-[#0f1926]">All Locations</option>
           {metadata?.locations?.map((loc) => (
-            <option key={loc} value={loc}>
+            <option key={loc} value={loc} className="bg-white text-[#0f1926]">
               {loc}
             </option>
           ))}
         </select>
       </div>
 
-      {/* 8. Role */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm text-outline">badge</span>
-          Role / Job Title
-        </label>
-        <select
-          value={filters.job_role || ""}
-          onChange={(e) => onFilterChange("job_role", e.target.value)}
-          className="w-full bg-surface border border-border-subtle rounded-xl py-2 px-3 text-xs text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all cursor-pointer"
-        >
-          <option value="">All Roles</option>
-          {metadata?.roles?.map((role) => (
-            <option key={role} value={role}>
-              {role}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* 9. Offer Status */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm text-outline">verified</span>
+      {/* 8. Offer Status (42px height, 14-15px font) */}
+      <div className="space-y-2">
+        <label className="text-[15px] font-semibold text-[#0f1926] flex items-center gap-2">
+          <BadgeCheck className="w-4 h-4 text-[#5f6e82]" />
           Offer Status
         </label>
-        <div className="grid grid-cols-3 gap-1 bg-surface p-1 rounded-xl border border-border-subtle">
+        <div className="grid grid-cols-3 gap-1.5 bg-[#f3eee1] p-1.5 rounded-xl border border-[#e3dccd] h-[48px] items-center">
           <button
             type="button"
             onClick={() => onFilterChange("is_offer_received", undefined)}
-            className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold transition-all ${
+            className={`h-[38px] px-2 rounded-lg text-[14px] font-semibold transition-all cursor-pointer flex items-center justify-center ${
               filters.is_offer_received === undefined
-                ? "bg-primary text-on-primary shadow-xs"
-                : "text-on-surface-variant hover:text-on-surface"
+                ? "bg-[#3f6f52] text-white shadow-xs"
+                : "text-[#5f6e82] hover:text-[#0f1926]"
             }`}
           >
             Any
@@ -261,10 +255,10 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
           <button
             type="button"
             onClick={() => onFilterChange("is_offer_received", true)}
-            className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold transition-all ${
+            className={`h-[38px] px-2 rounded-lg text-[14px] font-semibold transition-all cursor-pointer flex items-center justify-center ${
               filters.is_offer_received === true
-                ? "bg-primary text-on-primary shadow-xs"
-                : "text-on-surface-variant hover:text-on-surface"
+                ? "bg-[#2f7d52] text-white font-bold shadow-xs"
+                : "text-[#5f6e82] hover:text-[#0f1926]"
             }`}
           >
             Offer
@@ -272,10 +266,10 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
           <button
             type="button"
             onClick={() => onFilterChange("is_offer_received", false)}
-            className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold transition-all ${
+            className={`h-[38px] px-2 rounded-lg text-[14px] font-semibold transition-all cursor-pointer flex items-center justify-center ${
               filters.is_offer_received === false
-                ? "bg-primary text-on-primary shadow-xs"
-                : "text-on-surface-variant hover:text-on-surface"
+                ? "bg-[#b5462f] text-white font-bold shadow-xs"
+                : "text-[#5f6e82] hover:text-[#0f1926]"
             }`}
           >
             No Offer
@@ -283,24 +277,24 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
         </div>
       </div>
 
-      {/* 10. Round / Assessment Tags */}
+      {/* 9. Round / Assessment Tags (Max-height 260px, 8px gap, wrap cleanly) */}
       {metadata?.round_tags && metadata.round_tags.length > 0 && (
-        <div className="space-y-2 border-t border-border-subtle pt-3">
-          <label className="text-xs font-semibold text-on-surface-variant flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-sm text-outline">tag</span>
+        <div className="space-y-2.5 border-t border-[#e3dccd] pt-4">
+          <label className="text-[15px] font-semibold text-[#0f1926] flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Tag className="w-4 h-4 text-[#5f6e82]" />
               Assessment Tags
             </span>
             {filters.round_tag && (
               <button
                 onClick={() => onFilterChange("round_tag", "")}
-                className="text-[10px] text-primary hover:underline"
+                className="text-[12px] text-[#2f6b47] hover:underline cursor-pointer"
               >
                 Clear
               </button>
             )}
           </label>
-          <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
+          <div className="flex flex-wrap gap-2 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
             {metadata.round_tags.map((tag) => {
               const isSelected = filters.round_tag === tag;
               return (
@@ -310,10 +304,10 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   onClick={() =>
                     onFilterChange("round_tag", isSelected ? "" : tag)
                   }
-                  className={`text-[11px] px-2.5 py-1 rounded-full font-medium transition-all ${
+                  className={`text-[13.5px] px-3 py-1.5 rounded-full font-medium transition-all cursor-pointer break-words max-w-full text-left ${
                     isSelected
-                      ? "bg-primary text-on-primary font-semibold shadow-xs"
-                      : "bg-surface text-on-surface-variant border border-border-subtle hover:border-primary/50 hover:text-on-surface"
+                      ? "bg-[#3f6f52] text-white font-semibold shadow-xs"
+                      : "bg-[#f3eee1] text-[#2b3a4f] border border-[#e3dccd] hover:border-[#3f6f52]/50 hover:text-[#0f1926]"
                   }`}
                 >
                   #{tag}
@@ -326,10 +320,10 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
       {/* Mobile Drawer Bottom Button */}
       {isMobileDrawer && (
-        <div className="pt-2">
+        <div className="pt-3">
           <button
             onClick={onCloseMobileDrawer}
-            className="w-full py-2.5 bg-primary text-on-primary rounded-xl font-bold text-xs shadow-sm hover:opacity-90 transition-all"
+            className="w-full h-[44px] bg-[#3f6f52] hover:bg-[#345c44] text-white rounded-xl font-bold text-[15px] shadow-sm transition-all cursor-pointer"
           >
             Show Results
           </button>

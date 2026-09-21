@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { MessageSquare, Send, Edit3, Trash2, CornerDownRight } from "lucide-react";
 import { CommentOut } from "../../types";
 import { commentsApi } from "../../api";
 import { useAuth } from "../../context/AuthContext";
@@ -119,22 +121,23 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
     comments.filter((c) => c.parent_comment_id === parentId);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-[#faf7ee]/80">
       {/* Discussion Header */}
-      <div className="p-4 sm:p-5 border-b border-border-subtle flex items-center justify-between sticky top-0 bg-surface-elevated/95 backdrop-blur-sm z-10">
-        <h2 className="text-lg font-bold text-on-surface flex items-center gap-2">
+      <div className="p-4 sm:p-5 border-b border-[#e3dccd] flex items-center justify-between sticky top-0 bg-[#faf7ee]/95 backdrop-blur-md z-10">
+        <h2 className="text-base font-bold text-[#0f1926] flex items-center gap-2">
+          <MessageSquare className="w-4 h-4 text-[#2f6b47]" />
           <span>Discussion</span>
         </h2>
-        <span className="text-xs font-semibold text-primary bg-primary-container/10 px-2.5 py-0.5 rounded-full">
+        <span className="text-xs font-semibold text-[#2f6b47] bg-[#3f6f52]/10 border border-[#3f6f52]/20 px-2.5 py-0.5 rounded-full">
           {comments.length} {comments.length === 1 ? "Comment" : "Comments"}
         </span>
       </div>
 
       {/* Discussion Content */}
-      <div className="p-4 sm:p-5 flex flex-col gap-6 flex-1">
+      <div className="p-4 sm:p-5 flex flex-col gap-5 flex-1">
         {/* Comment Input Box */}
         <form onSubmit={handleAddComment} className="flex gap-3">
-          <div className="w-8 h-8 rounded-full bg-surface-container overflow-hidden flex-shrink-0 flex items-center justify-center font-bold text-xs text-primary mt-1">
+          <div className="w-8 h-8 rounded-full bg-[#3f6f52] overflow-hidden flex-shrink-0 flex items-center justify-center font-bold text-xs text-white shadow-xs mt-1">
             {user?.username ? user.username.slice(0, 2).toUpperCase() : "?"}
           </div>
           <div className="flex-1 flex flex-col gap-2">
@@ -144,26 +147,27 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
               onChange={(e) => setCommentText(e.target.value)}
               placeholder={
                 isAuthenticated
-                  ? "Ask a question about the rounds or share your experience..."
+                  ? "Ask a question about the rounds or share thoughts..."
                   : "Sign in to join the discussion..."
               }
               disabled={!isAuthenticated || submitting}
-              className="w-full bg-surface border border-border-subtle rounded-xl p-3 text-xs sm:text-sm text-on-surface placeholder-on-surface-variant/50 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all resize-none"
+              className="w-full bg-white border border-[#e3dccd] rounded-xl p-3 text-xs sm:text-sm text-[#0f1926] placeholder-[#5f6e82] focus:ring-1 focus:ring-[#3f6f52] focus:border-[#3f6f52] outline-none transition-all resize-none"
             />
             <div className="flex justify-end">
               {isAuthenticated ? (
                 <button
                   type="submit"
                   disabled={submitting || !commentText.trim()}
-                  className="px-4 py-2 bg-primary text-on-primary rounded-xl text-xs font-semibold hover:bg-primary-container transition-all active:scale-95 disabled:opacity-40 shadow-sm"
+                  className="px-4 py-2 bg-[#3f6f52] hover:bg-[#345c44] text-white rounded-xl text-xs font-semibold transition-all active:scale-95 disabled:opacity-40 shadow-xs flex items-center gap-1.5 cursor-pointer"
                 >
-                  {submitting ? "Posting..." : "Post Comment"}
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{submitting ? "Posting..." : "Post Comment"}</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={() => openAuthModal("login")}
-                  className="px-4 py-2 bg-primary text-on-primary rounded-xl text-xs font-semibold hover:bg-primary-container transition-all active:scale-95 shadow-sm"
+                  className="px-4 py-2 bg-[#3f6f52] hover:bg-[#345c44] text-white rounded-xl text-xs font-semibold transition-all active:scale-95 shadow-xs cursor-pointer"
                 >
                   Sign In to Comment
                 </button>
@@ -172,29 +176,31 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
           </div>
         </form>
 
-        <div className="h-px bg-border-subtle"></div>
+        <div className="h-px bg-[#e3dccd]"></div>
 
         {/* Comments List */}
         {loading ? (
-          <div className="py-8 text-center text-xs text-on-surface-variant">
+          <div className="py-8 text-center text-xs text-[#5f6e82] animate-pulse">
             Loading discussion...
           </div>
         ) : topLevel.length > 0 ? (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3.5">
             {topLevel.map((comment) => {
               const replies = getReplies(comment.id);
               const isOwner = user && comment.user_id === user.id;
 
               return (
-                <div
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
                   key={comment.id}
-                  className="bg-surface rounded-xl p-4 border border-border-subtle shadow-sm flex flex-col gap-3"
+                  className="bg-white rounded-xl p-4 border border-[#e3dccd] shadow-xs flex flex-col gap-2.5"
                 >
                   {/* Header */}
                   <div className="flex items-center justify-between">
                     <AuthorDisplay author={comment.author} size="sm" />
-                    <div className="flex items-center gap-2 text-[11px] text-outline">
-                      {comment.is_edited && <span className="italic">(edited)</span>}
+                    <div className="flex items-center gap-2 text-[11px] text-[#5f6e82]">
+                      {comment.is_edited && <span className="italic text-[#5f6e82]">(edited)</span>}
                       <span>
                         {new Date(comment.created_at).toLocaleDateString("en-US", {
                           month: "short",
@@ -208,16 +214,18 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                               setEditingId(comment.id);
                               setEditText(comment.comment_text);
                             }}
-                            className="text-primary hover:underline"
+                            className="text-[#2f6b47] hover:text-[#3f6f52] p-0.5 cursor-pointer"
+                            title="Edit"
                           >
-                            Edit
+                            <Edit3 className="w-3 h-3" />
                           </button>
                           <span>•</span>
                           <button
                             onClick={() => handleDeleteComment(comment.id)}
-                            className="text-error hover:underline"
+                            className="text-[#b5462f] hover:text-[#963723] p-0.5 cursor-pointer"
+                            title="Delete"
                           >
-                            Delete
+                            <Trash2 className="w-3 h-3" />
                           </button>
                         </div>
                       )}
@@ -226,30 +234,30 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
 
                   {/* Comment Body */}
                   {editingId === comment.id ? (
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 mt-1">
                       <textarea
                         rows={2}
                         value={editText}
                         onChange={(e) => setEditText(e.target.value)}
-                        className="p-2.5 bg-surface-elevated border border-border-subtle rounded-lg text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="p-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-lg text-xs text-[#0f1926] focus:outline-none focus:ring-1 focus:ring-[#3f6f52]"
                       />
                       <div className="flex gap-2 justify-end">
                         <button
                           onClick={() => setEditingId(null)}
-                          className="px-3 py-1 rounded-lg border border-border-subtle text-xs text-on-surface-variant hover:bg-surface-container"
+                          className="px-3 py-1 rounded-lg border border-[#e3dccd] text-xs text-[#5f6e82] hover:bg-[#f3eee1] cursor-pointer"
                         >
                           Cancel
                         </button>
                         <button
                           onClick={() => handleEditComment(comment.id)}
-                          className="px-3 py-1 rounded-lg bg-primary text-on-primary text-xs font-semibold"
+                          className="px-3 py-1 rounded-lg bg-[#3f6f52] text-white text-xs font-semibold cursor-pointer"
                         >
                           Save
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-xs sm:text-sm text-on-surface leading-relaxed whitespace-pre-wrap">
+                    <p className="text-xs sm:text-sm text-[#2b3a4f] leading-relaxed whitespace-pre-wrap">
                       {comment.comment_text}
                     </p>
                   )}
@@ -265,76 +273,83 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                         setReplyToId(replyToId === comment.id ? null : comment.id);
                         setReplyText("");
                       }}
-                      className="text-primary hover:underline font-semibold flex items-center gap-1"
+                      className="text-[#2f6b47] hover:text-[#3f6f52] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                     >
-                      <span className="material-symbols-outlined text-sm">reply</span>
+                      <CornerDownRight className="w-3 h-3" />
                       <span>Reply</span>
                     </button>
                   </div>
 
                   {/* Reply input box */}
-                  {replyToId === comment.id && (
-                    <div className="ml-4 pl-3 border-l-2 border-primary flex flex-col gap-2 pt-2 animate-in fade-in">
-                      <textarea
-                        rows={2}
-                        value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
-                        placeholder="Write your reply..."
-                        className="p-2.5 bg-surface-elevated border border-border-subtle rounded-lg text-xs text-on-surface focus:ring-1 focus:ring-primary outline-none"
-                      />
-                      <div className="flex gap-2 justify-end">
-                        <button
-                          onClick={() => setReplyToId(null)}
-                          className="px-3 py-1 rounded-lg border border-border-subtle text-xs text-on-surface-variant hover:bg-surface-container"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          disabled={submitting || !replyText.trim()}
-                          onClick={() => handleAddReply(comment.id)}
-                          className="px-3 py-1 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:bg-primary-container disabled:opacity-40"
-                        >
-                          Post Reply
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  <AnimatePresence>
+                    {replyToId === comment.id && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="ml-3 pl-3 border-l-2 border-[#3f6f52] flex flex-col gap-2 pt-2"
+                      >
+                        <textarea
+                          rows={2}
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          placeholder="Write your reply..."
+                          className="p-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-lg text-xs text-[#0f1926] focus:ring-1 focus:ring-[#3f6f52] outline-none"
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={() => setReplyToId(null)}
+                            className="px-3 py-1 rounded-lg border border-[#e3dccd] text-xs text-[#5f6e82] hover:bg-[#f3eee1] cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            disabled={submitting || !replyText.trim()}
+                            onClick={() => handleAddReply(comment.id)}
+                            className="px-3 py-1 rounded-lg bg-[#3f6f52] hover:bg-[#345c44] text-white text-xs font-semibold disabled:opacity-40 cursor-pointer"
+                          >
+                            Post Reply
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   {/* Threaded Replies */}
                   {replies.length > 0 && (
-                    <div className="ml-4 pl-3 border-l-2 border-border-subtle flex flex-col gap-3 mt-2">
+                    <div className="ml-3 pl-3 border-l-2 border-[#e3dccd] flex flex-col gap-2.5 mt-2">
                       {replies.map((reply) => (
                         <div
                           key={reply.id}
-                          className="bg-surface-container/40 p-3 rounded-lg flex flex-col gap-2"
+                          className="bg-[#faf7ee] p-3 rounded-lg flex flex-col gap-1.5 border border-[#e3dccd]"
                         >
                           <div className="flex items-center justify-between">
                             <AuthorDisplay author={reply.author} size="sm" />
-                            <span className="text-[10px] text-outline">
+                            <span className="text-[10px] text-[#5f6e82]">
                               {new Date(reply.created_at).toLocaleDateString("en-US", {
                                 month: "short",
                                 day: "numeric",
                               })}
                             </span>
                           </div>
-                          <p className="text-xs text-on-surface leading-relaxed whitespace-pre-wrap">
+                          <p className="text-xs text-[#2b3a4f] leading-relaxed whitespace-pre-wrap">
                             {reply.comment_text}
                           </p>
                         </div>
                       ))}
                     </div>
                   )}
-                </div>
+                </motion.div>
               );
             })}
           </div>
         ) : (
-          <div className="p-8 rounded-xl border border-dashed border-border-subtle text-center text-xs text-on-surface-variant">
-            No comments in this discussion yet. Be the first to ask a question or leave notes.
+          <div className="p-8 rounded-xl border border-dashed border-[#e3dccd] text-center text-xs text-[#5f6e82] flex flex-col items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-[#5f6e82]" />
+            <span>No comments in this discussion yet. Be the first to ask a question or leave notes.</span>
           </div>
         )}
       </div>
     </div>
   );
 };
-

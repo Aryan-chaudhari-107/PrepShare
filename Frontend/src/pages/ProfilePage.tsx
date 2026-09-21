@@ -1,5 +1,29 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  User,
+  ShieldCheck,
+  Edit3,
+  Settings,
+  MessageSquare,
+  UserPlus,
+  Check,
+  School,
+  Building2,
+  Award,
+  BookOpen,
+  Trash2,
+  Plus,
+  Camera,
+  Key,
+  Sun,
+  Moon,
+  Monitor,
+  LayoutDashboard,
+  FileText,
+  CheckCircle2,
+} from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
@@ -36,7 +60,7 @@ export const ProfilePage: React.FC = () => {
 
   // Settings Modal State
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
-  const [themePref, setThemePref] = useState<"light" | "dark" | "system">("light");
+  const [themePref, setThemePref] = useState<"light" | "dark" | "system">("dark");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
@@ -74,7 +98,7 @@ export const ProfilePage: React.FC = () => {
           usersApi.getMyProfile(),
           currentUser ? usersApi.getPublicUserPosts(currentUser.id, 1, 50) : Promise.resolve({ data: { items: [] } }),
           educationApi.getMyEducation().catch(() => ({ data: [] })),
-          usersApi.getMySettings().catch(() => ({ data: { theme_preference: "light" } })),
+          usersApi.getMySettings().catch(() => ({ data: { theme_preference: "dark" } })),
           interactionsApi.getMyCompletedQuestions(undefined, undefined, 1, 50).catch(() => ({ data: { items: [] } })),
         ]);
 
@@ -106,7 +130,7 @@ export const ProfilePage: React.FC = () => {
         setPosts((draftsRes.data as any).items || []);
         setEducation(eduRes.data || []);
         setCompletedQuestions(compRes.data.items || []);
-        setThemePref((setRes.data as UserSettings).theme_preference || "light");
+        setThemePref((setRes.data as UserSettings).theme_preference || "dark");
       } else if (userId) {
         const [pubRes, postRes, compRes] = await Promise.all([
           usersApi.getPublicProfile(userId),
@@ -263,10 +287,10 @@ export const ProfilePage: React.FC = () => {
     return (
       <AppShell>
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-8 w-full animate-pulse flex flex-col gap-6">
-          <div className="bg-surface-elevated rounded-2xl border border-border-subtle p-8 h-64"></div>
+          <div className="bg-[#f3eee1] rounded-2xl border border-[#e3dccd] p-8 h-64"></div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="bg-surface-elevated rounded-2xl border border-border-subtle p-6 h-96"></div>
-            <div className="lg:col-span-2 bg-surface-elevated rounded-2xl border border-border-subtle p-6 h-96"></div>
+            <div className="bg-[#f3eee1] rounded-2xl border border-[#e3dccd] p-6 h-96"></div>
+            <div className="lg:col-span-2 bg-[#f3eee1] rounded-2xl border border-[#e3dccd] p-6 h-96"></div>
           </div>
         </div>
       </AppShell>
@@ -277,8 +301,8 @@ export const ProfilePage: React.FC = () => {
     return (
       <AppShell>
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-16 text-center">
-          <h2 className="text-xl font-bold text-on-surface">User Not Found</h2>
-          <p className="text-sm text-on-surface-variant mt-2">
+          <h2 className="text-xl font-bold text-[#0f1926]">User Not Found</h2>
+          <p className="text-sm text-[#5f6e82] mt-2">
             The profile you are trying to view does not exist or has been deactivated.
           </p>
         </div>
@@ -290,12 +314,16 @@ export const ProfilePage: React.FC = () => {
 
   return (
     <AppShell>
-      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-6 w-full flex flex-col gap-8 flex-1">
-        {/* Header Profile Card (Academic Nexus Theme) */}
-        <section className="bg-surface-elevated rounded-2xl border border-border-subtle shadow-sm p-6 sm:p-8 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
-          <div className="flex flex-col gap-4 flex-1">
-            <div className="flex items-center gap-5">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-primary/20 bg-surface-container flex items-center justify-center text-primary text-2xl font-bold shrink-0 shadow-inner">
+      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-6 w-full flex flex-col gap-6 flex-1">
+        {/* Header Profile Card */}
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl border border-[#e3dccd] shadow-sm p-6 sm:p-8 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between relative overflow-hidden"
+        >
+          <div className="flex flex-col gap-4 flex-1 relative z-10">
+            <div className="flex items-center gap-5 flex-wrap">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-[#3f6f52]/30 bg-[#3f6f52] flex items-center justify-center text-white text-2xl font-bold shrink-0 shadow-sm">
                 {profile.profile_photo_url ? (
                   <img
                     src={profile.profile_photo_url}
@@ -309,17 +337,17 @@ export const ProfilePage: React.FC = () => {
 
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-xl sm:text-2xl font-bold text-on-surface tracking-tight">
+                  <h1 className="text-xl sm:text-2xl font-extrabold text-[#0f1926] tracking-tight">
                     {profile.full_name || `@${profile.username}`}
                   </h1>
-                  <span className="material-symbols-outlined text-primary text-lg" title="Verified Member">
-                    verified
+                  <span title="Verified Member">
+                    <ShieldCheck className="w-5 h-5 text-[#3f6f52]" />
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-on-surface-variant font-medium mt-0.5">
+                <p className="text-xs sm:text-sm text-[#5f6e82] font-medium mt-0.5">
                   @{profile.username}
                 </p>
-                <span className="text-xs text-outline mt-1 capitalize font-medium">
+                <span className="text-xs text-[#5f6e82] mt-1 capitalize font-medium">
                   {profile.role?.replace(/_/g, " ") || "Student Candidate"}
                 </span>
               </div>
@@ -331,17 +359,17 @@ export const ProfilePage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setEditProfileModalOpen(true)}
-                      className="px-4 py-2 rounded-full border border-border-subtle bg-surface hover:bg-surface-container text-on-surface text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                      className="px-4 py-2 rounded-xl border border-[#e3dccd] bg-[#f3eee1] hover:bg-white text-[#0f1926] text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs active:scale-95"
                     >
-                      <span className="material-symbols-outlined text-base">edit</span>
+                      <Edit3 className="w-3.5 h-3.5" />
                       <span>Edit Profile</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setSettingsModalOpen(true)}
-                      className="px-4 py-2 rounded-full border border-border-subtle bg-surface hover:bg-surface-container text-on-surface text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                      className="px-4 py-2 rounded-xl border border-[#e3dccd] bg-[#f3eee1] hover:bg-white text-[#0f1926] text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs active:scale-95"
                     >
-                      <span className="material-symbols-outlined text-base">settings</span>
+                      <Settings className="w-3.5 h-3.5" />
                       <span>Settings</span>
                     </button>
                   </>
@@ -350,23 +378,25 @@ export const ProfilePage: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleMessageUser}
-                      className="px-4 py-2 rounded-full border border-primary/20 bg-primary-container/10 text-primary hover:bg-primary-container/20 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                      className="px-4 py-2 rounded-xl border border-[#3f6f52]/30 bg-[#3f6f52]/10 text-[#2f6b47] hover:bg-[#3f6f52]/20 text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs active:scale-95"
                     >
-                      <span className="material-symbols-outlined text-base">chat</span>
+                      <MessageSquare className="w-3.5 h-3.5" />
                       <span>Message</span>
                     </button>
                     <button
                       type="button"
                       onClick={handleToggleFollow}
-                      className={`px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 ${
+                      className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 ${
                         isFollowing
-                          ? "bg-surface-container text-on-surface-variant border border-border-subtle"
-                          : "bg-primary text-on-primary hover:bg-primary-container"
+                          ? "bg-[#f3eee1] text-[#5f6e82] border border-[#e3dccd]"
+                          : "bg-[#3f6f52] hover:bg-[#345c44] text-white"
                       }`}
                     >
-                      <span className="material-symbols-outlined text-base">
-                        {isFollowing ? "check" : "person_add"}
-                      </span>
+                      {isFollowing ? (
+                        <Check className="w-3.5 h-3.5" />
+                      ) : (
+                        <UserPlus className="w-3.5 h-3.5" />
+                      )}
                       <span>{isFollowing ? "Following" : "Follow"}</span>
                     </button>
                   </>
@@ -375,8 +405,8 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             {primaryEducation && (
-              <div className="flex items-center gap-2 text-xs sm:text-sm text-on-surface-variant font-medium">
-                <span className="material-symbols-outlined text-base text-[#7C3AED]">school</span>
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-[#2b3a4f] font-medium">
+                <School className="w-4 h-4 text-[#3f6f52]" />
                 <span>
                   {primaryEducation.degree_level} in {primaryEducation.course}
                 </span>
@@ -384,62 +414,62 @@ export const ProfilePage: React.FC = () => {
             )}
 
             {profile.bio && (
-              <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed max-w-3xl">
+              <p className="text-xs sm:text-sm text-[#2b3a4f] leading-relaxed max-w-3xl">
                 {profile.bio}
               </p>
             )}
 
             {/* Stats Row */}
-            <div className="flex flex-wrap items-center justify-between border-t border-border-subtle pt-4 mt-2 gap-6">
+            <div className="flex flex-wrap items-center justify-between border-t border-[#e3dccd] pt-4 mt-2 gap-6">
               <div className="flex items-center gap-8">
                 <div className="flex flex-col">
-                  <span className="text-lg sm:text-xl font-bold text-on-surface">
+                  <span className="text-lg sm:text-xl font-bold text-[#0f1926]">
                     {profile.contribution_score.toLocaleString()}
                   </span>
-                  <span className="text-[11px] font-semibold text-outline uppercase tracking-wider">
+                  <span className="text-[11px] font-semibold text-[#5f6e82] uppercase tracking-wider">
                     Contribution
                   </span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-lg sm:text-xl font-bold text-on-surface">
+                  <span className="text-lg sm:text-xl font-bold text-[#0f1926]">
                     {followerCount.toLocaleString()}
                   </span>
-                  <span className="text-[11px] font-semibold text-outline uppercase tracking-wider">
+                  <span className="text-[11px] font-semibold text-[#5f6e82] uppercase tracking-wider">
                     Followers
                   </span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-lg sm:text-xl font-bold text-on-surface">
+                  <span className="text-lg sm:text-xl font-bold text-[#0f1926]">
                     {followingCount.toLocaleString()}
                   </span>
-                  <span className="text-[11px] font-semibold text-outline uppercase tracking-wider">
+                  <span className="text-[11px] font-semibold text-[#5f6e82] uppercase tracking-wider">
                     Following
                   </span>
                 </div>
               </div>
 
               {profile.contribution_score > 0 && (
-                <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-primary-container/10 border border-primary/20 text-primary text-xs font-bold">
-                  <span className="material-symbols-outlined text-sm">stars</span>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#3f6f52]/10 border border-[#3f6f52]/20 text-[#2f6b47] text-xs font-bold">
+                  <Award className="w-3.5 h-3.5 text-[#b26a00]" />
                   <span>Active Contributor</span>
                 </div>
               )}
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* Profile Tabs */}
-        <div className="border-b border-border-subtle flex items-center justify-between">
+        <div className="border-b border-[#e3dccd] flex items-center justify-between">
           <nav className="flex space-x-6">
             <button
               onClick={() => setActiveTab("overview")}
               className={`pb-3.5 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
                 activeTab === "overview"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-on-surface-variant hover:text-on-surface"
+                  ? "border-[#3f6f52] text-[#2f6b47]"
+                  : "border-transparent text-[#5f6e82] hover:text-[#0f1926]"
               }`}
             >
-              <span className="material-symbols-outlined text-lg">dashboard</span>
+              <LayoutDashboard className="w-4 h-4" />
               <span>Profile Overview</span>
             </button>
 
@@ -447,11 +477,11 @@ export const ProfilePage: React.FC = () => {
               onClick={() => setActiveTab("posts")}
               className={`pb-3.5 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
                 activeTab === "posts"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-on-surface-variant hover:text-on-surface"
+                  ? "border-[#3f6f52] text-[#2f6b47]"
+                  : "border-transparent text-[#5f6e82] hover:text-[#0f1926]"
               }`}
             >
-              <span className="material-symbols-outlined text-lg">article</span>
+              <FileText className="w-4 h-4" />
               <span>Experiences ({posts.length})</span>
             </button>
 
@@ -459,38 +489,38 @@ export const ProfilePage: React.FC = () => {
               onClick={() => setActiveTab("solved")}
               className={`pb-3.5 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
                 activeTab === "solved"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-on-surface-variant hover:text-on-surface"
+                  ? "border-[#3f6f52] text-[#2f6b47]"
+                  : "border-transparent text-[#5f6e82] hover:text-[#0f1926]"
               }`}
             >
-              <span className="material-symbols-outlined text-lg">task_alt</span>
+              <CheckCircle2 className="w-4 h-4" />
               <span>Solved Questions ({completedQuestions.length})</span>
             </button>
           </nav>
         </div>
 
-        {/* Tab 1: Overview (3-Column Layout) */}
+        {/* Tab 1: Overview */}
         {activeTab === "overview" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column (1 col): About & Credentials */}
             <div className="flex flex-col gap-6">
-              <div className="bg-surface-elevated p-6 rounded-2xl border border-border-subtle shadow-sm flex flex-col gap-4">
-                <h2 className="text-sm font-bold text-on-surface flex items-center gap-2 border-b border-border-subtle pb-3">
-                  <span className="material-symbols-outlined text-primary text-lg">person</span>
+              <div className="bg-white p-6 rounded-2xl border border-[#e3dccd] shadow-sm flex flex-col gap-4">
+                <h2 className="text-sm font-bold text-[#0f1926] flex items-center gap-2 border-b border-[#e3dccd] pb-3">
+                  <User className="w-4 h-4 text-[#3f6f52]" />
                   <span>About User</span>
                 </h2>
-                <div className="flex flex-col gap-3 text-xs text-on-surface-variant">
+                <div className="flex flex-col gap-3 text-xs text-[#2b3a4f]">
                   <div className="flex justify-between items-center">
-                    <span className="text-outline font-medium">Username:</span>
-                    <span className="font-semibold text-on-surface">@{profile.username}</span>
+                    <span className="text-[#5f6e82] font-medium">Username:</span>
+                    <span className="font-semibold text-[#0f1926]">@{profile.username}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-outline font-medium">Role:</span>
-                    <span className="font-semibold text-on-surface capitalize">{profile.role}</span>
+                    <span className="text-[#5f6e82] font-medium">Role:</span>
+                    <span className="font-semibold text-[#0f1926] capitalize">{profile.role}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-outline font-medium">Points:</span>
-                    <span className="font-bold text-primary">{profile.contribution_score} pts</span>
+                    <span className="text-[#5f6e82] font-medium">Points:</span>
+                    <span className="font-bold text-[#b26a00]">{profile.contribution_score} pts</span>
                   </div>
                 </div>
               </div>
@@ -499,51 +529,51 @@ export const ProfilePage: React.FC = () => {
             {/* Right Column (2 cols): Education & Experiences */}
             <div className="lg:col-span-2 flex flex-col gap-6">
               {/* Education History Card */}
-              <div className="bg-surface-elevated p-6 sm:p-8 rounded-2xl border border-border-subtle shadow-sm flex flex-col gap-5">
-                <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-                  <h2 className="text-base font-bold text-on-surface flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[#7C3AED] text-xl">school</span>
+              <div className="bg-white p-6 sm:p-7 rounded-2xl border border-[#e3dccd] shadow-sm flex flex-col gap-5">
+                <div className="flex items-center justify-between border-b border-[#e3dccd] pb-3">
+                  <h2 className="text-sm sm:text-base font-bold text-[#0f1926] flex items-center gap-2">
+                    <School className="w-4 h-4 text-[#3f6f52]" />
                     <span>Education Background</span>
                   </h2>
                   {isSelf && (
                     <button
                       type="button"
                       onClick={() => setAddEduModalOpen(true)}
-                      className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
+                      className="text-xs font-semibold text-[#2f6b47] hover:underline flex items-center gap-1 transition-colors"
                     >
-                      <span className="material-symbols-outlined text-sm">add</span>
+                      <Plus className="w-3.5 h-3.5" />
                       <span>Add Education</span>
                     </button>
                   )}
                 </div>
 
                 {education.length > 0 ? (
-                  <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-3.5">
                     {education.map((edu) => (
-                      <div key={edu.id} className="flex gap-4 items-start">
-                        <div className="w-10 h-10 rounded-xl bg-surface-container border border-border-subtle flex items-center justify-center shrink-0 text-primary">
-                          <span className="material-symbols-outlined text-xl">account_balance</span>
+                      <div key={edu.id} className="flex gap-4 items-start p-3.5 bg-[#faf7ee] rounded-xl border border-[#e3dccd]">
+                        <div className="w-10 h-10 rounded-xl bg-[#3f6f52]/10 border border-[#3f6f52]/20 flex items-center justify-center shrink-0 text-[#3f6f52]">
+                          <BookOpen className="w-5 h-5" />
                         </div>
                         <div className="flex-1 flex flex-col">
                           <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-bold text-on-surface">
+                            <h3 className="text-sm font-bold text-[#0f1926]">
                               {edu.degree_level} in {edu.course}
                             </h3>
                             {isSelf && (
                               <button
                                 type="button"
                                 onClick={() => handleDeleteEducation(edu.id)}
-                                className="text-outline hover:text-error transition-colors p-1"
+                                className="text-[#5f6e82] hover:text-[#b5462f] transition-colors p-1"
                                 title="Delete Education Entry"
                               >
-                                <span className="material-symbols-outlined text-base">delete</span>
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             )}
                           </div>
-                          <p className="text-xs text-on-surface-variant font-medium mt-0.5">
+                          <p className="text-xs text-[#2b3a4f] font-medium mt-0.5">
                             {edu.branch ? `Specialization: ${edu.branch}` : ""}
                           </p>
-                          <p className="text-xs text-outline mt-1">
+                          <p className="text-xs text-[#5f6e82] mt-1">
                             {edu.start_year} — {edu.is_current ? "Present (Expected)" : edu.end_year}
                           </p>
                         </div>
@@ -551,35 +581,35 @@ export const ProfilePage: React.FC = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="p-6 text-center text-xs text-on-surface-variant italic bg-surface rounded-xl border border-dashed border-border-subtle">
+                  <div className="p-6 text-center text-xs text-[#5f6e82] italic bg-[#faf7ee] rounded-xl border border-dashed border-[#e3dccd]">
                     No academic education entries logged yet.
                   </div>
                 )}
               </div>
 
               {/* Recent Experiences Card */}
-              <div className="bg-surface-elevated p-6 sm:p-8 rounded-2xl border border-border-subtle shadow-sm flex flex-col gap-5">
-                <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-                  <h2 className="text-base font-bold text-on-surface flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-xl">work_history</span>
+              <div className="bg-white p-6 sm:p-7 rounded-2xl border border-[#e3dccd] shadow-sm flex flex-col gap-5">
+                <div className="flex items-center justify-between border-b border-[#e3dccd] pb-3">
+                  <h2 className="text-sm sm:text-base font-bold text-[#0f1926] flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-[#3f6f52]" />
                     <span>Shared Experiences</span>
                   </h2>
                   <button
                     onClick={() => setActiveTab("posts")}
-                    className="text-xs font-semibold text-primary hover:underline"
+                    className="text-xs font-semibold text-[#2f6b47] hover:underline transition-colors"
                   >
                     View All ({posts.length})
                   </button>
                 </div>
 
                 {posts.length > 0 ? (
-                  <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-3.5">
                     {posts.slice(0, 3).map((post) => (
                       <PostCard key={post.id} post={post} />
                     ))}
                   </div>
                 ) : (
-                  <div className="p-6 text-center text-xs text-on-surface-variant italic bg-surface rounded-xl border border-dashed border-border-subtle">
+                  <div className="p-6 text-center text-xs text-[#5f6e82] italic bg-[#faf7ee] rounded-xl border border-dashed border-[#e3dccd]">
                     No interview experiences shared yet.
                   </div>
                 )}
@@ -590,11 +620,11 @@ export const ProfilePage: React.FC = () => {
 
         {/* Tab 2: All Posts */}
         {activeTab === "posts" && (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4">
             {posts.length > 0 ? (
               posts.map((post) => <PostCard key={post.id} post={post} />)
             ) : (
-              <div className="p-12 text-center text-sm text-on-surface-variant bg-surface-elevated rounded-2xl border border-border-subtle">
+              <div className="p-12 text-center text-sm text-[#5f6e82] bg-white rounded-2xl border border-[#e3dccd]">
                 No interview experiences found for this account.
               </div>
             )}
@@ -603,25 +633,25 @@ export const ProfilePage: React.FC = () => {
 
         {/* Tab 3: Solved Questions */}
         {activeTab === "solved" && (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {completedQuestions.length > 0 ? (
               completedQuestions.map((q) => (
-                <div key={q.question_id} className="p-5 bg-surface-elevated rounded-xl border border-border-subtle shadow-sm flex flex-col gap-2">
+                <div key={q.question_id} className="p-5 bg-white rounded-2xl border border-[#e3dccd] shadow-sm flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-primary bg-primary-container/10 px-2.5 py-0.5 rounded-full">
+                    <span className="text-xs font-bold text-[#2f6b47] bg-[#3f6f52]/10 border border-[#3f6f52]/20 px-3 py-0.5 rounded-full">
                       {q.post_title || "Interview Problem"}
                     </span>
-                    <span className="text-xs text-outline">
+                    <span className="text-xs text-[#5f6e82]">
                       Solved on {new Date(q.completed_at).toLocaleDateString()}
                     </span>
                   </div>
-                  <p className="text-sm text-on-surface font-medium mt-1">
+                  <p className="text-sm text-[#0f1926] font-medium mt-1 leading-relaxed">
                     {q.question_text || "Attachment Problem Statement"}
                   </p>
                 </div>
               ))
             ) : (
-              <div className="p-12 text-center text-sm text-on-surface-variant bg-surface-elevated rounded-2xl border border-border-subtle">
+              <div className="p-12 text-center text-sm text-[#5f6e82] bg-white rounded-2xl border border-[#e3dccd]">
                 No questions marked as solved yet.
               </div>
             )}
@@ -634,7 +664,7 @@ export const ProfilePage: React.FC = () => {
         <form onSubmit={handleSaveProfile} className="flex flex-col gap-5">
           {/* Avatar Upload Preview */}
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full overflow-hidden bg-surface-container border border-border-subtle flex items-center justify-center font-bold text-primary text-xl shrink-0">
+            <div className="w-16 h-16 rounded-full overflow-hidden bg-[#f3eee1] border border-[#e3dccd] flex items-center justify-center font-bold text-[#0f1926] text-xl shrink-0">
               {editPhotoUrl ? (
                 <img src={editPhotoUrl} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
@@ -642,37 +672,40 @@ export const ProfilePage: React.FC = () => {
               )}
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-on-surface">Profile Photo</label>
+              <label className="text-xs font-bold text-[#0f1926] flex items-center gap-1">
+                <Camera className="w-3.5 h-3.5 text-[#3f6f52]" />
+                Profile Photo
+              </label>
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleFileUpload}
                 disabled={uploadingPhoto}
-                className="text-xs text-on-surface-variant file:mr-2 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-container cursor-pointer"
+                className="text-xs text-[#5f6e82] file:mr-2 file:py-1 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#3f6f52] file:text-white hover:file:bg-[#345c44] cursor-pointer"
               />
-              {uploadingPhoto && <span className="text-[10px] text-primary animate-pulse">Uploading photo...</span>}
+              {uploadingPhoto && <span className="text-[10px] text-[#3f6f52] animate-pulse">Uploading photo...</span>}
             </div>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-on-surface">Full Name</label>
+            <label className="text-xs font-bold text-[#0f1926]">Full Name</label>
             <input
               type="text"
               value={editFullName}
               onChange={(e) => setEditFullName(e.target.value)}
               placeholder="e.g. Jane Doe"
-              className="px-4 py-2.5 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:ring-2 focus:ring-primary outline-none"
+              className="px-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-on-surface">Bio / Headline</label>
+            <label className="text-xs font-bold text-[#0f1926]">Bio / Headline</label>
             <textarea
               rows={3}
               value={editBio}
               onChange={(e) => setEditBio(e.target.value)}
               placeholder="Share a short summary of your background..."
-              className="px-4 py-2.5 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:ring-2 focus:ring-primary outline-none"
+              className="px-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none resize-none"
             />
           </div>
 
@@ -680,14 +713,14 @@ export const ProfilePage: React.FC = () => {
             <button
               type="button"
               onClick={() => setEditProfileModalOpen(false)}
-              className="px-4 py-2 rounded-full text-xs font-semibold text-on-surface-variant hover:bg-surface-container"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-[#5f6e82] hover:bg-[#f3eee1]"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={savingProfile || uploadingPhoto}
-              className="px-5 py-2 rounded-full bg-primary text-white text-xs font-bold hover:bg-primary-container shadow-sm disabled:opacity-50"
+              className="px-5 py-2 rounded-xl bg-[#3f6f52] hover:bg-[#345c44] text-white text-xs font-bold shadow-sm disabled:opacity-50"
             >
               {savingProfile ? "Saving..." : "Save Changes"}
             </button>
@@ -699,14 +732,14 @@ export const ProfilePage: React.FC = () => {
       <Modal isOpen={addEduModalOpen} onClose={() => setAddEduModalOpen(false)} title="Add Academic Credential">
         <form onSubmit={handleAddEducation} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-on-surface">Institution</label>
+            <label className="text-xs font-bold text-[#0f1926]">Institution</label>
             <select
               value={eduForm.institution_id}
               onChange={(e) => setEduForm({ ...eduForm, institution_id: e.target.value })}
-              className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-xs text-on-surface outline-none"
+              className="px-3 py-2 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs text-[#0f1926] focus:bg-white outline-none"
             >
               {institutions.map((inst) => (
-                <option key={inst.id} value={inst.id}>
+                <option key={inst.id} value={inst.id} className="bg-white text-[#0f1926]">
                   {inst.name} ({inst.city}, {inst.country})
                 </option>
               ))}
@@ -715,71 +748,71 @@ export const ProfilePage: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-on-surface">Degree Level</label>
+              <label className="text-xs font-bold text-[#0f1926]">Degree Level</label>
               <select
                 value={eduForm.degree_level}
                 onChange={(e) => setEduForm({ ...eduForm, degree_level: e.target.value })}
-                className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-xs text-on-surface outline-none"
+                className="px-3 py-2 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs text-[#0f1926] focus:bg-white outline-none"
               >
-                <option value="Bachelors">Bachelors</option>
-                <option value="Masters">Masters</option>
-                <option value="PhD">PhD</option>
-                <option value="Diploma">Diploma</option>
+                <option value="Bachelors" className="bg-white text-[#0f1926]">Bachelors</option>
+                <option value="Masters" className="bg-white text-[#0f1926]">Masters</option>
+                <option value="PhD" className="bg-white text-[#0f1926]">PhD</option>
+                <option value="Diploma" className="bg-white text-[#0f1926]">Diploma</option>
               </select>
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-on-surface">Course</label>
+              <label className="text-xs font-bold text-[#0f1926]">Course</label>
               <input
                 type="text"
                 value={eduForm.course}
                 onChange={(e) => setEduForm({ ...eduForm, course: e.target.value })}
-                className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-xs text-on-surface outline-none"
+                className="px-3 py-2 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs text-[#0f1926] focus:bg-white outline-none"
               />
             </div>
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-on-surface">Specialization / Branch</label>
+            <label className="text-xs font-bold text-[#0f1926]">Specialization / Branch</label>
             <input
               type="text"
               value={eduForm.branch}
               onChange={(e) => setEduForm({ ...eduForm, branch: e.target.value })}
-              className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-xs text-on-surface outline-none"
+              className="px-3 py-2 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs text-[#0f1926] focus:bg-white outline-none"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-on-surface">Start Year</label>
+              <label className="text-xs font-bold text-[#0f1926]">Start Year</label>
               <input
                 type="number"
                 value={eduForm.start_year}
                 onChange={(e) => setEduForm({ ...eduForm, start_year: parseInt(e.target.value, 10) })}
-                className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-xs text-on-surface outline-none"
+                className="px-3 py-2 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs text-[#0f1926] focus:bg-white outline-none"
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-on-surface">End Year</label>
+              <label className="text-xs font-bold text-[#0f1926]">End Year</label>
               <input
                 type="number"
                 value={eduForm.end_year}
                 onChange={(e) => setEduForm({ ...eduForm, end_year: parseInt(e.target.value, 10) })}
-                className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-xs text-on-surface outline-none"
+                className="px-3 py-2 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs text-[#0f1926] focus:bg-white outline-none"
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="flex justify-end gap-3 pt-3">
             <button
               type="button"
               onClick={() => setAddEduModalOpen(false)}
-              className="px-4 py-2 rounded-full text-xs font-semibold text-on-surface-variant hover:bg-surface-container"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-[#5f6e82] hover:bg-[#f3eee1]"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-full bg-primary text-white text-xs font-bold hover:bg-primary-container shadow-sm"
+              className="px-5 py-2 rounded-xl bg-[#3f6f52] hover:bg-[#345c44] text-white text-xs font-bold shadow-sm"
             >
               Save Credential
             </button>
@@ -791,54 +824,62 @@ export const ProfilePage: React.FC = () => {
       <Modal isOpen={settingsModalOpen} onClose={() => setSettingsModalOpen(false)} title="Account Settings">
         <form onSubmit={handleUpdateSettings} className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-on-surface">Theme Preference</label>
-            <div className="grid grid-cols-3 gap-3">
+            <label className="text-xs font-bold text-[#0f1926]">Theme Preference</label>
+            <div className="grid grid-cols-3 gap-2.5">
               {(["light", "dark", "system"] as const).map((t) => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => setThemePref(t)}
-                  className={`py-2 px-3 rounded-xl border text-xs font-semibold capitalize ${
+                  className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 capitalize text-xs font-semibold transition-all ${
                     themePref === t
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border-subtle text-on-surface hover:bg-surface-container"
+                      ? "border-[#3f6f52] bg-[#3f6f52]/10 text-[#2f6b47] shadow-sm"
+                      : "border-[#e3dccd] bg-[#f3eee1] text-[#5f6e82] hover:border-[#3f6f52]/40"
                   }`}
                 >
-                  {t}
+                  {t === "light" && <Sun className="w-4 h-4" />}
+                  {t === "dark" && <Moon className="w-4 h-4" />}
+                  {t === "system" && <Monitor className="w-4 h-4" />}
+                  <span>{t}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="border-t border-border-subtle pt-4 flex flex-col gap-3">
-            <h3 className="text-xs font-bold text-on-surface">Change Password</h3>
+          <div className="h-px bg-[#e3dccd]"></div>
+
+          <div className="flex flex-col gap-3">
+            <h3 className="text-xs font-bold text-[#0f1926] flex items-center gap-1.5">
+              <Key className="w-3.5 h-3.5 text-[#3f6f52]" />
+              <span>Change Password</span>
+            </h3>
             <input
               type="password"
-              placeholder="Current Password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="px-4 py-2 rounded-xl border border-outline-variant bg-surface text-xs text-on-surface outline-none"
+              placeholder="Current Password"
+              className="px-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none"
             />
             <input
               type="password"
-              placeholder="New Password (min 8 chars)"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="px-4 py-2 rounded-xl border border-outline-variant bg-surface text-xs text-on-surface outline-none"
+              placeholder="New Password (min 8 chars)"
+              className="px-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none"
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex justify-end gap-3 pt-3">
             <button
               type="button"
               onClick={() => setSettingsModalOpen(false)}
-              className="px-4 py-2 rounded-full text-xs font-semibold text-on-surface-variant hover:bg-surface-container"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-[#5f6e82] hover:bg-[#f3eee1]"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-full bg-primary text-white text-xs font-bold hover:bg-primary-container shadow-sm"
+              className="px-5 py-2 rounded-xl bg-[#3f6f52] hover:bg-[#345c44] text-white text-xs font-bold shadow-sm"
             >
               Save Settings
             </button>

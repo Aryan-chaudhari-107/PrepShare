@@ -7,7 +7,29 @@ import requests
 
 BASE = "http://127.0.0.1:8000"
 
-# 1. Login
+# 1. Login (or auto-register for fresh DB)
+from _01_core.database import SessionLocal
+from _02_models import User
+from _01_core.security import hash_password
+
+db = SessionLocal()
+test_user = db.query(User).filter(User.email == "aryan07chaudhari@gmail.com").first()
+if not test_user:
+    import uuid
+    test_user = User(
+        id=uuid.uuid4(),
+        email="aryan07chaudhari@gmail.com",
+        username="aryan_test",
+        password_hash=hash_password("Bunny@1234"),
+        full_name="Aryan Test User",
+        is_active=True,
+        is_email_verified=True,
+        token_version=1
+    )
+    db.add(test_user)
+    db.commit()
+db.close()
+
 resp = requests.post(f"{BASE}/auth/login", json={
     "identifier": "aryan07chaudhari@gmail.com",
     "password": "Bunny@1234",
@@ -75,7 +97,7 @@ body = resp.json()
 print("GET ANON POST:", resp.status_code)
 print("  author:", body["author"])
 print("  slug:", body["slug"])
-print("  leaked keys:", [k for k in ("user_id", "username", "profile_photo_url", "education_id") if k in body])
+print("  leaked keys:", [k for k in ("user_id", "username", "profile_photo_url") if k in body] + [k for k in ("education_id", "institution_name", "course_name") if body.get(k) is not None])
 
 # ── Part 0: Feed ──────────────────────────────────────────────────────────────
 resp = requests.get(f"{BASE}/posts/", params={"page": 1, "limit": 5})

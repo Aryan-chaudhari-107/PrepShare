@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { Smile, Meh, Frown } from "lucide-react";
 import { interactionsApi } from "../../api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
@@ -47,58 +49,63 @@ export const DifficultyVoter: React.FC<DifficultyVoterProps> = ({
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs font-semibold text-on-surface-variant">Rate Difficulty:</span>
-      <div className="flex bg-surface-container rounded-xl p-1 gap-1">
-        <button
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-xs font-semibold text-[#0f1926]">Rate Difficulty:</span>
+      <div className="flex bg-[#f3eee1] rounded-xl p-1 gap-1 border border-[#e3dccd]">
+        <motion.button
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.95 }}
           type="button"
           disabled={loading}
           onClick={() => handleVote("easy")}
-          className={`px-3 py-1 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-1.5 ${
+          className={`px-3 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
             myVote === "easy"
-              ? "bg-surface text-[#15803d] font-bold shadow-sm"
-              : "text-on-surface-variant hover:text-[#15803d] hover:bg-surface/50"
+              ? "bg-[#2f7d52]/15 text-[#2f7d52] font-bold border border-[#2f7d52]/30 shadow-xs"
+              : "text-[#5f6e82] hover:text-[#2f7d52] hover:bg-white"
           }`}
           title={`Vote Easy (Current: ${easyCount})`}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E]"></span>
+          <Smile className="w-3.5 h-3.5 text-[#2f7d52]" />
           <span>Easy</span>
-          <span className="text-[10px] text-outline">({easyCount})</span>
-        </button>
+          <span className="text-[10px] text-[#5f6e82] font-normal">({easyCount})</span>
+        </motion.button>
 
-        <button
+        <motion.button
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.95 }}
           type="button"
           disabled={loading}
           onClick={() => handleVote("medium")}
-          className={`px-3 py-1 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-1.5 ${
+          className={`px-3 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
             myVote === "medium"
-              ? "bg-surface text-[#b45309] font-bold shadow-sm"
-              : "text-on-surface-variant hover:text-[#b45309] hover:bg-surface/50"
+              ? "bg-[#b26a00]/15 text-[#b26a00] font-bold border border-[#b26a00]/30 shadow-xs"
+              : "text-[#5f6e82] hover:text-[#b26a00] hover:bg-white"
           }`}
           title={`Vote Medium (Current: ${medCount})`}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]"></span>
+          <Meh className="w-3.5 h-3.5 text-[#b26a00]" />
           <span>Medium</span>
-          <span className="text-[10px] text-outline">({medCount})</span>
-        </button>
+          <span className="text-[10px] text-[#5f6e82] font-normal">({medCount})</span>
+        </motion.button>
 
-        <button
+        <motion.button
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.95 }}
           type="button"
           disabled={loading}
           onClick={() => handleVote("hard")}
-          className={`px-3 py-1 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-1.5 ${
+          className={`px-3 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
             myVote === "hard"
-              ? "bg-surface text-error font-bold shadow-sm"
-              : "text-on-surface-variant hover:text-error hover:bg-surface/50"
+              ? "bg-[#b5462f]/15 text-[#b5462f] font-bold border border-[#b5462f]/30 shadow-xs"
+              : "text-[#5f6e82] hover:text-[#b5462f] hover:bg-white"
           }`}
           title={`Vote Hard (Current: ${hardCount})`}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-error"></span>
+          <Frown className="w-3.5 h-3.5 text-[#b5462f]" />
           <span>Hard</span>
-          <span className="text-[10px] text-outline">({hardCount})</span>
-        </button>
+          <span className="text-[10px] text-[#5f6e82] font-normal">({hardCount})</span>
+        </motion.button>
       </div>
     </div>
   );
 };
-
