@@ -70,14 +70,14 @@ export const DraftReportPage: React.FC = () => {
   const [rounds, setRounds] = useState<RoundDraft[]>([
     {
       id: "round-1",
-      name: "Round 1: Online Technical Assessment",
+      name: "",
       mode: "online",
       duration_minutes: 60,
       difficulty: "medium",
       questions: [
         {
           id: "q-1",
-          question_text: "Find the longest palindromic substring in O(N) or O(N^2) time complexity.",
+          question_text: "",
         },
       ],
     },
@@ -151,14 +151,13 @@ export const DraftReportPage: React.FC = () => {
 
   // Step 2: Add Round / Question Local Helpers with immutable updates & unique keys
   const addRound = () => {
-    const nextNum = rounds.length + 1;
     const uniqueId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     const qUniqueId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     setRounds((prev) => [
       ...prev,
       {
         id: `round-${uniqueId}`,
-        name: `Round ${nextNum}: Technical Evaluation`,
+        name: "",
         mode: "online",
         duration_minutes: 45,
         difficulty: "medium",
@@ -664,11 +663,8 @@ export const DraftReportPage: React.FC = () => {
                   className="bg-[#faf7ee] rounded-2xl border border-[#e3dccd] p-5 shadow-xs flex flex-col gap-4"
                 >
                   <div className="flex items-center justify-between border-b border-[#e3dccd] pb-3">
-                    <span className="text-xs font-bold text-[#2f6b47] flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-lg bg-[#3f6f52] text-white flex items-center justify-center text-xs font-bold">
-                        {rIndex + 1}
-                      </span>
-                      <span>Round #{rIndex + 1}</span>
+                    <span className="w-7 h-7 rounded-lg bg-[#3f6f52] text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                      {rIndex + 1}
                     </span>
                     {rounds.length > 1 && (
                       <button
@@ -690,7 +686,7 @@ export const DraftReportPage: React.FC = () => {
                         required
                         value={round.name}
                         onChange={(e) => updateRoundName(rIndex, e.target.value)}
-                        placeholder="e.g. Technical Round 1: DSA & Problem Solving"
+                        placeholder="e.g. Technical Round (DSA & System Design), HR, Online Assessment..."
                         className="p-2.5 bg-white border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] outline-none focus:ring-1 focus:ring-[#3f6f52]"
                       />
                     </div>
