@@ -143,6 +143,28 @@ export const ReportDetailPage: React.FC = () => {
     }
   };
 
+  const handleQuestionVoteChange = (
+    questionId: string,
+    easy: number,
+    med: number,
+    hard: number
+  ) => {
+    setPost((prev) => {
+      if (!prev || !prev.rounds) return prev;
+      return {
+        ...prev,
+        rounds: prev.rounds.map((round) => ({
+          ...round,
+          questions: (round.questions || []).map((q) =>
+            q.id === questionId
+              ? { ...q, easy_count: easy, medium_count: med, hard_count: hard }
+              : q
+          ),
+        })),
+      };
+    });
+  };
+
   if (loading) {
     return (
       <AppShell>
@@ -376,7 +398,11 @@ export const ReportDetailPage: React.FC = () => {
               {post.rounds && post.rounds.length > 0 ? (
                 <div className="flex flex-col gap-4">
                   {post.rounds.map((round) => (
-                    <RoundAccordion key={round.post_round_id} round={round} />
+                    <RoundAccordion
+                      key={round.post_round_id}
+                      round={round}
+                      onQuestionVoteChange={handleQuestionVoteChange}
+                    />
                   ))}
                 </div>
               ) : (

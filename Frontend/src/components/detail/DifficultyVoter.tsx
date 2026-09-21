@@ -10,6 +10,12 @@ interface DifficultyVoterProps {
   initialEasy: number;
   initialMedium: number;
   initialHard: number;
+  onVoteChange?: (
+    easy: number,
+    med: number,
+    hard: number,
+    myVote: "easy" | "medium" | "hard" | null
+  ) => void;
 }
 
 export const DifficultyVoter: React.FC<DifficultyVoterProps> = ({
@@ -17,6 +23,7 @@ export const DifficultyVoter: React.FC<DifficultyVoterProps> = ({
   initialEasy,
   initialMedium,
   initialHard,
+  onVoteChange,
 }) => {
   const { isAuthenticated, openAuthModal } = useAuth();
   const { success, error } = useToast();
@@ -26,6 +33,12 @@ export const DifficultyVoter: React.FC<DifficultyVoterProps> = ({
   const [hardCount, setHardCount] = useState(initialHard);
   const [myVote, setMyVote] = useState<"easy" | "medium" | "hard" | null>(null);
   const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    setEasyCount(initialEasy);
+    setMedCount(initialMedium);
+    setHardCount(initialHard);
+  }, [initialEasy, initialMedium, initialHard]);
 
   const handleVote = async (difficulty: "easy" | "medium" | "hard") => {
     if (!isAuthenticated) {
@@ -40,6 +53,9 @@ export const DifficultyVoter: React.FC<DifficultyVoterProps> = ({
       setMedCount(data.medium_count);
       setHardCount(data.hard_count);
       setMyVote(data.difficulty);
+      if (onVoteChange) {
+        onVoteChange(data.easy_count, data.medium_count, data.hard_count, data.difficulty);
+      }
       success(data.message || "Difficulty vote recorded.", "Vote Recorded");
     } catch (err: any) {
       error(err.response?.data?.detail || "Failed to record difficulty evaluation.");
