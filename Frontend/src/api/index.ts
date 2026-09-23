@@ -274,9 +274,6 @@ export const interactionsApi = {
       hard_count: number;
     }>(`/questions/${questionId}/vote`),
 
-  toggleCompletedQuestion: (questionId: T.UUID) =>
-    apiClient.post<{ completed: boolean; message: string }>(`/questions/${questionId}/complete`),
-
   toggleQuestionComplete: (questionId: T.UUID) =>
     apiClient.post<{ completed: boolean; message: string }>(`/questions/${questionId}/complete`),
 

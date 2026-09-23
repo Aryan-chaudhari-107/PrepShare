@@ -12,6 +12,7 @@ from _04_repositories.likes import (
     delete_like,
     get_like,
 )
+from _04_repositories.notifications import create_notification
 
 
 def toggle_like_post(db: Session, current_user, post_id: uuid.UUID):
@@ -28,6 +29,20 @@ def toggle_like_post(db: Session, current_user, post_id: uuid.UUID):
         create_like(db, current_user.id, post_id)
         liked = True
         message = "Post liked"
+
+        # Notify post owner if they didn't like their own post
+        if post.user_id and post.user_id != current_user.id:
+            try:
+                create_notification(
+                    db,
+                    receiver_id=post.user_id,
+                    sender_id=current_user.id,
+                    type="LIKE",
+                    reference_id=post.id,
+                    reference_type="post",
+                )
+            except Exception as e:
+                logger.warning(f"Failed to create LIKE notification: {e}")
 
     like_count = count_likes_for_post(db, post_id)
     logger.info(f"Like toggled for post {post_id} by user {current_user.id} (liked={liked})")

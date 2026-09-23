@@ -18,6 +18,7 @@ from _04_repositories.comments import (
     get_comments_for_post,
     update_comment,
 )
+from _04_repositories.notifications import create_notification
 
 
 def add_comment_to_post(db: Session, current_user, post_id: uuid.UUID, data: CommentCreate):
@@ -25,6 +26,7 @@ def add_comment_to_post(db: Session, current_user, post_id: uuid.UUID, data: Com
     if not post or post.deleted_at is not None:
         raise ValueError("Post not found")
 
+    parent = None
     if data.parent_comment_id:
         parent = get_comment_by_id(db, data.parent_comment_id)
         if not parent or parent.post_id != post_id:
@@ -37,6 +39,31 @@ def add_comment_to_post(db: Session, current_user, post_id: uuid.UUID, data: Com
         comment_text=data.comment_text,
         parent_comment_id=data.parent_comment_id,
     )
+
+    # Trigger notifications:
+    try:
+        # If this is a reply to another comment, notify the parent comment's author
+        if parent and parent.user_id != current_user.id:
+            create_notification(
+                db,
+                receiver_id=parent.user_id,
+                sender_id=current_user.id,
+                type="COMMENT",
+                reference_id=post_id,
+                reference_type="post",
+            )
+        # Also notify the post author if they are not the commenter and not the parent comment author
+        if post.user_id and post.user_id != current_user.id and (not parent or parent.user_id != post.user_id):
+            create_notification(
+                db,
+                receiver_id=post.user_id,
+                sender_id=current_user.id,
+                type="COMMENT",
+                reference_id=post_id,
+                reference_type="post",
+            )
+    except Exception as e:
+        logger.warning(f"Failed to create COMMENT notification: {e}")
 
     logger.info(f"Comment added: {comment.id} to post {post_id} by user {current_user.id}")
 

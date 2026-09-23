@@ -30,6 +30,8 @@ from _04_repositories import (
 from _04_repositories import (
     publish_post as repo_publish_post,
 )
+from _04_repositories.follows import get_followers_for_user
+from _04_repositories.notifications import create_notification
 from utils import generate_slug, utc_now
 
 
@@ -157,6 +159,20 @@ def publish_draft_post(db, current_user, post_id, data):
         logger.info(f"Post published: {updated_post.id} (anonymous)")
     else:
         logger.info(f"Post published: {updated_post.id} by user {current_user.id}")
+        # Notify followers about the new post
+        try:
+            followers = get_followers_for_user(db, current_user.id, limit=500, offset=0)
+            for f in followers:
+                create_notification(
+                    db,
+                    receiver_id=f.id,
+                    sender_id=current_user.id,
+                    type="NEW_POST",
+                    reference_id=updated_post.id,
+                    reference_type="post",
+                )
+        except Exception as e:
+            logger.warning(f"Failed to dispatch NEW_POST notifications to followers: {e}")
 
     return {"post_id": str(updated_post.id), "status": updated_post.status, "message": "Post published successfully"}
 

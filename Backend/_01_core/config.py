@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    ENVIRONMENT: str = "development"
+    ENVIRONMENT: str = "production"
     DATABASE_URL: str
     SECRET_KEY: str
     ALGORITHM: str

@@ -178,13 +178,13 @@ PrepShare/
 
 ## 🧪 Testing & Verification
 
-### Backend Automated Test Suite
-Run the full automated integration test flow:
+### Backend Integration & Security Test Suite
+Run the end-to-end integration flow:
 ```bash
 python Backend/tests/manual_flow.py
 ```
 
-Run the security audit check:
+Run the security audit & contract verification:
 ```bash
 python Backend/tests/security_audit.py
 ```

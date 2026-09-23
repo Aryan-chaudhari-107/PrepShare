@@ -15,6 +15,7 @@ from _04_repositories import (
     get_following_for_user,
     get_user_by_id,
 )
+from _04_repositories.notifications import create_notification
 
 
 def toggle_follow(db: Session, current_user, target_user_id: uuid.UUID):
@@ -38,6 +39,20 @@ def toggle_follow(db: Session, current_user, target_user_id: uuid.UUID):
     else:
         create_follow(db, current_user.id, target_user_id)
         db.refresh(target_user)
+
+        # Trigger FOLLOW notification
+        try:
+            create_notification(
+                db,
+                receiver_id=target_user_id,
+                sender_id=current_user.id,
+                type="FOLLOW",
+                reference_id=current_user.id,
+                reference_type="user",
+            )
+        except Exception as e:
+            logger.warning(f"Failed to create FOLLOW notification: {e}")
+
         logger.info(f"User {current_user.id} followed user {target_user_id}")
         return {
             "following": True,
