@@ -1,5 +1,4 @@
-"""Pydantic schemas for the questions resource."""
-
+import uuid
 from typing import Literal
 
 from pydantic import BaseModel
@@ -10,9 +9,18 @@ class DifficultyVoteCreate(BaseModel):
 
 
 class DifficultyVoteResponse(BaseModel):
+    question_id: uuid.UUID
     difficulty: str | None = None
     easy_count: int
     medium_count: int
     hard_count: int
     message: str
+
+
+class DifficultyVoteStatusResponse(BaseModel):
+    question_id: uuid.UUID
+    difficulty: str | None = None
+    easy_count: int
+    medium_count: int
+    hard_count: int
 

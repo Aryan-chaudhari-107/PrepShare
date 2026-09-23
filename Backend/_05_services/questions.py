@@ -47,10 +47,31 @@ def vote_difficulty(db: Session, current_user, question_id: uuid.UUID, difficult
     logger.info(f"User {current_user.id} voted {difficulty} for question {question_id}")
 
     return {
+        "question_id": question.id,
         "difficulty": current_difficulty,
         "easy_count": question.easy_count,
         "medium_count": question.medium_count,
         "hard_count": question.hard_count,
         "message": message,
+    }
+
+
+def get_question_difficulty(db: Session, current_user, question_id: uuid.UUID):
+    question = get_question_by_id(db, question_id)
+    if not question:
+        raise ValueError("Question not found")
+
+    my_vote = None
+    if current_user:
+        existing_vote = get_difficulty_vote(db, current_user.id, question_id)
+        if existing_vote:
+            my_vote = existing_vote.difficulty
+
+    return {
+        "question_id": question.id,
+        "difficulty": my_vote,
+        "easy_count": question.easy_count or 0,
+        "medium_count": question.medium_count or 0,
+        "hard_count": question.hard_count or 0,
     }
 

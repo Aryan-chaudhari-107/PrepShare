@@ -35,7 +35,11 @@ def send_otp_email(to_email: str, otp_code: str) -> bool:
                 f"Falling back to development log."
             )
 
-    logger.info(f"[DEV/LOCAL OTP DISPATCH] To: {to_email} | Code: {otp_code}")
-    print(f"\n=======================================================\n[PREPSHARE VERIFICATION CODE] {to_email} -> {otp_code}\n=======================================================\n", flush=True)
+    if getattr(settings, "ENVIRONMENT", "development").lower() == "development":
+        logger.info(f"[DEV/LOCAL OTP DISPATCH] To: {to_email} | Code: {otp_code}")
+        print(
+            f"\n=======================================================\n[PREPSHARE VERIFICATION CODE] {to_email} -> {otp_code}\n=======================================================\n",
+            flush=True,
+        )
     return False
 

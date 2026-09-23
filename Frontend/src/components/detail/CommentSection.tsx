@@ -187,7 +187,9 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
           <div className="flex flex-col gap-3.5">
             {topLevel.map((comment) => {
               const replies = getReplies(comment.id);
-              const isOwner = user && comment.user_id === user.id;
+              const isOwner = Boolean(
+                user && (comment.author?.user_id === user.id || (comment as any).user_id === user.id)
+              );
 
               return (
                 <motion.div

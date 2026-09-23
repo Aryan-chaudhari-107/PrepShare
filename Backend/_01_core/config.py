@@ -1,24 +1,14 @@
-"""
-TODO: load .env into a settings object (DATABASE_URL, SECRET_KEY, ALGORITHM,
-ACCESS_TOKEN_EXPIRE_MINUTES). Typically pydantic-settings' BaseSettings.
-"""
-
-"""
-Step 2: 
-Why this order matters config.py, will fail immediately if the package aren't installed
-or the .env values aren't realso it's worth confirming this works before writing code, not after.
-You get validation for free — if SECRET_KEY is missing or ACCESS_TOKEN_EXPIRE_MINUTES isn't actually
- a number, your app fails loudly at startup instead of mysteriously crashing later when someone logs in.
-"""
+"""Configuration settings for PrepShare backend."""
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    DATABASE_URL : str
-    SECRET_KEY : str
-    ALGORITHM : str
+    ENVIRONMENT: str = "development"
+    DATABASE_URL: str
+    SECRET_KEY: str
+    ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
 
     SMTP_HOST: str

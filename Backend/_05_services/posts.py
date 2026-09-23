@@ -1,11 +1,8 @@
-"""
-Service for the posts resource — business logic only.
-"""
-
+import uuid
 from datetime import timezone
 
 from _01_core import logger
-from _02_models import PostRound
+from _02_models import CompletedQuestion, PostRound, QuestionDifficultyVote
 from _03_schemas.posts import PostUpdate
 from _04_repositories import (
     add_question,
@@ -282,8 +279,46 @@ def get_post_detail(db, post_id, current_user=None, background_tasks=None):
     round_names = get_round_names_for_ids(db, round_ids)
     questions_by_round = get_all_questions_for_post_rounds(db, post_round_ids)
 
+    user_votes: dict[uuid.UUID, str] = {}
+    user_completed: set[uuid.UUID] = set()
+    if current_user:
+        all_q_ids = [q.id for q_list in questions_by_round.values() for q in q_list]
+        if all_q_ids:
+            votes = (
+                db.query(QuestionDifficultyVote)
+                .filter(
+                    QuestionDifficultyVote.user_id == current_user.id,
+                    QuestionDifficultyVote.question_id.in_(all_q_ids),
+                )
+                .all()
+            )
+            user_votes = {v.question_id: v.difficulty for v in votes}
+            comps = (
+                db.query(CompletedQuestion)
+                .filter(
+                    CompletedQuestion.user_id == current_user.id,
+                    CompletedQuestion.question_id.in_(all_q_ids),
+                )
+                .all()
+            )
+            user_completed = {c.question_id for c in comps}
+
     rounds = []
     for pr in post_rounds:
+        q_objs = questions_by_round.get(pr.id, [])
+        formatted_questions = []
+        for q in q_objs:
+            formatted_questions.append({
+                "id": q.id,
+                "question_text": q.question_text,
+                "attachment_url": q.attachment_url,
+                "is_verified": q.is_verified,
+                "easy_count": q.easy_count or 0,
+                "medium_count": q.medium_count or 0,
+                "hard_count": q.hard_count or 0,
+                "is_completed": q.id in user_completed,
+                "my_vote": user_votes.get(q.id),
+            })
         rounds.append({
             "post_round_id": pr.id,
             "round_number": pr.round_number,
@@ -291,7 +326,7 @@ def get_post_detail(db, post_id, current_user=None, background_tasks=None):
             "name": round_names.get(pr.round_id),
             "duration_minutes": getattr(pr, "duration_minutes", None),
             "round_tags": getattr(pr, "round_tags", None),
-            "questions": questions_by_round.get(pr.id, []),
+            "questions": formatted_questions,
         })
 
     # Fetch company and education names if linked

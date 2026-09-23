@@ -22,11 +22,13 @@ class CommentUpdate(BaseModel):
 class CommentOut(BaseModel):
     id: uuid.UUID
     post_id: uuid.UUID
+    user_id: uuid.UUID | None = None
     parent_comment_id: uuid.UUID | None = None
     comment_text: str
     author: CommentAuthor
     created_at: datetime
     updated_at: datetime
+    is_edited: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 

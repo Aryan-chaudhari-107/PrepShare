@@ -16,8 +16,12 @@ interface QuestionItemProps {
 export const QuestionItem: React.FC<QuestionItemProps> = ({ question, index }) => {
   const { isAuthenticated, openAuthModal } = useAuth();
   const { success, error } = useToast();
-  const [completed, setCompleted] = useState(false);
+  const [completed, setCompleted] = useState(Boolean(question.is_completed));
   const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    setCompleted(Boolean(question.is_completed));
+  }, [question.is_completed]);
 
   const handleToggleComplete = async () => {
     if (!isAuthenticated) {
@@ -105,6 +109,7 @@ export const QuestionItem: React.FC<QuestionItemProps> = ({ question, index }) =
           initialEasy={question.easy_count}
           initialMedium={question.medium_count}
           initialHard={question.hard_count}
+          initialMyVote={question.my_vote}
         />
       </div>
     </motion.div>

@@ -323,22 +323,22 @@ export const notificationsApi = {
     apiClient.patch<{ message: string }>(`/notifications/${id}/read`),
 
   markAllRead: () =>
-    apiClient.post<{ message: string }>("/notifications/read-all"),
+    apiClient.patch<{ message: string }>("/notifications/read-all"),
 
   markAllAsRead: () =>
-    apiClient.post<{ message: string }>("/notifications/read-all"),
+    apiClient.patch<{ message: string }>("/notifications/read-all"),
 };
 
 // ── Moderation & Reports APIs ─────────────────────────────────────────────
 export const reportsApi = {
   submitReport: (postId: T.UUID, reason: string) =>
-    apiClient.post<{ message: string; report_id: T.UUID }>("/reports/", {
+    apiClient.post<T.ReportOut>("/reports/", {
       post_id: postId,
       reason,
     }),
 
   create: (data: { post_id: T.UUID; reason: string }) =>
-    apiClient.post<{ message: string; report_id: T.UUID }>("/reports/", data),
+    apiClient.post<T.ReportOut>("/reports/", data),
 };
 
 // ── Direct Messaging APIs (V2) ─────────────────────────────────────────────

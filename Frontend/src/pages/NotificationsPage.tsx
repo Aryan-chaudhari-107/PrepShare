@@ -148,9 +148,13 @@ export const NotificationsPage: React.FC = () => {
           >
             {notifications.map((n) => {
               const targetUrl =
-                n.reference_type === "post"
+                n.reference_type === "post" ||
+                n.reference_type === "comment" ||
+                n.type === "COMMENT" ||
+                n.type === "LIKE" ||
+                n.type === "NEW_POST"
                   ? `/posts/${n.reference_id}`
-                  : n.reference_type === "user"
+                  : n.reference_type === "user" || n.type === "FOLLOW"
                   ? `/users/${n.reference_id}`
                   : "/";
 

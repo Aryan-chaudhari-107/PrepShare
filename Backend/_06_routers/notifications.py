@@ -36,6 +36,7 @@ def mark_notification_as_read(
 
 
 @router.patch("/read-all")
+@router.post("/read-all")
 def mark_all_notifications_as_read(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

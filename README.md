@@ -90,15 +90,16 @@ PrepShare/
 
 | Router | Base Route | Key Operations |
 | :--- | :--- | :--- |
-| **Auth** | `/api/v1/auth` | Register, Login, Refresh Token, Logout, Password Reset OTP |
-| **Posts** | `/api/v1/posts` | List Feed, Search/Filter, Create Draft, Publish, Update, Like, Share |
-| **Questions** | `/api/v1/questions` | Vote Difficulty (Easy/Medium/Hard), Toggle Completed |
-| **Comments** | `/api/v1/comments` | Threaded Comments, Add Reply, Edit, Delete |
-| **Bookmarks** | `/api/v1/bookmarks` | Save Post, List Saved Posts |
-| **Chat** | `/api/v1/chat` | 1-on-1 Direct Messaging, Conversation Inbox, Mark Read |
-| **Notifications** | `/api/v1/notifications` | Unread Alerts, Mark All Read |
-| **Users** | `/api/v1/users` | Profile Settings, User Post History, Follow/Unfollow |
-| **Companies** | `/api/v1/companies` | Company Directory & Search |
+| **Auth** | `/auth` | Register, Login, Logout, Password Reset OTP, Email Verification |
+| **Posts** | `/posts` | List Feed, Search/Filter, Create Draft, Publish, Update, Like, Share |
+| **Questions** | `/questions` | Vote Difficulty (Easy/Medium/Hard), Toggle Completed |
+| **Comments** | `/comments` | Threaded Comments, Add Reply, Edit, Delete |
+| **Bookmarks** | `/bookmarks` | Save Post, List Saved Posts |
+| **Chat / Messaging** | `/conversations` | 1-on-1 Direct Messaging, Conversation Inbox, Mark Read |
+| **Notifications** | `/notifications` | Unread Alerts, Mark Read, Mark All Read |
+| **Users** | `/users` | Profile Settings, User Post History, Follow/Unfollow |
+| **Companies** | `/companies` | Company Directory & Search |
+| **Reports** | `/reports` | Community Moderation & Experience Post Reports |
 
 ---
 
@@ -198,7 +199,8 @@ npm run build
 
 ## 🔒 Security & Best Practices
 - **Password Protection**: Argon2 / Bcrypt password hashing.
-- **Token Security**: Dual-token architecture (Access + Refresh tokens) with token version revocation.
+- **Token Security**: Stateless JWT authentication with database-backed token version revocation for instant logout across sessions.
+- **Verification**: Time-limited cryptographic OTP verification for email registration and password recovery.
 - **Validation**: Strict schema validation using Pydantic on all request payloads.
 - **Privacy & Safety**: Environment files (`.env`), credentials, and local build files are strictly excluded via `.gitignore`.
 

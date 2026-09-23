@@ -10,6 +10,7 @@ interface DifficultyVoterProps {
   initialEasy: number;
   initialMedium: number;
   initialHard: number;
+  initialMyVote?: "easy" | "medium" | "hard" | null;
   onVoteChange?: (
     easy: number,
     med: number,
@@ -23,6 +24,7 @@ export const DifficultyVoter: React.FC<DifficultyVoterProps> = ({
   initialEasy,
   initialMedium,
   initialHard,
+  initialMyVote = null,
   onVoteChange,
 }) => {
   const { isAuthenticated, openAuthModal } = useAuth();
@@ -31,14 +33,15 @@ export const DifficultyVoter: React.FC<DifficultyVoterProps> = ({
   const [easyCount, setEasyCount] = useState(initialEasy);
   const [medCount, setMedCount] = useState(initialMedium);
   const [hardCount, setHardCount] = useState(initialHard);
-  const [myVote, setMyVote] = useState<"easy" | "medium" | "hard" | null>(null);
+  const [myVote, setMyVote] = useState<"easy" | "medium" | "hard" | null>(initialMyVote);
   const [loading, setLoading] = useState(false);
 
   React.useEffect(() => {
     setEasyCount(initialEasy);
     setMedCount(initialMedium);
     setHardCount(initialHard);
-  }, [initialEasy, initialMedium, initialHard]);
+    setMyVote(initialMyVote);
+  }, [initialEasy, initialMedium, initialHard, initialMyVote]);
 
   const handleVote = async (difficulty: "easy" | "medium" | "hard") => {
     if (!isAuthenticated) {

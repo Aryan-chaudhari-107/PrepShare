@@ -70,6 +70,8 @@ class QuestionOut(BaseModel):
     easy_count: int
     medium_count: int
     hard_count: int
+    is_completed: bool = False
+    my_vote: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -208,7 +208,7 @@ export interface PostListResponse {
 
 export interface QuestionOut {
   id: UUID;
-  post_id: UUID;
+  post_id?: UUID | null;
   post_round_id?: UUID | null;
   question_text?: string | null;
   attachment_url?: string | null;
@@ -216,12 +216,14 @@ export interface QuestionOut {
   easy_count: number;
   medium_count: number;
   hard_count: number;
+  is_completed?: boolean;
+  my_vote?: "easy" | "medium" | "hard" | null;
   tags?: string[];
 }
 
 export interface RoundOut {
-  id: UUID;
-  post_round_id?: UUID;
+  id?: UUID;
+  post_round_id: UUID;
   round_number: number;
   name?: string | null;
   mode?: "online" | "offline";
@@ -267,10 +269,10 @@ export interface PostOut {
 export interface CommentOut {
   id: UUID;
   post_id: UUID;
-  user_id: UUID;
+  user_id?: UUID;
   author_username?: string;
   author_profile_photo?: string | null;
-  author?: AuthorInfo;
+  author: AuthorInfo;
   comment_text: string;
   parent_comment_id?: UUID | null;
   created_at: string;
@@ -369,6 +371,17 @@ export interface ConversationOut {
 export interface ConversationListResponse {
   items: ConversationOut[];
   total: number;
+}
+
+// Reports
+export interface ReportOut {
+  id: UUID;
+  reporter_id: UUID;
+  post_id: UUID;
+  reason: string;
+  status: string;
+  created_at: string;
+  message?: string;
 }
 
 // File Upload

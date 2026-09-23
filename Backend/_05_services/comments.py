@@ -43,6 +43,7 @@ def add_comment_to_post(db: Session, current_user, post_id: uuid.UUID, data: Com
     return {
         "id": comment.id,
         "post_id": comment.post_id,
+        "user_id": current_user.id,
         "parent_comment_id": comment.parent_comment_id,
         "comment_text": comment.comment_text,
         "author": {
@@ -52,6 +53,7 @@ def add_comment_to_post(db: Session, current_user, post_id: uuid.UUID, data: Com
         },
         "created_at": comment.created_at,
         "updated_at": comment.updated_at,
+        "is_edited": False,
     }
 
 
@@ -75,14 +77,17 @@ def list_comments_for_post(db: Session, post_id: uuid.UUID, page: int, limit: in
             "username": u.username if u else "[deleted]",
             "profile_photo_url": u.profile_photo_url if u else None,
         }
+        is_edited = bool(c.updated_at and c.created_at and c.updated_at > c.created_at)
         items.append({
             "id": c.id,
             "post_id": c.post_id,
+            "user_id": c.user_id,
             "parent_comment_id": c.parent_comment_id,
             "comment_text": c.comment_text,
             "author": author,
             "created_at": c.created_at,
             "updated_at": c.updated_at,
+            "is_edited": is_edited,
         })
 
     total_pages = (total + limit - 1) // limit if total else 0
@@ -111,6 +116,7 @@ def edit_comment_text(db: Session, current_user, comment_id: uuid.UUID, data: Co
     return {
         "id": updated.id,
         "post_id": updated.post_id,
+        "user_id": current_user.id,
         "parent_comment_id": updated.parent_comment_id,
         "comment_text": updated.comment_text,
         "author": {
@@ -120,6 +126,7 @@ def edit_comment_text(db: Session, current_user, comment_id: uuid.UUID, data: Co
         },
         "created_at": updated.created_at,
         "updated_at": updated.updated_at,
+        "is_edited": True,
     }
 
 

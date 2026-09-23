@@ -1,18 +1,8 @@
-"""
-TODO: Service for the auth resource — business logic. Calls
-_04_repositories/auth.py for data access, applies rules from
-MASTER_PROJECT_GUIDE.md. Called by _06_routers/auth.py. Never import
-SQLAlchemy session logic directly here.
-"""
-
-"""
-Service for the auth resource — business logic. Calls _04_repositories/auth.py
-for data access, applies rules. Called by _06_routers/auth.py.
-"""
+"""Service for the auth resource — business logic."""
 
 from datetime import timedelta
 
-from _01_core import create_access_token, hash_password, logger, verify_password
+from _01_core import create_access_token, hash_password, logger, settings, verify_password
 from _03_schemas import RequestOTP, ResetPassword, UserLogin, VerifyAndRegister
 from _04_repositories import (
     create_otp,
@@ -63,7 +53,8 @@ def request_otp(db, data: RequestOTP):
     logger.info(f"OTP sent to {mask_email(data.email)}")
 
     resp = {"message": "OTP sent to your email"}
-    if not delivered:
+    is_dev = getattr(settings, "ENVIRONMENT", "development").lower() == "development"
+    if not delivered and is_dev:
         resp["dev_code"] = raw_otp
     return resp
 
@@ -140,7 +131,8 @@ def forgot_password(db, data: RequestOTP):
     logger.info(f"Password reset OTP sent to {mask_email(data.email)}")
 
     resp = {"message": "If that email is registered, an OTP has been sent"}
-    if not delivered:
+    is_dev = getattr(settings, "ENVIRONMENT", "development").lower() == "development"
+    if not delivered and is_dev:
         resp["dev_code"] = raw_otp
     return resp
 

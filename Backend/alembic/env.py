@@ -7,7 +7,7 @@ from alembic import context
 
 from _01_core.config import settings
 from _01_core.database import Base
-import _02_models  # noqa: F401 — importing this registers all 27 models onto Base.metadata
+import _02_models  # noqa: F401 — importing this registers all 28 models onto Base.metadata
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
