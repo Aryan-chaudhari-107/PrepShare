@@ -337,7 +337,7 @@ export const ProfilePage: React.FC = () => {
     if (!file) return;
     setUploadingPhoto(true);
     try {
-      const res = await uploadsApi.uploadFile(file);
+      const res = await uploadsApi.uploadFile(file, "avatar");
       await usersApi.updateMyProfile({ profile_photo_url: res.data.url });
       setEditPhotoUrl(res.data.url);
       success("Profile photo updated!", "Photo Saved");
@@ -390,7 +390,7 @@ export const ProfilePage: React.FC = () => {
 
     setUploadingPhoto(true);
     try {
-      const res = await uploadsApi.uploadFile(file);
+      const res = await uploadsApi.uploadFile(file, "avatar");
       setEditPhotoUrl(res.data.url);
       success("Photo uploaded.", "Media Uploaded");
     } catch (err: unknown) {

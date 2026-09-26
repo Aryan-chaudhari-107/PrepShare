@@ -1,5 +1,6 @@
 import { apiClient } from "./client";
 import * as T from "../types";
+import { compressImageForUpload, type UploadKind } from "../utils/media";
 
 export * from "./client";
 
@@ -380,9 +381,10 @@ export const chatApi = {
 
 // ── Uploads APIs ──────────────────────────────────────────────────────────
 export const uploadsApi = {
-  uploadFile: async (file: File) => {
+  uploadFile: async (file: File, kind: UploadKind = "attachment") => {
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("kind", kind);
+    formData.append("file", await compressImageForUpload(file, kind));
     return apiClient.post<T.FileUploadResponse>("/uploads/", formData, {
       headers: {
         "Content-Type": "multipart/form-data",

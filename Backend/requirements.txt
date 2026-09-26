@@ -13,6 +13,7 @@ pydantic
 pydantic-settings
 python-dotenv
 python-multipart
+pillow
 email-validator
 slowapi
 
