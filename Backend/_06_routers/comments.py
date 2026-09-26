@@ -5,7 +5,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from _01_core import get_current_user, get_db
+from _01_core import NotFoundError, get_current_user, get_db
 from _02_models import User
 from _03_schemas.comments import (
     CommentCreate,
@@ -27,6 +27,8 @@ def add_comment(
 ):
     try:
         return comments.add_comment_to_post(db, current_user, post_id, data)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -53,6 +55,8 @@ def edit_comment(
 ):
     try:
         return comments.edit_comment_text(db, current_user, comment_id, data)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -65,5 +69,7 @@ def remove_comment(
 ):
     try:
         return comments.remove_comment_by_id(db, current_user, comment_id)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

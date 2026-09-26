@@ -9,6 +9,7 @@ real content.
 from _01_core.config import settings
 from _01_core.database import Base, engine, get_db
 from _01_core.dependencies import get_current_user, get_current_user_optional
+from _01_core.errors import NotFoundError
 from _01_core.logger import logger
 from _01_core.rate_limiter import limiter
 from _01_core.security import (

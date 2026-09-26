@@ -5,7 +5,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from _01_core import get_current_user, get_db
+from _01_core import NotFoundError, get_current_user, get_db
 from _02_models import User
 from _03_schemas.education_history import EducationCreate, EducationOut, EducationUpdate
 from _05_services import education_history
@@ -21,6 +21,8 @@ def add_education(
 ):
     try:
         return education_history.add_education(db, current_user, data)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -42,6 +44,8 @@ def edit_education(
 ):
     try:
         return education_history.edit_education(db, current_user, education_id, data)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -54,5 +58,7 @@ def remove_education(
 ):
     try:
         return education_history.remove_education(db, current_user, education_id)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

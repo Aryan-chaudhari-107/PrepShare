@@ -225,3 +225,21 @@ User-reported bug: uploading a profile photo "succeeds" in the UI but the photo 
 **Observed but unresolved:** two transient 500s (`/api/users/me`, `/api/users/me/education/`) during request bursts — self-healed on immediate retry; the engine already uses `pool_pre_ping=True`/`pool_recycle` and `wait_for_database()` boots. The Vercel session expired before function logs could be read — if 500s recur, re-authenticate and pull the runtime logs.
 
 **Vercel limits to remember:** request/response bodies cap at ~4.5 MB on Hobby, so PDF attachments larger than ~3 MB cannot round-trip as base64 — move uploads to Supabase Storage (the original plan) when attachments grow beyond that.
+
+## 12. Round 8 - profile-pic failure root cause + full re-audit (2026-09-26)
+
+User report: "user not able to set profile pic" — re-evaluate every part of the project until there are 0 bugs and no bad requests.
+
+| # | Bug | Impact | Fix |
+|---|---|---|---|
+| D9 | The local `venv` that runs uvicorn never had Pillow (only global Python did), so after D7 any **local** profile-pic upload crashed with `ModuleNotFoundError: No module named 'PIL'` → 500 → "Photo upload failed." | local upload path dead; most likely exactly what the user hit when testing on localhost | `pillow` installed into `Backend/venv`; server restarted on the new code |
+| D10 | Supabase **session-mode pooler allows only 15 client connections total**, shared by local dev and every Vercel instance. The engine's `pool_size=5, max_overflow=5` (x several clients) exhausted it — `FATAL: (EMAXCONNSESSION) max clients reached` — new connections were rejected → the transient 500s (`/api/users/me`, `/api/users/me/education/`) and any failed photo save during a burst | intermittent live 500s; silent sign-outs pre-D8; failed saves | engine footprint cut to `pool_size=1, max_overflow=2, pool_timeout=8, pool_use_lifo=True, pool_recycle=600` (per-process max 3 sessions → local + N Vercel instances fit inside 15). Local direct-DB fallback was attempted but this project exposes no direct host (NXDOMAIN) — `.env` left untouched |
+| D11 | Missing resources answered **400 "bad request"** instead of 404 in several handlers: comment/education edit+delete, add-comment/add-round/publish/update on a nonexistent post | wrong REST semantics — the exact "bad request" noise the audit demanded be zeroed | new `NotFoundError(ValueError)` in `_01_core/errors.py`; services raise it for lookup misses; routers map it to **404** while ownership/business-rule violations stay **400**. The D3 cross-post round attack deliberately stays 400 (round exists but belongs to another post — pinned by `manual_flow`) |
+
+**Full re-audit evidence:**
+- **219-probe OpenAPI sweep of the live site** (every path × method, anonymous + bearer-token, CORS preflights): **0 × 5xx**; histogram reviewed — 401/404/422/405 are all the correct classes; the only 400s were D11 cases (now 404) and genuine validation rejections.
+- **Live upload matrix 16/16:** small JPEG, 3.6 MB phone-like JPEG, PNG-with-alpha, WEBP, GIF, 2560×1440 screenshot (attachment), PDF, oversized 6 MB → clean edge `413`, HEIC → clear `400` message, corrupt JPEG → 400, SVG (XSS vector) → 400, unauthenticated → 401, plus the full upload → PATCH → persisted-read → restore flow.
+- **Local hero-path E2E 8/8** (first-ever browser test of the hero avatar "Change" input, real backend): success toast → `data:image` avatar → persisted across full reload → `GET /users/me` returns the photo — **zero console errors, zero 4xx/5xx during the flow**; photo restored to `NULL` afterwards.
+- **Gates:** upload gate 17/17, backend suites 2/2 (run before *and* after D11), `verify_404` 13/13 (404s where expected, 400s preserved for D3/ownership/empty-update), tsc clean, vitest 6/6, production build OK. The security audit asserts `in (400, 403, 404)` for IDOR/fake-resource cases, so D11 cannot turn CI red.
+
+**Known-by-design (left as-is):** `DELETE /users/{id}/block-messages` for a user with no block record answers 200 (idempotent delete); auth/OTP flows keep 400/401 on unknown identifiers to avoid leaking account existence.

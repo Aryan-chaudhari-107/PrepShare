@@ -2,6 +2,7 @@
 
 from sqlalchemy.orm import Session
 
+from _01_core import NotFoundError
 from _03_schemas.education_history import EducationCreate, EducationUpdate
 from _04_repositories.education_history import (
     create_education,
@@ -17,7 +18,7 @@ def add_education(db: Session, current_user, data: EducationCreate):
     # Validate the institution exists before inserting the FK
     institution = get_institution_by_id(db, data.institution_id)
     if not institution:
-        raise ValueError("Institution not found")
+        raise NotFoundError("Institution not found")
 
     return create_education(
         db,
@@ -40,7 +41,7 @@ def get_my_education(db: Session, current_user):
 def edit_education(db: Session, current_user, education_id, data: EducationUpdate):
     entry = get_education_by_id(db, education_id)
     if not entry:
-        raise ValueError("Education entry not found")
+        raise NotFoundError("Education entry not found")
     if entry.user_id != current_user.id:
         raise ValueError("You don't own this education entry")
 
@@ -52,7 +53,7 @@ def edit_education(db: Session, current_user, education_id, data: EducationUpdat
     if "institution_id" in updates:
         institution = get_institution_by_id(db, updates["institution_id"])
         if not institution:
-            raise ValueError("Institution not found")
+            raise NotFoundError("Institution not found")
 
     return update_education(db, entry, updates)
 
@@ -60,7 +61,7 @@ def edit_education(db: Session, current_user, education_id, data: EducationUpdat
 def remove_education(db: Session, current_user, education_id):
     entry = get_education_by_id(db, education_id)
     if not entry:
-        raise ValueError("Education entry not found")
+        raise NotFoundError("Education entry not found")
     if entry.user_id != current_user.id:
         raise ValueError("You don't own this education entry")
 

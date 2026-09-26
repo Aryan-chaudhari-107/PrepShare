@@ -16,7 +16,7 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 
-from _01_core import get_current_user, get_current_user_optional, get_db
+from _01_core import NotFoundError, get_current_user, get_current_user_optional, get_db
 from _01_core.rate_limiter import limiter
 from _02_models import User
 from _03_schemas import (
@@ -49,6 +49,8 @@ def add_round(
 ):
     try:
         return posts.add_round_to_post(db, current_user, post_id, data)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     
@@ -63,6 +65,8 @@ def add_question(
 ):
     try:
         return posts.add_question_to_round(db, current_user, post_id, post_round_id, data)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     
@@ -75,6 +79,8 @@ def publish_post(
 ):
     try:
         return posts.publish_draft_post(db, current_user, post_id, data)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -88,6 +94,8 @@ def update_post(
 ):
     try:
         return posts.update_post_details(db, current_user, post_id, data)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 

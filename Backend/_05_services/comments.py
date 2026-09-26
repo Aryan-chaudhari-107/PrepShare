@@ -4,7 +4,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from _01_core import logger
+from _01_core import NotFoundError, logger
 from _03_schemas.comments import CommentCreate, CommentUpdate
 from _04_repositories import (
     get_post_by_id,
@@ -24,13 +24,13 @@ from _04_repositories.notifications import create_notification
 def add_comment_to_post(db: Session, current_user, post_id: uuid.UUID, data: CommentCreate):
     post = get_post_by_id(db, post_id)
     if not post or post.deleted_at is not None:
-        raise ValueError("Post not found")
+        raise NotFoundError("Post not found")
 
     parent = None
     if data.parent_comment_id:
         parent = get_comment_by_id(db, data.parent_comment_id)
         if not parent or parent.post_id != post_id:
-            raise ValueError("Parent comment not found on this post")
+            raise NotFoundError("Parent comment not found on this post")
 
     comment = create_comment(
         db,
@@ -87,7 +87,7 @@ def add_comment_to_post(db: Session, current_user, post_id: uuid.UUID, data: Com
 def list_comments_for_post(db: Session, post_id: uuid.UUID, page: int, limit: int):
     post = get_post_by_id(db, post_id)
     if not post or post.deleted_at is not None:
-        raise ValueError("Post not found")
+        raise NotFoundError("Post not found")
 
     offset = (page - 1) * limit
     total = count_comments_for_post(db, post_id)
@@ -133,7 +133,7 @@ def list_comments_for_post(db: Session, post_id: uuid.UUID, page: int, limit: in
 def edit_comment_text(db: Session, current_user, comment_id: uuid.UUID, data: CommentUpdate):
     comment = get_comment_by_id(db, comment_id)
     if not comment:
-        raise ValueError("Comment not found")
+        raise NotFoundError("Comment not found")
 
     if comment.user_id != current_user.id:
         raise ValueError("You don't own this comment")
@@ -160,7 +160,7 @@ def edit_comment_text(db: Session, current_user, comment_id: uuid.UUID, data: Co
 def remove_comment_by_id(db: Session, current_user, comment_id: uuid.UUID):
     comment = get_comment_by_id(db, comment_id)
     if not comment:
-        raise ValueError("Comment not found")
+        raise NotFoundError("Comment not found")
 
     if comment.user_id != current_user.id:
         raise ValueError("You don't own this comment")

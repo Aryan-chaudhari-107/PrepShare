@@ -1,7 +1,7 @@
 import uuid
 from datetime import timezone
 
-from _01_core import logger
+from _01_core import NotFoundError, logger
 from _02_models import CompletedQuestion, PostRound, QuestionDifficultyVote
 from _03_schemas.posts import PostUpdate
 from _04_repositories import (
@@ -70,7 +70,7 @@ def add_round_to_post(db, current_user, post_id, data):
     post = get_post_by_id(db, post_id)
 
     if not post:
-        raise ValueError("Post not found")
+        raise NotFoundError("Post not found")
 
     if post.user_id != current_user.id:
         raise ValueError("You don't own this post")
@@ -109,12 +109,14 @@ def add_round_to_post(db, current_user, post_id, data):
 def add_question_to_round(db, current_user, post_id, post_round_id, data):
     post = get_post_by_id(db, post_id)
     if not post:
-        raise ValueError("Post not found")
+        raise NotFoundError("Post not found")
 
     if post.user_id != current_user.id:
         raise ValueError("You don't own this post")
 
     # D3: verify the round actually belongs to this post, not another one.
+    # Deliberately a ValueError (-> 400): the round EXISTS, it just doesn't
+    # belong to this post, so this is a malformed request, not a lookup miss.
     post_round = get_post_round_by_id(db, post_round_id)
     if not post_round or post_round.post_id != post.id:
         raise ValueError("Round not found on this post")
@@ -132,7 +134,7 @@ def add_question_to_round(db, current_user, post_id, post_round_id, data):
 def publish_draft_post(db, current_user, post_id, data):
     post = get_post_by_id(db, post_id)
     if not post:
-        raise ValueError("Post not found")
+        raise NotFoundError("Post not found")
 
     if post.user_id != current_user.id:
         raise ValueError("You don't own this post")
@@ -183,7 +185,7 @@ LOCKED_AFTER_PUBLISH = {"post_category", "company_id", "education_id"}
 def update_post_details(db, current_user, post_id, data: PostUpdate):
     post = get_post_by_id(db, post_id)
     if not post:
-        raise ValueError("Post not found")
+        raise NotFoundError("Post not found")
 
     if post.user_id != current_user.id:
         raise ValueError("You don't own this post")

@@ -25,12 +25,22 @@ and __init__.py also imports database.py, this creates a circular import depende
 
 # The engine is the object that knows HOW to connect to Postgres.
 # Created once, using the DB URL from config.py — never hardcoded here.
+#
+# The Supabase *session-mode* pooler this URL points at allows only 15 client
+# connections total (shared by local dev + every Vercel instance). A fat pool
+# here (5 + 5) exhausted that budget and new connections were rejected with
+# `EMAXCONNSESSION`, surfacing as random 500s (failed saves, failed loads).
+# Keep the footprint tiny (1 + 2), reuse the newest connection first (LIFO),
+# recycle aggressively so idle sessions are released, and wait only briefly
+# for a free slot before failing fast.
 engine = create_engine(
     settings.DATABASE_URL,
     pool_pre_ping=True,
-    pool_recycle=1800,
-    pool_size=5,
-    max_overflow=5,
+    pool_recycle=600,
+    pool_size=1,
+    max_overflow=2,
+    pool_timeout=8,
+    pool_use_lifo=True,
     connect_args={"connect_timeout": 10},
 )
 
