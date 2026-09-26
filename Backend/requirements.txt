@@ -1,8 +1,11 @@
 fastapi
 uvicorn[standard]
-sqlalchemy
+sqlalchemy==2.0.51
 alembic
 psycopg2-binary
+# Driver for SQLAlchemy's psycopg3 default on newer releases — keeps the
+# `postgresql://` URL working regardless of which dialect SQLAlchemy picks.
+psycopg[binary]
 python-jose[cryptography]
 passlib==1.7.4
 bcrypt==4.0.1
