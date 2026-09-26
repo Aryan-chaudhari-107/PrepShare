@@ -116,7 +116,7 @@ const CountUp: React.FC<{ value: number }> = ({ value }) => {
 export const ProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId?: string }>();
   const navigate = useNavigate();
-  const { user: currentUser, isAuthenticated, openAuthModal, refreshUser } = useAuth();
+  const { user: currentUser, isAuthenticated, isLoading: authLoading, openAuthModal, refreshUser } = useAuth();
   const { theme, setTheme } = useTheme();
   const { success, error } = useToast();
 
@@ -176,9 +176,11 @@ export const ProfilePage: React.FC = () => {
 
     if (isSelf && !isAuthenticated) {
       // Guest viewing "my profile": offer sign-in instead of a spinner that
-      // can never resolve into content.
+      // can never resolve into content. While auth is still resolving, wait
+      // quietly — a slow profile fetch must not pop the sign-in modal on a
+      // signed-in user (this effect re-runs once auth settles).
       setLoading(false);
-      openAuthModal("login");
+      if (!authLoading) openAuthModal("login");
       return;
     }
 
@@ -262,7 +264,7 @@ export const ProfilePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [isSelf, userId, isAuthenticated, currentUser, openAuthModal, error, setTheme]);
+  }, [isSelf, userId, isAuthenticated, authLoading, currentUser, openAuthModal, error, setTheme]);
 
   useEffect(() => {
     loadData();

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import axios from "axios";
 import { UserProfile } from "../types";
 import { usersApi } from "../api";
 
@@ -25,14 +26,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<"login" | "register">("login");
 
-  const fetchProfile = useCallback(async () => {
+  const fetchProfile = useCallback(async (attempt = 0) => {
     try {
       const res = await usersApi.getMyProfile();
       setUser(res.data);
-    } catch {
-      setUser(null);
-      localStorage.removeItem("prepshare_token");
-      setToken(null);
+    } catch (err: unknown) {
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      if (status === 401 || status === 403) {
+        // The token really is invalid or revoked — drop the session.
+        setUser(null);
+        localStorage.removeItem("prepshare_token");
+        setToken(null);
+      } else if (attempt < 2) {
+        // Transient failure (5xx / network blip): keep the session and retry —
+        // a server hiccup must not silently sign the user out.
+        window.setTimeout(() => {
+          void fetchProfile(attempt + 1);
+        }, 1500 * (attempt + 1));
+      }
+      // Non-auth errors after the retries: leave state as-is (existing user
+      // stays signed in; on first load the page shows its own error state).
     } finally {
       setIsLoading(false);
     }
