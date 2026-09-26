@@ -210,3 +210,18 @@ The `FUNCTION_INVOCATION_FAILED` persisted even after the environment variables 
 | D6 | `"/api/:path*"` and `"/health/:path*"` rewrite sources do not match paths ending in `/` | collection URLs (`/api/posts/`, `/api/companies/`) fell through to the SPA fallback and returned `index.html` instead of JSON | regex sources `/api/(.*)`, `/health/(.*)` (`28d2d77`) |
 
 **Live verification (after `28d2d77`):** `/health` 200; `/health/ready` -> `{"database":"up"}` (Supabase reachable from Vercel); `/api/posts/` -> 61 seeded posts, `/api/companies/` -> seeded companies, `/api/dashboard/summary` -> platform numbers; no-slash variants redirect 307 into the backend; `/`, `/login`, `/feed` 200. In-browser: the landing hero reads "61 experiences from 15 contributors across 19 members" and the feed renders post cards with "61 experiences - Page 1 of 7" pagination. Gates: local import check, TestClient on bare + `/api` paths (200/401 as expected), backend suite `2 passed`.
+
+## 11. Round 7 - photo uploads fixed + session hardening (2026-09-26)
+
+User-reported bug: uploading a profile photo "succeeds" in the UI but the photo never appears on the profile.
+
+| # | Bug | Impact | Fix (commit) |
+|---|---|---|---|
+| D7 | Uploads wrote bytes to `Backend/static/uploads/` — impossible on Vercel's read-only FS — and even a written file would not have been served (`/static/*` is not routed to the backend) | photo upload 500'd on live; feature dead in production | uploads now return a `data:` URL (base64) stored in `users.profile_photo_url`: server-side Pillow validation + resize (avatar 320px, attachment 1600px), client-side canvas pre-compression, GIF/PDF passthrough, `kind=avatar\|attachment` form field (`0c938dc`) |
+| D8 | `AuthContext` wiped the token on ANY `/users/me` failure, and `ProfilePage.loadData` popped the sign-in modal while auth was still resolving | one transient 500 silently signed the user out and/or showed "Welcome back" to a signed-in user | session survives 5xx/network errors (2 bounded retries, clear only on 401/403); modal waits for auth to settle (`d0e07d9`) |
+
+**Verified live (browser, real upload through the deployed UI):** logged in as a seeded demo user, uploaded an 800×800 PNG through the Edit Profile modal -> success toast, avatar rendered as a 320×320 `data:image/jpeg` in 6 places, **persisted across a full reload** (DB-backed). Cleanup afterwards: demo photo reset to `NULL`, test JWT revoked via `token_version` bump (old token now 401). Gates: upload gate 17/17 (PNG/GIF/PDF/rejections/bare path), backend suite `2 passed`, tsc, vitest 6/6, build, Playwright 7/7.
+
+**Observed but unresolved:** two transient 500s (`/api/users/me`, `/api/users/me/education/`) during request bursts — self-healed on immediate retry; the engine already uses `pool_pre_ping=True`/`pool_recycle` and `wait_for_database()` boots. The Vercel session expired before function logs could be read — if 500s recur, re-authenticate and pull the runtime logs.
+
+**Vercel limits to remember:** request/response bodies cap at ~4.5 MB on Hobby, so PDF attachments larger than ~3 MB cannot round-trip as base64 — move uploads to Supabase Storage (the original plan) when attachments grow beyond that.
