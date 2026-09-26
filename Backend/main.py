@@ -59,21 +59,31 @@ app.add_middleware(
 app.mount("/static/uploads", StaticFiles(directory=static_upload_dir), name="static_uploads")
 
 # Core & Feature Routers
-app.include_router(auth.router)
-app.include_router(users.router)
-app.include_router(posts.router)
-app.include_router(companies_router.router)
-app.include_router(institutions_router.router)
-app.include_router(education_router.router)
-app.include_router(comments_router.router)
-app.include_router(likes_router.router)
-app.include_router(bookmarks_router.router)
-app.include_router(questions_router.router)
-app.include_router(completed_questions_router.router)
-app.include_router(follows_router.router)
-app.include_router(notifications_router.router)
-app.include_router(reports_router.router)
-app.include_router(chat_router.router)
-app.include_router(uploads_router.router)
-app.include_router(dashboard_router.router)
+# Each router is mounted twice: bare (local dev, CI tests) and under /api.
+# On Vercel the request.path transform is a no-op, so the live site's
+# /api/* requests reach FastAPI unmodified and need these prefixed routes.
+_feature_routers = [
+    auth.router,
+    users.router,
+    posts.router,
+    companies_router.router,
+    institutions_router.router,
+    education_router.router,
+    comments_router.router,
+    likes_router.router,
+    bookmarks_router.router,
+    questions_router.router,
+    completed_questions_router.router,
+    follows_router.router,
+    notifications_router.router,
+    reports_router.router,
+    chat_router.router,
+    uploads_router.router,
+    dashboard_router.router,
+]
+for _router in _feature_routers:
+    app.include_router(_router)
+    app.include_router(_router, prefix="/api")
+
 app.include_router(dashboard_router.health_router)
+app.include_router(dashboard_router.health_router, prefix="/api")
