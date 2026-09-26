@@ -180,3 +180,21 @@ Earlier rounds also fixed: 3 metric-coherence bugs caught by screenshot review (
 3. **Probes** — use `GET /health` for liveness and **`GET /health/ready`** for readiness (503 while the DB is unreachable).
 4. **Domain + HTTPS** — update `CORS_ORIGINS` to the real frontend origin; OG meta already points at production paths.
 5. **Optional later** — DB-enforced UTC constraint, per-query retry policy, visual-regression snapshots.
+
+---
+
+## 9. Round 5 - live deployment evaluation (Vercel Services, 2026-09-26)
+
+**Setup:** one Vercel project with Framework = Services. Root `vercel.json` defines `frontend` (Vite, `Frontend/`) and `backend` (FastAPI, `Backend/`, `entrypoint: main:app`); top-level rewrites send `/api/*` and `/health*` to the backend and everything else to the frontend. Live URL: `https://prep-share.vercel.app`.
+
+**Deployment bugs caught & fixed (all in-repo, all pushed):**
+
+| # | Bug | Impact | Fix (commit) |
+|---|---|---|---|
+| D1 | `Backend/static/uploads/` was never tracked in git | deploy bundle lacks the directory; import-time `makedirs`/`StaticFiles` crash on serverless read-only FS | tracked `.gitkeep` (`44a4532`) |
+| D2 | Services mode ignores `Frontend/vercel.json` | refreshing any route returned Vercel's platform 404 (verified: `/login` -> `NOT_FOUND`) | SPA rewrite inside the frontend service (`b23628d`) |
+| D3 | A service receives the original path (`/api/auth/login`), FastAPI routes are un-prefixed | every API call would 404 even with the backend healthy | official `request.path` transform strips `/api` (`b23628d`) |
+
+**Live verification (2026-09-26, after `b23628d`):** `/` 200, `/login` 200 (SPA fallback confirmed), `/api/*` and `/health*` reach the backend function; CI run `36225813970` 3/3 green.
+
+**Remaining - platform configuration, by design not in the repo:** the Vercel project must define `VITE_API_BASE_URL=/api` (build-time) plus the nine backend variables read by `Settings()` at import (`DATABASE_URL`, `SECRET_KEY`, `ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `CORS_ORIGINS`). Until they exist the backend fails at import with `FUNCTION_INVOCATION_FAILED` (observed live). Known serverless limitation: the file-upload feature writes to local disk and needs external storage before launch.
