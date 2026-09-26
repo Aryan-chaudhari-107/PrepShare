@@ -26,7 +26,10 @@ dist-ssr
 # Environment variables
 .env
 .env.local
-.env.production
+# Committed on purpose: .env.production holds only VITE_API_BASE_URL=/api
+# (a relative path, no secret) so production builds are correct without
+# any dashboard configuration. Secrets stay in Backend/.env (ignored).
+!.env.production
 
 # Playwright
 test-results
