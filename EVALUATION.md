@@ -1,7 +1,7 @@
 # PrepShare — Full Project Evaluation
 
-**Date:** 2026-09-25 · **Scope:** Frontend (`D:\New folder\Mine\Frontend`) + Backend (`D:\New folder\Mine\Backend`)
-**Rounds:** (1) app-shell dashboard delivery · (2) recommended-steps hardening · (3) full accessibility/SEO/quality audit — all complete.
+**Date:** 2026-09-25/26 · **Scope:** Frontend (`D:\New folder\Mine\Frontend`) + Backend (`D:\New folder\Mine\Backend`)
+**Rounds:** (1) app-shell dashboard delivery · (2) recommended-steps hardening · (3) full accessibility/SEO/quality audit · (4) live-readiness round (tests, e2e, ops hardening, push) — all complete.
 
 ---
 
@@ -40,6 +40,16 @@
 | 4 | Split oversized files; add component tests | ✅ DashboardPage → 11 components; AppShell → 3 extracted parts; **vitest + jsdom + RTL** added with bento-span tests (anonymous / signed-in / loading skeleton + grid packer) — 3/3 green |
 | 5 | Bundle watch / manualChunks | ✅ `manualChunks`: main app **179.5 kB (57.0 gz)**, react **163.6 kB (53.5 gz)**, motion **148.3 kB (49.3 gz)**; DashboardPage chunk 25.2 kB (6.8 gz) |
 | 6 | Lighthouse/axe pass, OG meta, rate-limit review | ✅ Completed — see §3; `GET /dashboard/summary` now `@limiter.limit("60/minute")`, proven by burst test (60×200 → **429** on #61); OG/Twitter meta in `index.html`; `public/robots.txt` added |
+
+### Round 4 — live-readiness recommendations (all completed)
+
+| # | Recommendation | Outcome |
+|---|---|---|
+| 7 | Push to `origin/main`; add `DATABASE_URL` repo secret | ✅ Committed `fd84f61` (116 files) and pushed; `DATABASE_URL` + `SECRET_KEY` repository secrets **set via GitHub API** (values encrypted by GitHub, never printed/committed); CI run `36220382753` **3/3 jobs green** |
+| 8 | Behavioural unit tests + Playwright smoke pass | ✅ vitest: error→**Try again** refetch, auth-flip refetch/swap, feed-failure resilience (6/6 total); Playwright **7/7** — hermetic smoke (dashboard/feed/theme/404, route-mocked, no backend needed) + **keyboard suite** (tab order + focus rings, modal focus trap, Escape focus restore, Enter activation) |
+| 9 | Backend connection retry/backoff + pytest collection | ✅ `wait_for_database()` exponential backoff (0.5→4 s) runs at startup with clear log lines; new **`GET /health/ready`** readiness probe (DB round-trip, 503 when down) + smoke coverage; both script suites collected by **pytest** via `tests/test_suites.py` (+ `requirements-dev.txt`), wired into CI |
+| 10 | Manual screen-reader pass | ⚠️ Automated portion complete: real-keyboard Playwright suite, landmark/heading/label structural audit, focus-visible verification (0 unlabeled inputs, full landmark set, no heading skips). **Listening pass with NVDA/VoiceOver still requires a human** — cannot be automated |
+| 11 | Expose `RateLimit-*` headers | ✅ slowapi `headers_enabled=True` + CORS `expose_headers`; all 7 rate-limited endpoints declare `response: Response`; verified on **200** (`X-RateLimit-Limit/Remaining/Reset`) and **429** (+`Retry-After: 58`) |
 
 ---
 
@@ -83,21 +93,25 @@ Earlier rounds also fixed: 3 metric-coherence bugs caught by screenshot review (
 | Gate / check | Method | Result |
 |---|---|---|
 | TypeScript | `npx tsc --noEmit` (strict + `noUnusedLocals`) | ✅ PASS |
-| Frontend tests | `npx vitest run` (RTL bento-layout suite) | ✅ 3/3 PASS |
-| Production build | `npx vite build` (6.4 s; DashboardPage chunk 25.2 kB) | ✅ PASS |
-| Backend endpoint suite | `tests/dashboard_smoke.py` | ✅ 18/18 PASS |
-| Backend security audit | `tests/security_audit.py` (auth/IDOR/privacy/validation/state/robustness) | ✅ 32/32 PASS |
-| Lighthouse | accessibility / best-practices / seo | ✅ **1.0 / 1.0 / 1.0** |
-| axe-core full page | 8 state×route combinations | ✅ 0 violations everywhere |
-| Rate limit | 60-request burst on `GET /dashboard/summary` | ✅ 60×200, **429** on #61 |
+| Frontend unit/component tests | `npx vitest run` — bento layout **+ behavioural** (error/retry, auth flip, feed-failure) | ✅ **6/6 PASS** |
+| Production build | `npx vite build` (10.4 s; main app 179.5 kB / 57.0 gz) | ✅ PASS |
+| Backend suites via **pytest** | `python -m pytest tests/test_suites.py` (smoke incl. `/health/ready` + security audit) | ✅ **2/2 PASS** (all inner checks green) |
+| Playwright e2e | `npx playwright test` — hermetic smoke + keyboard/focus audit (7 tests) | ✅ **7/7 PASS** |
+| **GitHub CI** | run `36220382753` on `main` (`fd84f61`) — 3 jobs | ✅ **all success** (frontend build, hermetic e2e, backend pytest w/ secrets) |
+| Lighthouse | accessibility / best-practices / seo | ✅ **1.0 / 1.0 / 1.0**, zero failures |
+| axe-core | dashboard (dark) + `/feed` re-run this round; 8-state pass earlier | ✅ **0 violations** (42 / 40 passes) |
+| Rate-limit headers (200) | `GET /dashboard/summary` | ✅ `X-RateLimit-Limit: 60`, `Remaining`, `Reset` + CORS `expose-headers` |
+| Rate-limit headers (429) | 6-request burst on `POST /auth/login` (5/min) | ✅ 429 on #6 with `Retry-After: 58`, `Remaining: 0` |
+| Readiness probe | `GET /health/ready` (real DB round-trip) | ✅ 200 `{"database":"up"}`; returns 503 when DB unreachable |
+| Keyboard/focus (Playwright, real keys) | Tab order ×8, focus rings, modal focus trap ×15 Tabs, Escape focus restore, Enter activation | ✅ all PASS |
 | Signed-out dashboard | Live: platform stats, categories 15/10/5/3, gauge, feed, discussions | ✅ |
 | Signed-in dashboard | Live (local JWT): goal 6/8, engagement scope, offer 50% author-scoped, no drafts branch | ✅ |
 | Client-side routing | `/` ⇄ `/feed` ⇄ `/posts/:id`; nav + breadcrumb update; 0 console errors | ✅ |
 | Responsive | 1062 px 2-col / 332 px 1-col, drawer, zero horizontal overflow | ✅ |
 | Theming | Light + dark both audited (axe) and captured | ✅ |
 | Data hygiene | 5 "Updated Title" + 22 drafts soft-deleted; 33 published remain | ✅ |
-| No API keys | No key embedded, injected, or required anywhere | ✅ |
-| Repo hygiene | `git status` reviewed — only intended project files untracked; no temp artifacts | ✅ |
+| No API keys | No key embedded, injected, or required anywhere (repo secrets are server-side only) | ✅ |
+| Repo hygiene | `.env` ignored on both sides; only `.env.example` tracked; no temp artifacts committed | ✅ |
 
 **Environment note (not an app defect):** screenshot/rAF verification requires the OpenCode window in the foreground — when minimized, the compositor suspends `requestAnimationFrame` and route transitions appear to "hang". Also, injected audit scripts must be re-injected after Vite full reloads.
 
@@ -107,15 +121,15 @@ Earlier rounds also fixed: 3 metric-coherence bugs caught by screenshot review (
 
 ### Frontend — 9 / 10
 
-**Strengths** — clean layering (`pages → components → motion → api/types → context`); design-system discipline with CSS-variable tokens and a reusable `ui/` kit; thoughtful motion architecture (staged route transitions, `reducedMotion="user"`, transform/only atmosphere layers); route-level code splitting + vendor `manualChunks`; strict TS with `noUnusedLocals`; now backed by a component test suite.
+**Strengths** — clean layering (`pages → components → motion → api/types → context`); design-system discipline with CSS-variable tokens and a reusable `ui/` kit; thoughtful motion architecture (staged route transitions, `reducedMotion="user"`, transform/only atmosphere layers); route-level code splitting + vendor `manualChunks`; strict TS with `noUnusedLocals`; component + behavioural test suite; hermetic Playwright smoke and keyboard/focus suite.
 
-**Remaining** — `AppShell` still owns a lot of orchestration wiring; aggregate widgets re-fetch the whole summary on auth flip (fine at this scale); unit coverage is focused on layout invariants, not behavior.
+**Remaining** — `AppShell` still owns a lot of orchestration wiring; aggregate widgets re-fetch the whole summary on auth flip (fine at this scale).
 
-### Backend — 8.5 / 10
+### Backend — 9 / 10
 
-**Strengths** — disciplined six-layer structure across 17 routers; bcrypt + JWT with `token_version` revocation and an optional-auth dependency; SQL-side aggregations; config-driven weekly goal; rate-limited public endpoint; smoke + security suites green.
+**Strengths** — disciplined six-layer structure across 17 routers; bcrypt + JWT with `token_version` revocation and an optional-auth dependency; SQL-side aggregations; config-driven weekly goal; rate-limited endpoints **with client-visible quota headers**; startup DB retry/backoff + `/health/ready` readiness probe; smoke + security suites collected by pytest and running in CI.
 
-**Remaining** — remote Supabase latency has no surfaced retry policy; tests are runnable scripts rather than pytest-collected suites (CI runs them as such); naive-UTC columns are policy-documented but not DB-enforced.
+**Remaining** — naive-UTC columns are policy-documented but not DB-enforced; retry/backoff covers connect-time, not per-query mid-request failures (pool_pre_ping mitigates stale connections).
 
 ---
 
@@ -128,19 +142,31 @@ Earlier rounds also fixed: 3 metric-coherence bugs caught by screenshot review (
 | New feature completeness | 9.5/10 | Personal + platform dashboard, one endpoint, no migrations, config-driven goal |
 | Data correctness | 9.5/10 | Screenshot pass caught 3 coherence bugs (fixed); test data cleaned |
 | Responsive layout | 9/10 | Verified 1062/332 px + drawer; zero overflow |
-| Accessibility | 9.5/10 | Lighthouse 1.0, axe 0 across 8 states; manual screen-reader pass not performed |
+| Accessibility | 9.5/10 | Lighthouse 1.0, axe 0 violations; automated keyboard/focus audit green — human NVDA/VoiceOver listening pass still recommended |
 | Performance | 9/10 | Vendor chunks split; main app 57 kB gz; transform-only animation |
-| Code quality | 9/10 | Component split done; conventions consistent; small test surface |
-| Testing | 8/10 | Backend 18/18 + 32/32; frontend bento tests green; no e2e |
-| Maintainability / delivery | 9/10 | CI ready (needs first push), docs, README updated |
-| **Overall** | **9.2/10** | Production-quality SaaS feel; remaining work is coverage + hardening depth |
+| Code quality | 9/10 | Component split done; conventions consistent |
+| Testing | 9/10 | vitest 6/6 (incl. behavioural), Playwright 7/7 (smoke + keyboard), backend pytest suites, CI green on first push |
+| Maintainability / delivery | 9.5/10 | CI live on `origin/main` (3/3 jobs), repo secrets set, docs/EVALUATION current |
+| **Overall** | **9.4/10** | Production-ready; remaining gaps are a human screen-reader pass and deployment configuration |
 
 ---
 
-## 7. Remaining recommendations (optional next tier)
+## 7. Recommendations — final status
 
-1. Push to `origin/main` so `.github/workflows/ci.yml` runs; add the `DATABASE_URL` repository secret for the backend test job.
-2. Add behavioural unit tests (auth flip, retry/skeleton states) and a Playwright smoke pass.
-3. Backend: connection retry/backoff surfacing for Supabase; consider pytest collection for the two script suites.
-4. Manual screen-reader pass (NVDA/VoiceOver) — automated checks are clean, but nothing replaces a human pass.
-5. Expose `RateLimit-*` headers (slowapi `expose_headers`) if clients ever need quota visibility.
+| # | Recommendation | Status |
+|---|---|---|
+| 1 | Push to `origin/main` so CI runs; add `DATABASE_URL` secret | ✅ **Done** — `fd84f61` pushed; `DATABASE_URL` + `SECRET_KEY` set as encrypted repo secrets; CI run `36220382753` **3/3 jobs green** |
+| 2 | Behavioural unit tests + Playwright smoke pass | ✅ **Done** — vitest behavioural suite (retry/auth-flip/feed-failure) + Playwright hermetic smoke + keyboard suite; runs in CI |
+| 3 | Backend connection retry/backoff; pytest collection | ✅ **Done** — startup backoff + `/health/ready` + pytest wrappers wired into CI |
+| 4 | Manual screen-reader pass (NVDA/VoiceOver) | ⚠️ **Automated half done** (keyboard/focus/structure verified with real key events); the listening pass itself is inherently human — see §8 |
+| 5 | Expose `RateLimit-*` headers | ✅ **Done** — verified on 200 and 429 responses, CORS-exposed |
+
+---
+
+## 8. Going live — what remains (manual, outside this repo)
+
+1. **Human screen-reader pass** — 15 minutes with NVDA (Windows) / VoiceOver (macOS) over: dashboard, feed, post detail, auth modal, messages. Automated checks are clean; this is the one thing tools cannot replace.
+2. **Deploy** — e.g. Vercel/Netlify (Frontend, set `VITE_API_BASE_URL`) + Render/Railway/Fly (Backend, `uvicorn main:app`), or a single Docker host. Set `DATABASE_URL`, `SECRET_KEY`, `CORS_ORIGINS`, `SMTP_*` in the platform's secret store; point the frontend's `VITE_API_BASE_URL` at the API.
+3. **Probes** — use `GET /health` for liveness and **`GET /health/ready`** for readiness (503 while the DB is unreachable).
+4. **Domain + HTTPS** — update `CORS_ORIGINS` to the real frontend origin; OG meta already points at production paths.
+5. **Optional later** — DB-enforced UTC constraint, per-query retry policy, visual-regression snapshots.
