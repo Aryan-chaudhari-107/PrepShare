@@ -45,11 +45,21 @@
 
 | # | Recommendation | Outcome |
 |---|---|---|
-| 7 | Push to `origin/main`; add `DATABASE_URL` repo secret | ✅ Committed `fd84f61` (116 files) and pushed; `DATABASE_URL` + `SECRET_KEY` repository secrets **set via GitHub API** (values encrypted by GitHub, never printed/committed); CI run `36220382753` **3/3 jobs green** |
+| 7 | Push to `origin/main`; add `DATABASE_URL` repo secret | ✅ Pushed (`fd84f61`,116 files); `DATABASE_URL` + `SECRET_KEY` set via GitHub API (values encrypted by GitHub, never printed/committed); CI re-verified green end-to-end in run `36220944079` |
 | 8 | Behavioural unit tests + Playwright smoke pass | ✅ vitest: error→**Try again** refetch, auth-flip refetch/swap, feed-failure resilience (6/6 total); Playwright **7/7** — hermetic smoke (dashboard/feed/theme/404, route-mocked, no backend needed) + **keyboard suite** (tab order + focus rings, modal focus trap, Escape focus restore, Enter activation) |
 | 9 | Backend connection retry/backoff + pytest collection | ✅ `wait_for_database()` exponential backoff (0.5→4 s) runs at startup with clear log lines; new **`GET /health/ready`** readiness probe (DB round-trip, 503 when down) + smoke coverage; both script suites collected by **pytest** via `tests/test_suites.py` (+ `requirements-dev.txt`), wired into CI |
 | 10 | Manual screen-reader pass | ⚠️ Automated portion complete: real-keyboard Playwright suite, landmark/heading/label structural audit, focus-visible verification (0 unlabeled inputs, full landmark set, no heading skips). **Listening pass with NVDA/VoiceOver still requires a human** — cannot be automated |
 | 11 | Expose `RateLimit-*` headers | ✅ slowapi `headers_enabled=True` + CORS `expose_headers`; all 7 rate-limited endpoints declare `response: Response`; verified on **200** (`X-RateLimit-Limit/Remaining/Reset`) and **429** (+`Retry-After: 58`) |
+
+### Round-4 bugs caught & fixed
+
+| # | Bug | Root cause | Fix |
+|---|---|---|---|
+| 1 | All rate-limited endpoints 500'd as soon as headers were enabled | slowapi needs an explicit `response: Response` parameter on each decorated endpoint to attach `X-RateLimit-*` | `response: Response` added to all 7 rate-limited endpoints (caught by a live request, not assumed) |
+| 2 | pytest couldn't collect the script suites (`ModuleNotFoundError`) | pytest 9 no longer puts the test dir on `sys.path` | explicit path setup in `tests/test_suites.py` |
+| 3 | **CI backend boot crashed: `No module named 'psycopg'`** | unpinned `sqlalchemy` resolved to **2.1.1** on CI while local runs 2.0.51; SQLAlchemy 2.1 changed the `postgresql://` default dialect to psycopg3, which was never installed | pin `sqlalchemy==2.0.51` (the fully verified runtime) **and** add `psycopg[binary]` for forward-compat |
+| 4 | First CI run's backend integration tests silently **skipped** | `DATABASE_URL`/`SECRET_KEY` were set seconds *after* that run started, so its env saw empty secrets (compile-only pass) | ordering issue, self-corrected on later runs; every claim below now refers to a run where the pytest steps actually executed |
+| 5 | Playwright strict-mode locator dupes; RTL matcher misses | Two "Explore Feed" links (nav + footer); split hero text; no jest-dom matchers | Scoped selectors, substring matching, `.not.toBeNull()` assertions |
 
 ---
 
@@ -97,7 +107,7 @@ Earlier rounds also fixed: 3 metric-coherence bugs caught by screenshot review (
 | Production build | `npx vite build` (10.4 s; main app 179.5 kB / 57.0 gz) | ✅ PASS |
 | Backend suites via **pytest** | `python -m pytest tests/test_suites.py` (smoke incl. `/health/ready` + security audit) | ✅ **2/2 PASS** (all inner checks green) |
 | Playwright e2e | `npx playwright test` — hermetic smoke + keyboard/focus audit (7 tests) | ✅ **7/7 PASS** |
-| **GitHub CI** | run `36220382753` on `main` (`fd84f61`) — 3 jobs | ✅ **all success** (frontend build, hermetic e2e, backend pytest w/ secrets) |
+| **GitHub CI** | run `36220944079` on `main` (`032605d`) — 3 jobs; backend **Start API + pytest steps executed** (not skipped) | ✅ **all success** |
 | Lighthouse | accessibility / best-practices / seo | ✅ **1.0 / 1.0 / 1.0**, zero failures |
 | axe-core | dashboard (dark) + `/feed` re-run this round; 8-state pass earlier | ✅ **0 violations** (42 / 40 passes) |
 | Rate-limit headers (200) | `GET /dashboard/summary` | ✅ `X-RateLimit-Limit: 60`, `Remaining`, `Reset` + CORS `expose-headers` |
@@ -146,7 +156,7 @@ Earlier rounds also fixed: 3 metric-coherence bugs caught by screenshot review (
 | Performance | 9/10 | Vendor chunks split; main app 57 kB gz; transform-only animation |
 | Code quality | 9/10 | Component split done; conventions consistent |
 | Testing | 9/10 | vitest 6/6 (incl. behavioural), Playwright 7/7 (smoke + keyboard), backend pytest suites, CI green on first push |
-| Maintainability / delivery | 9.5/10 | CI live on `origin/main` (3/3 jobs), repo secrets set, docs/EVALUATION current |
+| Maintainability / delivery | 9.5/10 | CI live on `origin/main` (3/3 jobs, backend integration tests executed), repo secrets set, docs/EVALUATION current |
 | **Overall** | **9.4/10** | Production-ready; remaining gaps are a human screen-reader pass and deployment configuration |
 
 ---
@@ -155,7 +165,7 @@ Earlier rounds also fixed: 3 metric-coherence bugs caught by screenshot review (
 
 | # | Recommendation | Status |
 |---|---|---|
-| 1 | Push to `origin/main` so CI runs; add `DATABASE_URL` secret | ✅ **Done** — `fd84f61` pushed; `DATABASE_URL` + `SECRET_KEY` set as encrypted repo secrets; CI run `36220382753` **3/3 jobs green** |
+| 1 | Push to `origin/main` so CI runs; add `DATABASE_URL` secret | ✅ **Done** — pushed; `DATABASE_URL` + `SECRET_KEY` set as encrypted repo secrets; CI run `36220944079` **3/3 jobs green with backend integration tests executed** (the first run raced the secret setup and skipped them — see round-4 bugs) |
 | 2 | Behavioural unit tests + Playwright smoke pass | ✅ **Done** — vitest behavioural suite (retry/auth-flip/feed-failure) + Playwright hermetic smoke + keyboard suite; runs in CI |
 | 3 | Backend connection retry/backoff; pytest collection | ✅ **Done** — startup backoff + `/health/ready` + pytest wrappers wired into CI |
 | 4 | Manual screen-reader pass (NVDA/VoiceOver) | ⚠️ **Automated half done** (keyboard/focus/structure verified with real key events); the listening pass itself is inherently human — see §8 |
