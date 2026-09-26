@@ -1,0 +1,2 @@
+# Keeps the uploads folder in git so every clone and deploy bundle
+# contains Backend/static/uploads (FastAPI mounts it at import time).
