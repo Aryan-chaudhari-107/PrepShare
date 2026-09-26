@@ -2,114 +2,239 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ──────────────────────────────────────────────────────────────────────────
+   THEME TOKENS
+   Only RGB CHANNELS live here (no `rgb()` wrapper) so Tailwind's
+   <alpha-value> modifier keeps working — e.g. bg-primary/10.
+
+   Every surface, text, border and status colour in the app reads from this
+   block. Tune the palette here once; flipping `.dark` onto <html> retunes
+   the whole application.
+   ───────────────────────────────────────────────────────────────────────── */
 :root {
-  /* Backgrounds & surfaces */
-  --bg-canvas: #faf7ee;       /* page background, warm ivory */
-  --bg-surface: #ffffff;      /* cards */
-  --bg-raised: #f3eee1;       /* hover, dropdowns, inputs */
-  --border-subtle: #e3dccd;
-  --border-highlight: rgba(63, 111, 82, 0.35);
+  color-scheme: light;
 
-  /* Text */
-  --text-heading: #0f1926;    /* deep navy */
-  --text-body: #2b3a4f;
-  --text-muted: #5f6e82;
+  /* App bar height — the ONE constant every sticky offset derives from. */
+  --navbar-height: 64px;
 
-  /* Brand */
-  --color-primary: #3f6f52;         /* button fill, white text */
-  --color-primary-hover: #345c44;
-  --color-link: #2f6b47;            /* links, icons */
-  --color-accent: #3f6f9e;          /* scores, verified badges */
+  /* Surfaces — warm neutral, never cream/yellow */
+  --canvas: 247 247 244;
+  --surface: 255 255 255;
+  --raised: 252 252 250;
+  --sunken: 238 237 232;
 
-  /* Status */
-  --color-success: #2f7d52;
-  --color-warning: #b26a00;
-  --color-danger: #b5462f;
+  /* Lines */
+  --line: 228 226 219;
+  --line-strong: 208 205 196;
 
-  /* Soft tints for badges and tags */
-  --tint-success: rgba(47, 125, 82, 0.10);
-  --tint-warning: rgba(178, 106, 0, 0.12);
-  --tint-danger: rgba(181, 70, 47, 0.10);
-  --tint-accent: rgba(63, 111, 158, 0.10);
+  /* Text — tinted for contrast: every tier clears WCAG AA (4.5:1) even on
+     the sunken surface, so secondary copy stays readable in light mode. */
+  --heading: 13 18 25;
+  --body: 46 54 68;
+  --muted: 84 94 107;
+  --faint: 98 106 118;
 
-  /* Layout & Sizing Scale */
-  --container-max-width: 1680px;
-  --container-padding: clamp(24px, 4vw, 64px);
-  --navbar-height: 72px;
-  --sidebar-width: 320px;
-  --card-padding: 26px;
-  --card-radius: 16px;
-  --card-gap: 24px;
-  --input-height: 44px;
-  --input-radius: 12px;
+  /* Campus badge ink — the static olive scale themed for WCAG AA: olive-700
+     (#2f6b47) reads 5.7:1 on light surfaces, but only 2.52:1 on dark ones,
+     so dark mode swaps to olive-300 (#a4c3ae, 8.4:1 on --surface). */
+  --olive-ink: 47 107 71;
 
-  /* Typography Scale */
-  --font-size-base: 16px;
-  --font-size-card-title: 22px;
-  --font-size-author: 16px;
-  --font-size-meta: 14px;
-  --font-size-badge: 13.5px;
-  --font-size-action: 15px;
-  --font-size-input: 15px;
-  --line-height-body: 1.5;
-  --line-height-heading: 1.3;
+  /* Brand + status: DEFAULT hue, -fg text on it, -soft tinted fill */
+  --primary: 63 111 82;
+  --primary-hover: 47 92 68;
+  --primary-fg: 255 255 255;
+  --primary-soft: 238 244 240;
+
+  --accent: 63 111 158;
+  --accent-fg: 255 255 255;
+  --accent-soft: 235 241 247;
+
+  --success: 47 125 82;
+  --success-fg: 255 255 255;
+  --success-soft: 236 245 240;
+
+  /* 163 95 0 (#a35f00) keeps the amber hue but clears WCAG AA in all three
+     pairings: on white 5.01, on --warning-soft 4.55, white text on it 5.01
+     (the old 178 106 0 was 4.24 on white / 3.85 on soft — both failing). */
+  --warning: 163 95 0;
+  --warning-fg: 255 255 255;
+  --warning-soft: 253 243 224;
+
+  --danger: 181 70 47;
+  --danger-fg: 255 255 255;
+  --danger-soft: 253 238 236;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --canvas: 12 15 20;
+  --surface: 21 26 34;
+  --raised: 27 33 42;
+  --sunken: 17 21 28;
+
+  --line: 41 48 60;
+  --line-strong: 58 67 82;
+
+  --heading: 238 241 245;
+  --body: 203 211 221;
+  --muted: 147 157 171;
+  --faint: 128 139 154;
+  --olive-ink: 164 195 174;
+
+  --primary: 116 174 140;
+  --primary-hover: 140 192 161;
+  --primary-fg: 11 17 13;
+  --primary-soft: 27 38 32;
+
+  --accent: 126 168 213;
+  --accent-fg: 10 15 21;
+  --accent-soft: 25 34 44;
+
+  --success: 78 172 124;
+  --success-fg: 10 18 14;
+  --success-soft: 22 37 30;
+
+  --warning: 217 161 49;
+  --warning-fg: 22 16 4;
+  --warning-soft: 42 33 17;
+
+  --danger: 226 116 96;
+  --danger-fg: 26 11 8;
+  --danger-soft: 45 26 23;
 }
 
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
   body {
-    background-color: var(--bg-canvas);
-    color: var(--text-body);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: var(--font-size-base);
-    line-height: var(--line-height-body);
+    background-color: rgb(var(--canvas));
+    color: rgb(var(--body));
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
     overflow-x: hidden;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    line-height: var(--line-height-heading);
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: rgb(var(--heading));
+    letter-spacing: -0.018em;
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+
+  ::selection {
+    background: rgb(var(--primary) / 0.22);
+    color: rgb(var(--heading));
+  }
+
+  /* Opt-in: keeps stats, counters, pagination and timestamps aligned. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 }
 
-.app-container {
-  width: 100%;
-  max-width: var(--container-max-width);
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: var(--container-padding);
-  padding-right: var(--container-padding);
+/* ── One global focus treatment for the whole app ────────────────────────
+   Deliberately UNLAYERED. Tailwind's `utilities` layer is declared after
+   `base`, so a rule left inside @layer base loses to any focus utility
+   (e.g. `focus-visible:outline-none`) and the app silently loses every
+   focus ring. Unlayered CSS outranks all layers, so this always wins.
+   Note: no `border-radius` here — outline follows the element's own curve,
+   and forcing one would reshape rounded controls while they are focused. */
+:focus-visible {
+  outline: 2px solid rgb(var(--primary));
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
 }
 
-/* Glassmorphism & Elevation */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-subtle);
-  box-shadow: 0 4px 20px -2px rgba(15, 25, 38, 0.05);
+/* `.field` paints a softer ring of its own on focus — skip the global
+   outline there so keyboard focus does not render two rings at once. */
+.field:focus-visible {
+  outline: none;
 }
 
-.glass-nav {
-  background: rgba(250, 247, 238, 0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border-subtle);
+@layer components {
+  /* Shared field shell — one input recipe for text, textarea and select. */
+  .field {
+    @apply w-full rounded-lg border border-line bg-surface px-3.5 py-2.5
+           text-[15px] text-heading placeholder:text-faint
+           transition-[border-color,box-shadow] duration-fast ease-swift
+           hover:border-line-strong
+           focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20
+           disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-line;
+  }
+
+  .shimmer {
+    /* Softened deliberately: a skeleton should suggest content, not glare.
+       Slower sweep + lower contrast keeps it feeling calm rather than busy. */
+    background-image: linear-gradient(
+      90deg,
+      rgb(var(--sunken) / 0.5) 0%,
+      rgb(var(--line) / 0.62) 45%,
+      rgb(var(--sunken) / 0.5) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2.2s linear infinite;
+  }
 }
 
-.glass-card {
-  background: #ffffff;
-  border: 1px solid var(--border-subtle);
-  box-shadow: 0 1px 3px rgba(15, 25, 38, 0.04);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+@layer utilities {
+  .scrollbar-slim {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--faint) / 0.4) transparent;
+  }
+  .scrollbar-slim::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-slim::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-slim::-webkit-scrollbar-thumb {
+    background: rgb(var(--faint) / 0.32);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .scrollbar-slim::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--primary) / 0.5);
+    background-clip: content-box;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
 }
 
-.glass-card:hover {
-  background: #ffffff;
-  border-color: rgba(63, 111, 82, 0.45);
-  box-shadow: 0 10px 25px -5px rgba(15, 25, 38, 0.08);
-  transform: translateY(-2px);
-}
-
-/* Shimmer Loading Animation */
+/* ──────────────────────────────────────────────────────────────────────────
+   MOTION UTILITIES
+   Looping keyframes are declared HERE rather than through the Tailwind
+   `animation` config on purpose: Tailwind only emits a @keyframes block when
+   the matching animate-* utility appears in scanned source, so a keyframe
+   referenced only from a component class (.shimmer) was never shipped and
+   skeletons sat static. Declaring them at the top level always ships.
+   ───────────────────────────────────────────────────────────────────────── */
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
@@ -119,65 +244,112 @@
   }
 }
 
-.skeleton-shimmer {
-  background: linear-gradient(
-    90deg,
-    rgba(243, 238, 225, 0.6) 0%,
-    rgba(227, 220, 205, 0.8) 50%,
-    rgba(243, 238, 225, 0.6) 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.8s infinite ease-in-out;
+/* Ambient float for StateArt illustrations — tiny amplitude, slow, endless. */
+@keyframes art-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -6px, 0);
+  }
 }
 
-/* Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Soft breathing ring for focal status marks (offer received, verified). */
+@keyframes pulse-ring {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+/* Ambient background drift for Atmosphere — two soft light fields crossing
+   the canvas on long, offset loops so they never phase-lock. Transform-only
+   (compositor-only), no blur/filter, and the global reduced-motion rule
+   below collapses each loop to its resting frame. */
+@keyframes atmosphere-drift-a {
+  0%,
+  100% {
+    transform: translate3d(-4%, -3%, 0);
+  }
+  50% {
+    transform: translate3d(5%, 6%, 0);
+  }
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(95, 110, 130, 0.25);
-  border-radius: 9999px;
+@keyframes atmosphere-drift-b {
+  0%,
+  100% {
+    transform: translate3d(5%, 4%, 0);
+  }
+  50% {
+    transform: translate3d(-6%, -5%, 0);
+  }
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(63, 111, 82, 0.5);
+@layer utilities {
+  .animate-art-float {
+    animation: art-float 7s ease-in-out infinite;
+    transform-origin: center;
+  }
+  .animate-pulse-ring {
+    animation: pulse-ring 2.4s ease-in-out infinite;
+  }
+  .animate-atmosphere-a {
+    animation: atmosphere-drift-a 46s ease-in-out infinite;
+  }
+  .animate-atmosphere-b {
+    animation: atmosphere-drift-b 61s ease-in-out infinite;
+  }
+
+  /* Depth helper — lift and shadow move together, so a raised surface never
+     reads as a flat image that merely grew. Timing mirrors DURATION.base /
+     EASE.standard; the hover cast is the `lg` elevation tier. */
+  .depth-lift {
+    transition-property: transform, box-shadow;
+    @apply duration-base ease-swift;
+  }
+  .depth-lift:hover {
+    transform: translate3d(0, -2px, 0);
+    @apply shadow-lg;
+  }
 }
 
-/* Custom Thin Scrollbar for Filters */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
+/* Glowing edge for interactive catalog surfaces (posts, panels).
+   UNLAYERED on purpose: it must outrank Tailwind's hover:shadow and
+   hover:border utilities so every glow-edged card shares ONE recipe — border warms to the
+   brand hue and a soft primary halo lifts the card off the environment.
+   `:focus-within` mirrors `:hover`, so keyboard users get the same elevation
+   cue as pointer users. Pair with the `group` class on the same element. */
+.glow-edge {
+  transition:
+    border-color 140ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.glow-edge.group:hover,
+.glow-edge.group:focus-within {
+  border-color: rgb(var(--primary) / 0.45);
+  box-shadow:
+    0 0 0 1px rgb(var(--primary) / 0.16),
+    0 18px 44px -18px rgb(var(--primary) / 0.4);
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(95, 110, 130, 0.2);
-  border-radius: 9999px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(63, 111, 82, 0.4);
-}
-
-/* Hide scrollbars */
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* Button Press Physics */
-.btn-press {
-  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.12s ease;
-}
-
-.btn-press:active {
-  transform: scale(0.96);
+/* ── Respect the OS motion preference, app-wide ───────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

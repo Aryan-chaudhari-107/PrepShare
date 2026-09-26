@@ -1,16 +1,37 @@
-import React, { useEffect } from "react";
+import React, { useId, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
+import { cn } from "../../lib/cn";
+import { useFocusTrap, useScrollLock } from "../../hooks/useFocusTrap";
+import { panel, veil } from "../../motion";
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
-  subtitle?: string;
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
   children: React.ReactNode;
+  /** Tailwind max-width utility, e.g. "max-w-lg". */
   maxWidth?: string;
+  /** Hides the header close button for multi-step flows that supply their own. */
+  hideClose?: boolean;
+  /** Rendered in the header, next to the close button. */
+  headerAction?: React.ReactNode;
+  /** Rendered in a sticky footer bar. */
+  footer?: React.ReactNode;
+  /** Clicking the backdrop closes the dialog. Off for destructive flows. */
+  dismissOnBackdrop?: boolean;
+  className?: string;
 }
 
+/**
+ * A real dialog: role="dialog" + aria-modal, focus trapped inside on open,
+ * Escape closes, focus restores to the trigger on close, body scroll locked,
+ * and the backdrop cannot be clicked through to the page underneath.
+ *
+ * Replaces the previous version, which had no role, no aria-modal, no focus
+ * management and could leave the page unscrollable if unmounted mid-open.
+ */
 export const Modal: React.FC<ModalProps> = ({
   isOpen,
   onClose,
@@ -18,73 +39,89 @@ export const Modal: React.FC<ModalProps> = ({
   subtitle,
   children,
   maxWidth = "max-w-lg",
+  hideClose,
+  headerAction,
+  footer,
+  dismissOnBackdrop = true,
+  className,
 }) => {
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = "unset";
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen, onClose]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const descId = useId();
+
+  useFocusTrap(dialogRef, isOpen, onClose);
+  useScrollLock(isOpen);
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
+        <div className="fixed inset-0 z-modal flex items-end justify-center overflow-y-auto p-0 sm:items-center sm:p-4">
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-[#0f1926]/40 backdrop-blur-sm"
+            initial="hidden"
+            animate="show"
+            exit="exit"
+            variants={veil}
+            onClick={dismissOnBackdrop ? onClose : undefined}
+            className="fixed inset-0 bg-heading/45 backdrop-blur-veil"
+            aria-hidden="true"
           />
 
-          {/* Dialog */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.94, y: 15 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className={`relative z-10 w-full ${maxWidth} rounded-2xl border border-[#e3dccd] bg-white shadow-2xl overflow-hidden flex flex-col text-[#2b3a4f]`}
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            aria-describedby={subtitle ? descId : undefined}
+            tabIndex={-1}
+            initial="hidden"
+            animate="show"
+            exit="exit"
+            variants={panel}
+            className={cn(
+              "relative z-10 w-full rounded-t-2xl border border-line bg-surface shadow-2xl",
+              "sm:rounded-2xl",
+              maxWidth,
+              className
+            )}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#e3dccd] bg-[#faf7ee]">
-              <div className="flex flex-col">
-                <h3 className="text-base font-bold text-[#0f1926] tracking-tight">
+            <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
+              <div className="min-w-0">
+                <h2 id={titleId} className="text-lg font-semibold tracking-tight">
                   {title}
-                </h3>
+                </h2>
                 {subtitle && (
-                  <span className="text-xs text-[#5f6e82] mt-0.5 font-normal">
+                  <p id={descId} className="mt-0.5 text-sm text-muted">
                     {subtitle}
-                  </span>
+                  </p>
                 )}
               </div>
-              <button
-                onClick={onClose}
-                className="w-8 h-8 rounded-lg text-[#5f6e82] hover:text-[#0f1926] hover:bg-[#f3eee1] flex items-center justify-center transition-colors cursor-pointer"
-                aria-label="Close modal"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex shrink-0 items-center gap-1">
+                {headerAction}
+                {!hideClose && (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    aria-label="Close dialog"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-sunken hover:text-heading"
+                  >
+                    <X size={16} aria-hidden="true" />
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Content */}
-            <div className="p-6 overflow-y-auto max-h-[82vh]">{children}</div>
+            <div className="max-h-[70vh] overflow-y-auto px-5 py-5 scrollbar-slim sm:px-6">
+              {children}
+            </div>
+
+            {footer && (
+              <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line bg-raised px-5 py-4 sm:px-6">
+                {footer}
+              </div>
+            )}
           </motion.div>
         </div>
       )}
     </AnimatePresence>
   );
 };
-

@@ -164,10 +164,13 @@ export const postsApi = {
     difficulty?: string;
     round_number?: number;
   }) =>
-    apiClient.post<{ round_id: T.UUID; post_round_id: T.UUID; message: string }>(
-      `/posts/${postId}/rounds`,
-      data
-    ),
+    apiClient.post<{
+      post_round_id: T.UUID;
+      round_number: number;
+      duration_minutes: number | null;
+      round_tags: string | null;
+      message: string;
+    }>(`/posts/${postId}/rounds`, data),
 
   addQuestion: (postId: T.UUID, postRoundId: T.UUID, data: {
     question_text?: string;
@@ -186,7 +189,10 @@ export const postsApi = {
     package_amount?: number;
     currency?: string;
   }) =>
-    apiClient.put<{ message: string; slug: string }>(`/posts/${postId}/publish`, data),
+    apiClient.put<{ post_id: T.UUID; status: string; message: string }>(
+      `/posts/${postId}/publish`,
+      data
+    ),
 
   publishDraft: (postId: T.UUID, data: {
     experience_text: string;
@@ -196,10 +202,13 @@ export const postsApi = {
     package_amount?: number;
     currency?: string;
   }) =>
-    apiClient.put<{ message: string; slug: string }>(`/posts/${postId}/publish`, data),
+    apiClient.put<{ post_id: T.UUID; status: string; message: string }>(
+      `/posts/${postId}/publish`,
+      data
+    ),
 
   update: (postId: T.UUID, data: Partial<T.PostOut>) =>
-    apiClient.patch<{ message: string }>(`/posts/${postId}`, data),
+    apiClient.patch<{ post_id: T.UUID; message: string }>(`/posts/${postId}`, data),
 
   incrementShare: (postId: T.UUID) =>
     apiClient.post<{ message: string; share_count: number }>(`/posts/${postId}/share`),
@@ -314,10 +323,10 @@ export const notificationsApi = {
     }),
 
   markRead: (id: T.UUID) =>
-    apiClient.patch<{ message: string }>(`/notifications/${id}/read`),
+    apiClient.patch<T.NotificationOut>(`/notifications/${id}/read`),
 
   markAsRead: (id: T.UUID) =>
-    apiClient.patch<{ message: string }>(`/notifications/${id}/read`),
+    apiClient.patch<T.NotificationOut>(`/notifications/${id}/read`),
 
   markAllRead: () =>
     apiClient.patch<{ message: string }>("/notifications/read-all"),
@@ -380,4 +389,11 @@ export const uploadsApi = {
       },
     });
   },
+};
+
+// ── Dashboard APIs ────────────────────────────────────────────────────────
+// One round-trip for the bento dashboard. The response adapts to the caller:
+// signed-in users get their personal ledger, visitors get platform numbers.
+export const dashboardApi = {
+  getSummary: () => apiClient.get<T.DashboardSummary>("/dashboard/summary"),
 };

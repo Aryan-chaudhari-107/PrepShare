@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  frontend:
+    name: Frontend — typecheck, tests, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+      - run: npm ci
+      - name: Typecheck (noUnusedLocals on)
+        run: npx tsc --noEmit
+      - name: Component tests (bento spans, auth variants)
+        run: npm test
+      - name: Production build
+        run: npx vite build
+
+  backend:
+    name: Backend — compile, smoke + security tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Backend
+    env:
+      # The smoke/security suites need real DB credentials (repository secret
+      # DATABASE_URL plus SECRET_KEY). Without them this job degrades to a
+      # compile check so CI still gates syntax on forks/PRs from clones.
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      SMTP_HOST: smtp.invalid
+      SMTP_PORT: "587"
+      SMTP_USERNAME: ci@placeholder.invalid
+      SMTP_PASSWORD: ci-placeholder
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: Backend/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Compile check (no credentials required)
+        run: python -m compileall -q -x "(venv)" .
+      - name: Notice — DB tests skipped
+        if: env.DATABASE_URL == ''
+        run: echo "::notice::DATABASE_URL secret not configured — smoke/security tests skipped"
+      - name: Start API
+        if: env.DATABASE_URL != ''
+        run: |
+          python -m uvicorn main:app --host 127.0.0.1 --port 8000 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/health >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          echo "backend did not become healthy" >&2
+          exit 1
+      - name: Integration suites — smoke + security (pytest)
+        if: env.DATABASE_URL != ''
+        run: python -m pytest tests/test_suites.py -v
+
+  e2e:
+    name: Frontend — Playwright smoke (hermetic)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+      - run: npm ci
+      # Tests intercept all API calls — no backend or secrets required.
+      - name: Playwright smoke pass
+        run: npx playwright test

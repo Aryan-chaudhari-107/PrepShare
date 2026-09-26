@@ -1,22 +1,29 @@
-import React from "react";
+import React, { useId } from "react";
 import {
-  SlidersHorizontal,
-  Search,
-  Layers,
-  GraduationCap,
+  BadgeCheck,
   BookOpen,
   Building2,
+  ChevronDown,
   Factory,
+  GraduationCap,
+  Layers,
   MapPin,
-  BadgeCheck,
+  Search,
+  SlidersHorizontal,
   Tag,
   X,
 } from "lucide-react";
 import { FilterMetadata, PostFeedFilterParams } from "../../types";
+import { Button, Chip, IconButton, Segmented, Select } from "../ui";
+import { cn } from "../../lib/cn";
+
+/** Everything a filter control is allowed to write back to the page. */
+type FilterValue = PostFeedFilterParams[keyof PostFeedFilterParams];
+type OfferValue = "any" | "offer" | "no-offer";
 
 interface FilterSidebarProps {
   filters: PostFeedFilterParams;
-  onFilterChange: (key: keyof PostFeedFilterParams, value: any) => void;
+  onFilterChange: (key: keyof PostFeedFilterParams, value: FilterValue) => void;
   onClearFilters: () => void;
   metadata?: FilterMetadata | null;
   activeFilterCount: number;
@@ -24,6 +31,73 @@ interface FilterSidebarProps {
   onCloseMobileDrawer?: () => void;
 }
 
+const CATEGORIES: { value: string; label: string }[] = [
+  { value: "", label: "All Categories" },
+  { value: "campus_placement", label: "Campus Placement" },
+  { value: "off_campus_placement", label: "Off-Campus Placement" },
+  { value: "campus_hackathon", label: "Campus Hackathon" },
+  { value: "off_campus_hackathon", label: "Off-Campus Hackathon" },
+];
+
+const toOptions = (values: string[] | undefined): { value: string; label: string }[] =>
+  (values ?? []).map((value) => ({ value, label: value }));
+
+const OFFER_OPTIONS: { value: OfferValue; label: string }[] = [
+  { value: "any", label: "Any" },
+  { value: "offer", label: "Offer" },
+  { value: "no-offer", label: "No Offer" },
+];
+
+interface FilterSelectProps {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  value: string;
+  onChange: (value: string) => void;
+  allLabel: string;
+  options: { value: string; label: string }[];
+}
+
+/** Label + select + chevron, so every dropdown shares one accessible shape. */
+const FilterSelect: React.FC<FilterSelectProps> = ({
+  id,
+  label,
+  icon,
+  value,
+  onChange,
+  allLabel,
+  options,
+}) => (
+  <div className="space-y-2">
+    <label htmlFor={id} className="flex items-center gap-2 text-sm font-semibold text-heading">
+      <span className="text-muted" aria-hidden="true">
+        {icon}
+      </span>
+      {label}
+    </label>
+    <div className="relative">
+      <Select id={id} value={value} onChange={(event) => onChange(event.target.value)} className="h-11">
+        <option value="">{allLabel}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </Select>
+      <ChevronDown
+        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+        aria-hidden="true"
+      />
+    </div>
+  </div>
+);
+
+/**
+ * The feed's filter panel. Desktop and mobile previously rendered the same
+ * controls through two near-identical trees; there is now ONE renderer whose
+ * chrome is switched with `isMobileDrawer`, so a filter can never be added to
+ * one surface and forgotten on the other.
+ */
 export const FilterSidebar: React.FC<FilterSidebarProps> = ({
   filters,
   onFilterChange,
@@ -33,282 +107,223 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
   isMobileDrawer = false,
   onCloseMobileDrawer,
 }) => {
-  const categories = [
-    { value: "", label: "All Categories" },
-    { value: "campus_placement", label: "Campus Placement" },
-    { value: "off_campus_placement", label: "Off-Campus Placement" },
-    { value: "campus_hackathon", label: "Campus Hackathon" },
-    { value: "off_campus_hackathon", label: "Off-Campus Hackathon" },
-  ];
+  const baseId = useId();
+  const offerValue: OfferValue =
+    filters.is_offer_received === undefined
+      ? "any"
+      : filters.is_offer_received
+        ? "offer"
+        : "no-offer";
 
-  const selectClassName =
-    "w-full h-[44px] bg-[#f3eee1] border border-[#e3dccd] rounded-xl px-3.5 text-[15px] text-[#0f1926] focus:outline-none focus:border-[#3f6f52] focus:ring-2 focus:ring-[#3f6f52]/20 focus:bg-white transition-all cursor-pointer";
+  const handleOfferChange = (value: OfferValue) =>
+    onFilterChange("is_offer_received", value === "any" ? undefined : value === "offer");
 
   return (
     <aside
-      className={`flex flex-col gap-6 ${
+      aria-label={isMobileDrawer ? "Mobile filters" : "Filters"}
+      className={cn(
+        "flex flex-col gap-6",
         isMobileDrawer
-          ? "w-full p-6 bg-[#faf7ee]"
-          : "w-full shrink-0 bg-white rounded-2xl border border-[#e3dccd] p-6 shadow-sm sticky top-[96px] max-h-[calc(100vh-7rem)] overflow-y-auto custom-scrollbar"
-      }`}
+          ? "w-full bg-canvas p-6"
+          : "sticky top-24 max-h-[calc(100vh_-_7rem)] w-full shrink-0 overflow-y-auto scrollbar-slim rounded-xl border border-line bg-surface/85 p-6 shadow-xs"
+      )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-[#e3dccd] pb-4">
+      <div className="flex items-center justify-between gap-3 border-b border-line pb-4">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#3f6f52]/10 border border-[#3f6f52]/20 flex items-center justify-center text-[#2f6b47]">
-            <SlidersHorizontal className="w-4 h-4" />
-          </div>
-          <h3 className="font-bold text-[15px] text-[#0f1926] uppercase tracking-wider">
-            Filters
-          </h3>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary-soft text-primary">
+            <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+          </span>
+          {/* h2 (not h3): the feed page's first heading is the h1 page title,
+              and skipping straight to h3 fails WCAG heading-order checks. */}
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-heading">Filters</h2>
           {activeFilterCount > 0 && (
-            <span className="bg-[#3f6f52] text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow-xs">
+            <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-fg shadow-xs">
               {activeFilterCount}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {activeFilterCount > 0 && (
             <button
+              type="button"
               onClick={onClearFilters}
-              className="text-[14px] font-semibold text-[#2f6b47] hover:text-[#3f6f52] transition-colors cursor-pointer"
+              className="cursor-pointer text-sm font-semibold text-primary transition-[color,transform] duration-fast ease-swift hover:underline active:scale-press"
             >
               Reset
             </button>
           )}
           {isMobileDrawer && onCloseMobileDrawer && (
-            <button
-              onClick={onCloseMobileDrawer}
-              className="p-1.5 rounded-xl text-[#5f6e82] hover:text-[#0f1926] hover:bg-[#f3eee1] transition-colors cursor-pointer"
-              aria-label="Close filters"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <IconButton label="Close filters" onClick={onCloseMobileDrawer}>
+              <X size={18} aria-hidden="true" />
+            </IconButton>
           )}
         </div>
       </div>
 
-      {/* 1. Keyword / Search */}
+      {/* 1. Keyword search */}
       <div className="space-y-2">
-        <label className="text-[15px] font-semibold text-[#0f1926] flex items-center gap-2">
-          <Search className="w-4 h-4 text-[#5f6e82]" />
+        <label
+          htmlFor={`${baseId}-search`}
+          className="flex items-center gap-2 text-sm font-semibold text-heading"
+        >
+          <Search className="h-4 w-4 text-muted" aria-hidden="true" />
           Keyword Search
         </label>
         <div className="relative">
           <input
-            type="text"
+            id={`${baseId}-search`}
+            type="search"
             value={filters.search || ""}
-            onChange={(e) => onFilterChange("search", e.target.value)}
+            onChange={(event) => onFilterChange("search", event.target.value)}
             placeholder="Role, college, skill..."
-            className="w-full h-[44px] bg-[#f3eee1] border border-[#e3dccd] rounded-xl px-3.5 pl-9 text-[15px] text-[#0f1926] placeholder:text-[#5f6e82] focus:outline-none focus:border-[#3f6f52] focus:ring-2 focus:ring-[#3f6f52]/20 focus:bg-white transition-all"
+            className="field h-11 pl-9 pr-9 [&::-webkit-search-cancel-button]:hidden"
           />
-          <Search className="w-4 h-4 text-[#5f6e82] absolute left-3 top-3.5 pointer-events-none" />
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint"
+            aria-hidden="true"
+          />
           {filters.search && (
             <button
+              type="button"
               onClick={() => onFilterChange("search", "")}
-              className="absolute right-3 top-3.5 text-[#5f6e82] hover:text-[#0f1926] cursor-pointer"
+              aria-label="Clear keyword search"
+              className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-muted transition-[color,transform] duration-fast ease-swift hover:bg-sunken hover:text-heading active:scale-95"
             >
-              <X className="w-4 h-4" />
+              <X className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
         </div>
       </div>
 
-      {/* 2. Category */}
-      <div className="space-y-2">
-        <label className="text-[15px] font-semibold text-[#0f1926] flex items-center gap-2">
-          <Layers className="w-4 h-4 text-[#5f6e82]" />
-          Experience Type
-        </label>
-        <select
-          value={filters.post_category || ""}
-          onChange={(e) => onFilterChange("post_category", e.target.value)}
-          className={selectClassName}
-        >
-          {categories.map((c) => (
-            <option key={c.value} value={c.value} className="bg-white text-[#0f1926]">
-              {c.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* 2. Experience type */}
+      <FilterSelect
+        id={`${baseId}-category`}
+        label="Experience Type"
+        icon={<Layers className="h-4 w-4" />}
+        value={filters.post_category || ""}
+        onChange={(value) => onFilterChange("post_category", value)}
+        allLabel="All Categories"
+        options={CATEGORIES}
+      />
 
-      {/* 3. College / University */}
-      <div className="space-y-2">
-        <label className="text-[15px] font-semibold text-[#0f1926] flex items-center gap-2">
-          <GraduationCap className="w-4 h-4 text-[#5f6e82]" />
-          College / University
-        </label>
-        <select
-          value={filters.institution_name || ""}
-          onChange={(e) => onFilterChange("institution_name", e.target.value)}
-          className={selectClassName}
-        >
-          <option value="" className="bg-white text-[#0f1926]">All Colleges</option>
-          {metadata?.colleges?.map((col) => (
-            <option key={col} value={col} className="bg-white text-[#0f1926]">
-              {col}
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* 3. College / university */}
+      <FilterSelect
+        id={`${baseId}-college`}
+        label="College / University"
+        icon={<GraduationCap className="h-4 w-4" />}
+        value={filters.institution_name || ""}
+        onChange={(value) => onFilterChange("institution_name", value)}
+        allLabel="All Colleges"
+        options={toOptions(metadata?.colleges)}
+      />
 
-      {/* 4. Course / Discipline */}
-      <div className="space-y-2">
-        <label className="text-[15px] font-semibold text-[#0f1926] flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-[#5f6e82]" />
-          Course / Discipline
-        </label>
-        <select
-          value={filters.course || ""}
-          onChange={(e) => onFilterChange("course", e.target.value)}
-          className={selectClassName}
-        >
-          <option value="" className="bg-white text-[#0f1926]">All Disciplines</option>
-          {metadata?.courses?.map((crs) => (
-            <option key={crs} value={crs} className="bg-white text-[#0f1926]">
-              {crs}
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* 4. Course / discipline */}
+      <FilterSelect
+        id={`${baseId}-course`}
+        label="Course / Discipline"
+        icon={<BookOpen className="h-4 w-4" />}
+        value={filters.course || ""}
+        onChange={(value) => onFilterChange("course", value)}
+        allLabel="All Disciplines"
+        options={toOptions(metadata?.courses)}
+      />
 
       {/* 5. Company */}
-      <div className="space-y-2">
-        <label className="text-[15px] font-semibold text-[#0f1926] flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-[#5f6e82]" />
-          Company
-        </label>
-        <select
-          value={filters.company_name || ""}
-          onChange={(e) => onFilterChange("company_name", e.target.value)}
-          className={selectClassName}
-        >
-          <option value="" className="bg-white text-[#0f1926]">All Companies</option>
-          {metadata?.companies?.map((comp) => (
-            <option key={comp} value={comp} className="bg-white text-[#0f1926]">
-              {comp}
-            </option>
-          ))}
-        </select>
-      </div>
+      <FilterSelect
+        id={`${baseId}-company`}
+        label="Company"
+        icon={<Building2 className="h-4 w-4" />}
+        value={filters.company_name || ""}
+        onChange={(value) => onFilterChange("company_name", value)}
+        allLabel="All Companies"
+        options={toOptions(metadata?.companies)}
+      />
 
       {/* 6. Industry */}
-      <div className="space-y-2">
-        <label className="text-[15px] font-semibold text-[#0f1926] flex items-center gap-2">
-          <Factory className="w-4 h-4 text-[#5f6e82]" />
-          Industry
-        </label>
-        <select
-          value={filters.industry || ""}
-          onChange={(e) => onFilterChange("industry", e.target.value)}
-          className={selectClassName}
-        >
-          <option value="" className="bg-white text-[#0f1926]">All Industries</option>
-          {metadata?.industries?.map((ind) => (
-            <option key={ind} value={ind} className="bg-white text-[#0f1926]">
-              {ind}
-            </option>
-          ))}
-        </select>
-      </div>
+      <FilterSelect
+        id={`${baseId}-industry`}
+        label="Industry"
+        icon={<Factory className="h-4 w-4" />}
+        value={filters.industry || ""}
+        onChange={(value) => onFilterChange("industry", value)}
+        allLabel="All Industries"
+        options={toOptions(metadata?.industries)}
+      />
 
       {/* 7. Location */}
-      <div className="space-y-2">
-        <label className="text-[15px] font-semibold text-[#0f1926] flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-[#5f6e82]" />
-          Location
-        </label>
-        <select
-          value={filters.work_location || ""}
-          onChange={(e) => onFilterChange("work_location", e.target.value)}
-          className={selectClassName}
-        >
-          <option value="" className="bg-white text-[#0f1926]">All Locations</option>
-          {metadata?.locations?.map((loc) => (
-            <option key={loc} value={loc} className="bg-white text-[#0f1926]">
-              {loc}
-            </option>
-          ))}
-        </select>
-      </div>
+      <FilterSelect
+        id={`${baseId}-location`}
+        label="Location"
+        icon={<MapPin className="h-4 w-4" />}
+        value={filters.work_location || ""}
+        onChange={(value) => onFilterChange("work_location", value)}
+        allLabel="All Locations"
+        options={toOptions(metadata?.locations)}
+      />
 
-      {/* 8. Offer Status (42px height, 14-15px font) */}
+      {/* 8. Offer status */}
       <div className="space-y-2">
-        <label className="text-[15px] font-semibold text-[#0f1926] flex items-center gap-2">
-          <BadgeCheck className="w-4 h-4 text-[#5f6e82]" />
+        <span className="flex items-center gap-2 text-sm font-semibold text-heading">
+          <BadgeCheck className="h-4 w-4 text-muted" aria-hidden="true" />
           Offer Status
-        </label>
-        <div className="grid grid-cols-3 gap-1.5 bg-[#f3eee1] p-1.5 rounded-xl border border-[#e3dccd] h-[48px] items-center">
-          <button
-            type="button"
-            onClick={() => onFilterChange("is_offer_received", undefined)}
-            className={`h-[38px] px-2 rounded-lg text-[14px] font-semibold transition-all cursor-pointer flex items-center justify-center ${
-              filters.is_offer_received === undefined
-                ? "bg-[#3f6f52] text-white shadow-xs"
-                : "text-[#5f6e82] hover:text-[#0f1926]"
-            }`}
-          >
-            Any
-          </button>
-          <button
-            type="button"
-            onClick={() => onFilterChange("is_offer_received", true)}
-            className={`h-[38px] px-2 rounded-lg text-[14px] font-semibold transition-all cursor-pointer flex items-center justify-center ${
-              filters.is_offer_received === true
-                ? "bg-[#2f7d52] text-white font-bold shadow-xs"
-                : "text-[#5f6e82] hover:text-[#0f1926]"
-            }`}
-          >
-            Offer
-          </button>
-          <button
-            type="button"
-            onClick={() => onFilterChange("is_offer_received", false)}
-            className={`h-[38px] px-2 rounded-lg text-[14px] font-semibold transition-all cursor-pointer flex items-center justify-center ${
-              filters.is_offer_received === false
-                ? "bg-[#b5462f] text-white font-bold shadow-xs"
-                : "text-[#5f6e82] hover:text-[#0f1926]"
-            }`}
-          >
-            No Offer
-          </button>
-        </div>
+        </span>
+        <Segmented
+          options={OFFER_OPTIONS}
+          value={offerValue}
+          onChange={handleOfferChange}
+          label="Offer status"
+          tone={(value) =>
+            value === "offer" ? "text-success" : value === "no-offer" ? "text-danger" : "text-primary"
+          }
+        />
       </div>
 
-      {/* 9. Round / Assessment Tags (Max-height 260px, 8px gap, wrap cleanly) */}
+      {/* 9. Assessment tags */}
       {metadata?.round_tags && metadata.round_tags.length > 0 && (
-        <div className="space-y-2.5 border-t border-[#e3dccd] pt-4">
-          <label className="text-[15px] font-semibold text-[#0f1926] flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <Tag className="w-4 h-4 text-[#5f6e82]" />
+        <div className="space-y-2.5 border-t border-line pt-4">
+          <div className="flex items-center justify-between gap-2">
+            <span
+              id={`${baseId}-tags-label`}
+              className="flex items-center gap-2 text-sm font-semibold text-heading"
+            >
+              <Tag className="h-4 w-4 text-muted" aria-hidden="true" />
               Assessment Tags
             </span>
             {filters.round_tag && (
-              <button
-                onClick={() => onFilterChange("round_tag", "")}
-                className="text-[12px] text-[#2f6b47] hover:underline cursor-pointer"
+              <Chip
+                removeLabel="Clear assessment tag"
+                onRemove={() => onFilterChange("round_tag", "")}
               >
-                Clear
-              </button>
+                {`#${filters.round_tag}`}
+              </Chip>
             )}
-          </label>
-          <div className="flex flex-wrap gap-2 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
+          </div>
+
+          <div
+            role="group"
+            aria-labelledby={`${baseId}-tags-label`}
+            className="scrollbar-slim flex max-h-[260px] flex-wrap gap-2 overflow-y-auto pr-1"
+          >
             {metadata.round_tags.map((tag) => {
               const isSelected = filters.round_tag === tag;
               return (
                 <button
                   key={tag}
                   type="button"
-                  onClick={() =>
-                    onFilterChange("round_tag", isSelected ? "" : tag)
-                  }
-                  className={`text-[13.5px] px-3 py-1.5 rounded-full font-medium transition-all cursor-pointer break-words max-w-full text-left ${
+                  aria-pressed={isSelected}
+                  onClick={() => onFilterChange("round_tag", isSelected ? "" : tag)}
+                  className={cn(
+                    "max-w-full cursor-pointer break-words rounded-full px-3 py-1.5 text-left text-sm font-medium",
+                    // Toggle + press only: colour for the state, a small
+                    // transform for the press. This panel is a control
+                    // surface, so it stays still otherwise.
+                    "transition-[color,background-color,border-color,transform] duration-fast ease-swift active:scale-press",
                     isSelected
-                      ? "bg-[#3f6f52] text-white font-semibold shadow-xs"
-                      : "bg-[#f3eee1] text-[#2b3a4f] border border-[#e3dccd] hover:border-[#3f6f52]/50 hover:text-[#0f1926]"
-                  }`}
+                      ? "bg-primary text-primary-fg shadow-xs"
+                      : "border border-line bg-sunken text-body hover:border-primary/50 hover:text-heading"
+                  )}
                 >
                   #{tag}
                 </button>
@@ -318,15 +333,12 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
         </div>
       )}
 
-      {/* Mobile Drawer Bottom Button */}
-      {isMobileDrawer && (
+      {/* Mobile drawer footer */}
+      {isMobileDrawer && onCloseMobileDrawer && (
         <div className="pt-3">
-          <button
-            onClick={onCloseMobileDrawer}
-            className="w-full h-[44px] bg-[#3f6f52] hover:bg-[#345c44] text-white rounded-xl font-bold text-[15px] shadow-sm transition-all cursor-pointer"
-          >
+          <Button fullWidth onClick={onCloseMobileDrawer}>
             Show Results
-          </button>
+          </Button>
         </div>
       )}
     </aside>

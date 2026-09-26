@@ -45,6 +45,21 @@ from _04_repositories.completed_questions import (
     get_completed_question,
     get_completed_questions_for_user,
 )
+from _04_repositories.dashboard import (
+    count_bookmarks_saved,
+    count_comments_given,
+    count_comments_received,
+    count_completed,
+    count_posts_by_status,
+    get_active_discussions,
+    get_activity_date_set,
+    get_activity_series,
+    get_category_counts,
+    get_latest_draft,
+    get_offer_signal,
+    get_platform_totals,
+    sum_post_metrics,
+)
 from _04_repositories.education_history import (
     create_education,
     delete_education,

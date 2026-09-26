@@ -1,207 +1,227 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  Compass,
-  CheckCircle2,
-  Bookmark,
   Bell,
+  Bookmark,
+  CheckCircle2,
+  Compass,
   FileEdit,
-  User as UserIcon,
-  Award,
+  LayoutDashboard,
   LogIn,
-  X,
+  Award,
+  MessageSquare,
+  Plus,
   Shield,
+  User as UserIcon,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { notificationsApi } from "../../api";
-import { getMediaUrl } from "../../utils/media";
+import { cn } from "../../lib/cn";
+import { Avatar } from "../ui/Avatar";
+import { Badge } from "../ui/Badge";
 
-interface SideNavBarProps {
-  isMobile?: boolean;
-  onCloseMobile?: () => void;
+interface NavItem {
+  label: string;
+  path: string;
+  icon: React.ElementType;
+  authRequired?: boolean;
+  badge?: number;
 }
 
-export const SideNavBar: React.FC<SideNavBarProps> = ({ isMobile = false, onCloseMobile }) => {
+interface SideNavBarProps {
+  /** Unread notification count, supplied by AppShell (fetched once). */
+  unreadCount?: number;
+  /** Called after a link is followed — closes the mobile drawer. */
+  onNavigate?: () => void;
+}
+
+/**
+ * The application's persistent navigation — the app-shell's left rail.
+ *
+ * Structure follows the approved dashboard template: two labelled groups
+ * (Menu / Workspace), a "Share experience" call-to-action and the account
+ * card pinned to the foot of the rail, with an edge indicator on the active
+ * item. Every entry maps to a route that actually exists — nothing here is
+ * decorative.
+ */
+export const SideNavBar: React.FC<SideNavBarProps> = ({ unreadCount = 0, onNavigate }) => {
   const { isAuthenticated, user, openAuthModal } = useAuth();
   const location = useLocation();
-  const [unreadNotifs, setUnreadNotifs] = useState<number>(0);
+  const [pendingNotifs, setPendingNotifs] = useState(0);
 
+  // Count is authoritative only for the signed-in user; start from the
+  // shell's value and keep it fresh as the route changes.
   useEffect(() => {
-    if (isAuthenticated) {
-      notificationsApi
-        .list(1, 1)
-        .then((res) => {
-          setUnreadNotifs(res.data.unread_count || 0);
-        })
-        .catch(() => {});
-    }
-  }, [isAuthenticated, location.pathname]);
+    setPendingNotifs(unreadCount);
+  }, [unreadCount]);
 
-  const navItems = [
-    { label: "Experience Feed", path: "/", icon: Compass },
+  const menuItems: NavItem[] = [
+    { label: "Dashboard", path: "/", icon: LayoutDashboard },
+    { label: "Explore Feed", path: "/feed", icon: Compass },
+    {
+      label: "Notifications",
+      path: "/notifications",
+      icon: Bell,
+      authRequired: true,
+      badge: pendingNotifs,
+    },
+    { label: "Messages", path: "/messages", icon: MessageSquare, authRequired: true },
+  ];
+
+  const workspaceItems: NavItem[] = [
+    { label: "My Bookmarks", path: "/bookmarks", icon: Bookmark, authRequired: true },
     {
       label: "Completed Questions",
       path: "/completed-questions",
       icon: CheckCircle2,
       authRequired: true,
     },
-    { label: "My Bookmarks", path: "/bookmarks", icon: Bookmark, authRequired: true },
-    {
-      label: "Notifications",
-      path: "/notifications",
-      icon: Bell,
-      authRequired: true,
-      badge: unreadNotifs > 0 ? unreadNotifs : undefined,
-    },
     { label: "Draft Archive", path: "/drafts", icon: FileEdit, authRequired: true },
     { label: "My Profile", path: "/profile", icon: UserIcon, authRequired: true },
   ];
 
-  const content = (
-    <div className="flex flex-col h-full justify-between p-4">
-      <div className="flex flex-col gap-6">
-        {/* User Card */}
-        <div className="p-3.5 rounded-2xl border border-[#e3dccd] bg-white shadow-sm">
+  const isActive = (path: string) =>
+    path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
+
+  const renderItems = (items: NavItem[]) =>
+    items
+      .filter((item) => !(item.authRequired && !isAuthenticated))
+      .map((item) => {
+        const active = isActive(item.path);
+        const Icon = item.icon;
+
+        return (
+          <li key={item.path}>
+            <Link
+              to={item.path}
+              onClick={onNavigate}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "relative flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm",
+                "transition-colors duration-fast ease-swift",
+                active
+                  ? "bg-primary-soft font-semibold text-primary before:absolute before:-left-3 before:top-1/4 before:h-1/2 before:w-0.5 before:rounded-full before:bg-primary before:content-['']"
+                  : "font-medium text-muted hover:bg-sunken/70 hover:text-heading"
+              )}
+            >
+              <span className="flex min-w-0 items-center gap-3">
+                <Icon
+                  size={16}
+                  className={cn("shrink-0", active ? "text-primary" : "text-faint")}
+                  aria-hidden="true"
+                />
+                <span className="truncate">{item.label}</span>
+              </span>
+              {item.badge !== undefined && item.badge > 0 && (
+                <Badge tone="danger" className="tabular shrink-0">
+                  {item.badge > 99 ? "99+" : item.badge}
+                </Badge>
+              )}
+            </Link>
+          </li>
+        );
+      });
+
+  const ctaClasses =
+    "group block w-full rounded-xl border border-primary/35 bg-gradient-to-br from-primary/20 to-primary/5 p-3 text-left transition-[border-color,box-shadow,transform] duration-fast ease-swift hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-[0_12px_30px_-16px_rgb(var(--primary)/.7)]";
+
+  return (
+    <div className="flex h-full flex-col p-3">
+      <nav aria-label="Main" className="space-y-6">
+        <div>
+          <p className="mb-1.5 px-3 text-xs font-semibold uppercase tracking-wider text-faint">
+            Menu
+          </p>
+          <ul className="space-y-0.5">{renderItems(menuItems)}</ul>
+        </div>
+
+        {isAuthenticated && (
+          <div>
+            <p className="mb-1.5 px-3 text-xs font-semibold uppercase tracking-wider text-faint">
+              Workspace
+            </p>
+            <ul className="space-y-0.5">{renderItems(workspaceItems)}</ul>
+          </div>
+        )}
+      </nav>
+
+      {/* Pinned foot: the CTA, then who you are signed in as. */}
+      <div className="mt-auto space-y-3 pt-5">
+        {isAuthenticated ? (
+          <Link to="/draft" onClick={onNavigate} className={ctaClasses}>
+            <span className="flex items-center gap-2 text-sm font-semibold text-heading transition-colors group-hover:text-primary">
+              <Plus size={15} className="text-primary" aria-hidden="true" />
+              Share experience
+            </span>
+            <span className="mt-0.5 block text-[11px] text-muted">
+              Help the next candidate — takes 4 min
+            </span>
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              onNavigate?.();
+              openAuthModal("login");
+            }}
+            className={ctaClasses}
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold text-heading transition-colors group-hover:text-primary">
+              <LogIn size={15} className="text-primary" aria-hidden="true" />
+              Sign in to contribute
+            </span>
+            <span className="mt-0.5 block text-[11px] text-muted">
+              Bookmark, reply and publish
+            </span>
+          </button>
+        )}
+
+        {/* Account card / guest prompt */}
+        <div className="rounded-xl border border-line bg-surface p-3 shadow-xs">
           {isAuthenticated && user ? (
             <Link
               to="/profile"
-              onClick={onCloseMobile}
-              className="flex items-center gap-3 group transition-transform active:scale-98"
+              onClick={onNavigate}
+              className="group flex items-center gap-3 rounded-lg"
             >
-              <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-[#3f6f52] text-white font-bold flex items-center justify-center text-sm shadow-sm group-hover:bg-[#345c44] transition-colors">
-                {user.profile_photo_url ? (
-                  <img
-                    src={getMediaUrl(user.profile_photo_url)}
-                    alt={user.username}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  user.username.substring(0, 2).toUpperCase()
-                )}
-              </div>
-              <div className="overflow-hidden min-w-0">
-                <div className="text-sm font-bold text-[#0f1926] truncate group-hover:text-[#3f6f52] transition-colors">
+              <Avatar src={user.profile_photo_url} name={user.full_name || user.username} size="md" />
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold text-heading transition-colors group-hover:text-primary">
                   {user.full_name || user.username}
                 </div>
-                <div className="text-xs text-[#b26a00] font-medium flex items-center gap-1 truncate">
-                  <Award className="w-3 h-3 shrink-0" />
-                  {user.contribution_score || 0} Contribution Pts
+                <div className="flex items-center gap-1 truncate text-xs font-medium text-warning">
+                  <Award size={12} className="shrink-0" aria-hidden="true" />
+                  <span className="tabular">{user.contribution_score || 0} pts</span>
                 </div>
               </div>
             </Link>
           ) : (
             <button
+              type="button"
               onClick={() => {
-                if (onCloseMobile) onCloseMobile();
+                onNavigate?.();
                 openAuthModal("login");
               }}
-              className="w-full text-left flex items-center gap-3 group cursor-pointer"
+              className="group flex w-full items-center gap-3 rounded-lg text-left"
             >
-              <div className="w-10 h-10 rounded-xl bg-[#f3eee1] border border-[#e3dccd] text-[#2b3a4f] font-bold flex items-center justify-center group-hover:border-[#3f6f52] transition-colors">
-                <LogIn className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-[#0f1926]">Welcome, Guest</div>
-                <div className="text-[11px] text-[#2f6b47] font-medium hover:underline">
-                  Sign in to interact →
-                </div>
-              </div>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-line bg-raised text-muted transition-colors group-hover:border-primary group-hover:text-primary">
+                <LogIn size={18} aria-hidden="true" />
+              </span>
+              <span>
+                <span className="block text-sm font-semibold text-heading">Welcome, guest</span>
+                <span className="block text-xs font-medium text-primary">Sign in to interact →</span>
+              </span>
             </button>
           )}
         </div>
 
-        {/* Navigation Links */}
-        <nav className="flex flex-col gap-1.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#5f6e82] px-3 mb-1">
-            Menu
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-xs text-muted">
+          <span className="flex items-center gap-2">
+            <Shield size={14} className="shrink-0 text-primary" aria-hidden="true" />
+            PrepShare Verified
           </span>
-          {navItems.map((item) => {
-            if (item.authRequired && !isAuthenticated) return null;
-            const isActive = location.pathname === item.path;
-            const Icon = item.icon;
-
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={onCloseMobile}
-                className={`relative flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
-                  isActive
-                    ? "bg-[#3f6f52]/10 text-[#2f6b47] border border-[#3f6f52]/25 shadow-sm"
-                    : "text-[#2b3a4f] hover:text-[#0f1926] hover:bg-[#f3eee1]"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon
-                    className={`w-4 h-4 transition-colors ${
-                      isActive ? "text-[#2f6b47]" : "text-[#5f6e82] group-hover:text-[#0f1926]"
-                    }`}
-                  />
-                  <span>{item.label}</span>
-                </div>
-                {item.badge !== undefined && (
-                  <span className="px-2 py-0.5 rounded-full bg-[#b5462f] text-white text-[10px] font-bold">
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Footer Info Badge */}
-      <div className="p-3 rounded-xl border border-[#e3dccd] bg-white text-[11px] text-[#5f6e82] flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Shield className="w-3.5 h-3.5 text-[#2f6b47]" />
-          <span>PrepShare Verified</span>
+          <span className="font-mono text-faint">v2.0</span>
         </div>
-        <span className="text-[10px] font-mono text-[#5f6e82]">v2.0</span>
       </div>
     </div>
-  );
-
-  if (isMobile) {
-    return (
-      <AnimatePresence>
-        <div className="fixed inset-0 z-50 flex">
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onCloseMobile}
-            className="fixed inset-0 bg-[#0f1926]/40 backdrop-blur-sm"
-          />
-
-          {/* Drawer */}
-          <motion.aside
-            initial={{ x: "-100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "-100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative w-72 bg-[#faf7ee] border-r border-[#e3dccd] h-full shadow-2xl flex flex-col z-10"
-          >
-            <div className="p-4 border-b border-[#e3dccd] flex justify-between items-center bg-white">
-              <span className="font-bold text-sm text-[#0f1926]">Navigation</span>
-              <button
-                onClick={onCloseMobile}
-                className="p-1 rounded-lg text-[#5f6e82] hover:text-[#0f1926] hover:bg-[#f3eee1]"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex-grow overflow-y-auto">{content}</div>
-          </motion.aside>
-        </div>
-      </AnimatePresence>
-    );
-  }
-
-  return (
-    <aside className="hidden lg:flex flex-col w-64 border-r border-[#e3dccd] bg-[#faf7ee]/80 backdrop-blur-xl shrink-0 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto z-20">
-      {content}
-    </aside>
   );
 };

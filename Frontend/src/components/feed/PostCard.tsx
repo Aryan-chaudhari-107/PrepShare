@@ -1,6 +1,5 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import {
   Building2,
   Briefcase,
@@ -16,181 +15,244 @@ import {
 import { PostListItem } from "../../types";
 import { AuthorDisplay } from "../common/AuthorDisplay";
 import { CategoryBadge } from "../common/CategoryBadge";
+import { DEPTH, Tilt } from "../../motion";
+import { cn } from "../../lib/cn";
+import { formatPackage, relativeDate } from "../../lib/format";
+import { pulseEnvironment } from "../../lib/environment";
 
 interface PostCardProps {
   post: PostListItem;
+  /**
+   * Elevation accent: the list marks its signal card (the feed picks the
+   * first offer on the page) so it sits a touch prouder than its neighbours.
+   * Pointer tilt is NOT gated on this — every card owns its own Tilt — so
+   * depth still reads as emphasis through shadow, never through interaction.
+   */
+  focal?: boolean;
 }
 
-export const PostCard: React.FC<PostCardProps> = ({ post }) => {
-  const formattedDate = () => {
-    const d = post.published_at ? new Date(post.published_at) : new Date(post.created_at);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 3600 * 24));
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "1d ago";
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+/** A metadata cell preceded by a hairline separator (hidden before `sm`). */
+const Meta: React.FC<{
+  icon?: React.ReactNode;
+  className?: string;
+  children: React.ReactNode;
+}> = ({ icon, className, children }) => (
+  <>
+    <span className="hidden h-4 w-px shrink-0 bg-line sm:block" aria-hidden="true" />
+    <span className={cn("flex min-w-0 items-center gap-1.5 text-sm", className)}>
+      {icon}
+      <span className="truncate">{children}</span>
+    </span>
+  </>
+);
+
+/**
+ * Feed card.
+ *
+ * Motion rules this card follows:
+ *  - NO entrance animation of its own. Arrival is choreographed by the LIST
+ *    the card lives in (the feed staggers its rows with the shared `stagger`
+ *    / `item` variants), so every list in the product lands with one rhythm
+ *    instead of each surface inventing its own fade-up;
+ *  - hover is colour + transform only: the border darkens, the title underline
+ *    sweeps and the CTA arrow leans forward. No shadow animation on rows —
+ *    elevation is a static `shadow-*`, never a transition;
+ *  - when the post ended in an offer, hovering the card sends ONE light sweep
+ *    across the round/offer strip (translate-driven, tokens for duration and
+ *    easing, and hover-only so touch devices never depend on it). That strip
+ *    carries the product's signal, so it is the only part of the card that
+ *    catches the light;
+ *  - `focal` deepens the static shadow one step — every card is wrapped in
+ *    its own `<Tilt>`: pointer-driven perspective plus a specular highlight
+ *    that tracks the cursor, each instance driven by its own MotionValues,
+ *    and it disables itself on coarse pointers and for reduced motion.
+ */
+export const PostCard: React.FC<PostCardProps> = ({ post, focal = false }) => {
+  const packageLabel = formatPackage(post.package_amount, post.currency);
+  const dateLabel = relativeDate(post.published_at || post.created_at);
+
+  /**
+   * Opening a post kicks the environment at the exact point the user clicked:
+   * the field ripples outward from the card while the route stage zooms the
+   * detail view toward the camera. Keyboard activation (Enter on the link)
+   * carries no pointer coordinates, so it falls back to the centre of the
+   * link that was activated.
+   */
+  const handleOpenPulse = (e: React.MouseEvent<HTMLElement>) => {
+    const target = e.target instanceof Element ? e.target : null;
+    const link = target?.closest('a[href^="/posts/"]');
+    if (!link) return;
+    const rect = link.getBoundingClientRect();
+    pulseEnvironment("post-open", {
+      x: e.clientX || rect.left + rect.width / 2,
+      y: e.clientY || rect.top + rect.height / 2,
+    });
   };
 
-  const formattedPackage = () => {
-    if (post.package_amount === undefined || post.package_amount === null) return null;
-    const currency = post.currency || "INR";
-    const symbol = currency.toUpperCase() === "INR" ? "₹" : "$";
-    return `${symbol} ${post.package_amount.toLocaleString()} ${currency.toUpperCase() === "INR" ? "LPA" : ""}`.trim();
-  };
-
-  return (
-    <motion.article
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      whileHover={{ y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
-      className="bg-white rounded-2xl border border-[#e3dccd] hover:border-[#3f6f52]/45 p-6 sm:p-7 shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col justify-between gap-5 relative overflow-hidden group"
+  const card = (
+    <article
+      className={cn(
+        // `glow-edge` + `group` on the same element: border warms to the brand
+        // hue and a soft halo lifts on hover AND keyboard focus. The surface is
+        // translucent so the live environment reads faintly through the card.
+        "group glow-edge relative flex flex-col gap-4 rounded-xl border border-line bg-surface/85 p-5 sm:p-6",
+        focal ? "shadow-sm" : "shadow-xs"
+      )}
     >
-      {/* Subtle top-right accent glow on hover */}
-      <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-[#3f6f52]/10 to-transparent rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500 pointer-events-none" />
+      {/* Top light: a brand-tinted sheen fades in on hover/focus — opacity
+          only, so it costs one composited layer and never repaints content. */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-xl bg-gradient-to-b from-primary/[0.06] to-transparent opacity-0 transition-opacity duration-base group-hover:opacity-100 group-focus-within:opacity-100"
+      />
+      {/* Header: author, org context, category, time */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+          <AuthorDisplay author={post.author} isAnonymous={post.is_anonymous} size="md" />
 
-      {/* Top Meta & Header Section */}
-      <div className="flex flex-col gap-4 relative z-10">
-        <div className="flex items-center justify-between w-full flex-wrap gap-3">
-          <div className="flex items-center gap-3 sm:gap-3.5 flex-wrap">
-            {/* Author info with 44-48px avatar and 16px font */}
-            <AuthorDisplay
-              author={post.author}
-              isAnonymous={post.is_anonymous}
-              size="md"
-            />
+          {post.company_name && (
+            <Meta
+              icon={
+                <Building2 size={15} className="shrink-0 text-primary" aria-hidden="true" />
+              }
+              className="font-semibold text-heading"
+            >
+              {post.company_name}
+            </Meta>
+          )}
 
-            {/* Company Divider */}
-            {post.company_name && (
-              <>
-                <div className="w-px h-4 bg-[#e3dccd] hidden sm:block"></div>
-                <div className="flex items-center gap-1.5 text-[14.5px] sm:text-[15px] font-semibold text-[#0f1926]">
-                  <Building2 className="w-4 h-4 text-[#3f6f52] shrink-0" />
-                  <span>{post.company_name}</span>
-                </div>
-              </>
-            )}
+          {post.job_role && (
+            <Meta icon={<Briefcase size={15} className="shrink-0 text-warning" aria-hidden="true" />} className="font-medium text-warning">
+              {post.job_role}
+            </Meta>
+          )}
 
-            {/* Role Divider */}
-            {post.job_role && (
-              <>
-                <div className="w-px h-4 bg-[#e3dccd] hidden sm:block"></div>
-                <div className="flex items-center gap-1.5 text-[14.5px] sm:text-[15px] font-medium text-[#b26a00]">
-                  <Briefcase className="w-4 h-4 text-[#b26a00] shrink-0" />
-                  <span>{post.job_role}</span>
-                </div>
-              </>
-            )}
+          {post.institution_name && (
+            <Meta
+              icon={<GraduationCap size={15} className="shrink-0 text-muted" aria-hidden="true" />}
+              className="text-muted"
+            >
+              {post.institution_name}
+              {post.course && <span className="text-faint"> · {post.course}</span>}
+            </Meta>
+          )}
 
-            {/* College & Course */}
-            {post.institution_name && (
-              <>
-                <div className="w-px h-4 bg-[#e3dccd] hidden sm:block"></div>
-                <div className="flex items-center gap-1.5 text-[14px] sm:text-[14.5px] font-medium text-[#5f6e82]">
-                  <GraduationCap className="w-4 h-4 text-[#5f6e82] shrink-0" />
-                  <span>{post.institution_name}</span>
-                  {post.course && (
-                    <span className="text-[13.5px] text-[#5f6e82] font-normal">· {post.course}</span>
-                  )}
-                </div>
-              </>
-            )}
+          {post.work_location && (
+            <Meta
+              icon={<MapPin size={14} className="shrink-0 text-muted" aria-hidden="true" />}
+              className="text-muted"
+            >
+              {post.work_location}
+            </Meta>
+          )}
 
-            {/* Location */}
-            {post.work_location && (
-              <>
-                <div className="w-px h-4 bg-[#e3dccd] hidden sm:block"></div>
-                <div className="flex items-center gap-1 text-[13.5px] sm:text-[14px] text-[#5f6e82]">
-                  <MapPin className="w-3.5 h-3.5 text-[#5f6e82] shrink-0" />
-                  <span>{post.work_location}</span>
-                </div>
-              </>
-            )}
-
-            {/* Package Divider */}
-            {formattedPackage() && (
-              <>
-                <div className="w-px h-4 bg-[#e3dccd] hidden sm:block"></div>
-                <div className="flex items-center gap-1.5 text-[14px] sm:text-[14.5px] font-semibold text-[#2f7d52] bg-[#2f7d52]/10 px-3 py-1 rounded-full border border-[#2f7d52]/20">
-                  <Banknote className="w-4 h-4 text-[#2f7d52] shrink-0" />
-                  <span>{formattedPackage()}</span>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Category Tag & Time */}
-          <div className="flex items-center gap-3 shrink-0 ml-auto">
-            <CategoryBadge category={post.post_category} size="sm" />
-            <span className="text-[13px] text-[#5f6e82] font-medium">{formattedDate()}</span>
-          </div>
-        </div>
-
-        {/* Post Title (22px, semibold, line-height 1.3) */}
-        <h2 className="text-[22px] font-semibold text-[#0f1926] group-hover:text-[#3f6f52] transition-colors leading-[1.3] pt-1">
-          <Link to={`/posts/${post.id}`}>{post.title}</Link>
-        </h2>
-      </div>
-
-      {/* Experience Excerpt & Round Box */}
-      <div className="space-y-4 relative z-10">
-        {post.experience_text_excerpt ? (
-          <p className="text-[15px] sm:text-[16px] text-[#2b3a4f] leading-relaxed line-clamp-2">
-            {post.experience_text_excerpt}
-          </p>
-        ) : null}
-
-        {/* Round Preview Container (Padded 14px 18px) */}
-        <div className="bg-[#faf7ee] rounded-xl border border-[#e3dccd] p-3.5 sm:px-4.5 sm:py-3.5 flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="text-[13.5px] font-semibold text-[#2f6b47] bg-[#3f6f52]/10 border border-[#3f6f52]/20 px-3.5 py-1.5 rounded-full flex items-center gap-1.5">
-              <Layers className="w-4 h-4 text-[#3f6f52]" />
-              {post.round_count} {post.round_count === 1 ? "Round" : "Rounds"} Faced
+          {packageLabel && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-success/25 bg-success-soft px-3 py-1 text-sm font-semibold text-success">
+              <Banknote size={15} aria-hidden="true" />
+              <span className="tabular">{packageLabel}</span>
             </span>
-            {post.is_offer_received ? (
-              <span className="text-[13.5px] font-bold text-[#2f7d52] bg-[#2f7d52]/10 border border-[#2f7d52]/20 px-3 py-1.5 rounded-full flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-[#2f7d52]" />
-                Offer Received
-              </span>
-            ) : (
-              <span className="text-[13.5px] font-medium text-[#5f6e82] bg-white border border-[#e3dccd] px-3 py-1.5 rounded-full">
-                Process Completed
-              </span>
-            )}
-          </div>
+          )}
+        </div>
 
-          <Link
-            to={`/posts/${post.id}`}
-            className="text-[15px] font-semibold text-[#2f6b47] hover:text-[#3f6f52] flex items-center gap-1.5 group/btn transition-colors cursor-pointer"
-          >
-            <span>View Details</span>
-            <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-          </Link>
+        <div className="flex shrink-0 items-center gap-3">
+          <CategoryBadge category={post.post_category} size="sm" />
+          <time className="text-sm text-muted" dateTime={post.published_at || post.created_at}>
+            {dateLabel}
+          </time>
         </div>
       </div>
 
-      {/* Footer Engagement Bar */}
-      <footer className="pt-4 border-t border-[#e3dccd]/80 flex items-center justify-between text-[14px] text-[#5f6e82] relative z-10">
-        <div className="flex items-center gap-5">
-          <span className="flex items-center gap-1.5 font-medium" title="Views">
-            <Eye className="w-4 h-4 text-[#5f6e82]" />
-            <span>{post.view_count} views</span>
+      {/* Title */}
+      <h2 className="text-2xl font-semibold leading-tight tracking-tight">
+        <Link
+          to={`/posts/${post.id}`}
+          className="transition-colors duration-fast ease-swift hover:text-primary"
+        >
+          <span className="bg-gradient-to-r from-transparent to-transparent bg-[length:0%_1px] bg-left-bottom bg-no-repeat transition-[background-size] duration-base ease-swift group-hover:bg-[length:100%_1px] group-hover:from-primary">
+            {post.title}
           </span>
-          <span className="flex items-center gap-1.5 font-medium" title="Shares">
-            <Share2 className="w-4 h-4 text-[#5f6e82]" />
-            <span>{post.share_count} shares</span>
+        </Link>
+      </h2>
+
+      {/* Excerpt */}
+      {post.experience_text_excerpt && (
+        <p className="line-clamp-2 text-base leading-relaxed text-body">
+          {post.experience_text_excerpt}
+        </p>
+      )}
+
+      {/* Round / offer summary strip — the card's signal. On offer posts the
+          strip catches a single light sweep while the pointer is on the card:
+          transform-only, and only where the outcome makes it relevant. */}
+      <div className="relative flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-raised px-4 py-3">
+        {post.is_offer_received && (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg"
+          >
+            <span className="absolute inset-y-0 left-0 w-1/3 -translate-x-full -skew-x-12 bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-0 transition-[transform,opacity] duration-slow ease-enter group-hover:translate-x-[400%] group-hover:opacity-100" />
           </span>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary-soft px-3 py-1 text-sm font-medium text-primary">
+            <Layers size={15} aria-hidden="true" />
+            <span className="tabular">
+              {post.round_count} {post.round_count === 1 ? "round" : "rounds"}
+            </span>
+          </span>
+
+          {post.is_offer_received ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-success/25 bg-success-soft px-3 py-1 text-sm font-semibold text-success">
+              <CheckCircle2 size={15} aria-hidden="true" />
+              Offer received
+            </span>
+          ) : (
+            <span className="inline-flex items-center rounded-full border border-line bg-surface px-3 py-1 text-sm text-muted">
+              Process completed
+            </span>
+          )}
         </div>
 
         <Link
           to={`/posts/${post.id}`}
-          className="text-[15px] font-semibold text-[#2f6b47] hover:text-[#3f6f52] flex items-center gap-1.5 group/read transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary transition-colors duration-fast ease-swift hover:text-[rgb(var(--primary-hover))]"
         >
-          <span>Read Full Experience</span>
-          <ArrowRight className="w-4 h-4 group-hover/read:translate-x-1 transition-transform" />
+          Read experience
+          <ArrowRight
+            size={15}
+            className="transition-transform duration-fast ease-swift group-hover:translate-x-0.5"
+            aria-hidden="true"
+          />
         </Link>
+      </div>
+
+      {/* Engagement footer */}
+      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 text-sm text-muted">
+        <div className="flex items-center gap-5">
+          <span className="tabular inline-flex items-center gap-1.5" title="Views">
+            <Eye size={15} aria-hidden="true" />
+            <span>{post.view_count} views</span>
+          </span>
+          <span className="tabular inline-flex items-center gap-1.5" title="Shares">
+            <Share2 size={15} aria-hidden="true" />
+            <span>{post.share_count} shares</span>
+          </span>
+        </div>
       </footer>
-    </motion.article>
+    </article>
+  );
+
+  // Every card owns its own Tilt instance — independent MotionValues and
+  // pointer handlers per post — so the depth response works on every row,
+  // not just the signal card. `focal` only affects the shadow above.
+  return (
+    <Tilt
+      className="rounded-xl"
+      lift={DEPTH.lifted.scale}
+      onClickCapture={handleOpenPulse}
+    >
+      {card}
+    </Tilt>
   );
 };

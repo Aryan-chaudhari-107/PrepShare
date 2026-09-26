@@ -1,34 +1,273 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import {
   ArrowLeft,
-  Heart,
-  Bookmark,
-  Share2,
-  Flag,
-  Lightbulb,
-  Building2,
-  Briefcase,
-  MapPin,
   Banknote,
+  Briefcase,
+  Bookmark,
+  Building2,
   CheckCircle2,
-  MessageSquare,
+  Flag,
+  Heart,
   Layers,
+  Lightbulb,
+  MapPin,
+  MessageSquare,
+  ScrollText,
+  Share2,
   ShieldAlert,
-  X,
 } from "lucide-react";
-import { AppShell } from "../components/layout/AppShell";
+import { PageContainer } from "../components/layout/AppShell";
 import { AuthorDisplay } from "../components/common/AuthorDisplay";
 import { CategoryBadge } from "../components/common/CategoryBadge";
 import { RoundAccordion } from "../components/detail/RoundAccordion";
 import { CommentSection } from "../components/detail/CommentSection";
 import { ReportModal } from "../components/common/ReportModal";
+import {
+  Button,
+  EmptyState,
+  ErrorState,
+  LINK_PRIMARY,
+  LINK_SECONDARY,
+  Skeleton,
+  SkeletonCard,
+  Spinner,
+} from "../components/ui";
+import { Focus, Scene, Section, SPRING, Tilt } from "../motion";
+import { prefersReducedMotion } from "../lib/motion";
 import { PostOut } from "../types";
 import { postsApi, interactionsApi } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+import { absoluteDate, errorMessage, formatPackage } from "../lib/format";
+import { cn } from "../lib/cn";
+
+/** On-palette celebration colours — the original used off-brand purples/pinks. */
+const CELEBRATION_COLORS = ["#3f6f52", "#3f6f9e", "#b26a00", "#a4c3ae"];
+
+/**
+ * The two-pane geometry is declared ONCE and reused by the loading branch, so
+ * the real layout lands exactly where its placeholder was — no sideways jump
+ * the moment the experience resolves.
+ */
+const PANE_SHELL = "mx-auto flex w-full max-w-shell flex-col px-4 sm:px-6 lg:flex-row lg:px-8";
+const EXPERIENCE_PANE = "min-w-0 flex-1 py-5 lg:py-8";
+const DISCUSSION_PANE =
+  "w-full shrink-0 border-line bg-raised/50 lg:sticky lg:top-header lg:block " +
+  "lg:h-[calc(100vh_-_var(--navbar-height))] lg:w-[340px] lg:overflow-y-auto " +
+  "lg:border-r lg:px-4 lg:py-6 scrollbar-slim";
+
+/* ── Outcome band ──────────────────────────────────────────────────────────
+   Beat 1 of this page: the answer to "did they get it?" staged as an object
+   rather than one more chip in a row of chips. Two stacked surfaces (a raised
+   shelf behind, a strip of status colour across the top) give it depth without
+   a single animated shadow, and `Focus` lets it land after the page has begun
+   to settle so it reads as the centre of gravity. */
+
+interface FactProps {
+  icon: React.ReactNode;
+  label: string;
+  valueClass: string;
+  children: React.ReactNode;
+}
+
+/** One cell of the band: a quiet label above, the value carrying the weight. */
+const Fact: React.FC<FactProps> = ({ icon, label, valueClass, children }) => (
+  <div
+    className={cn(
+      // Two-up on small screens (a stacked strip would push the title off the
+      // first screen), one flowing row from `sm` where hairlines can separate
+      // the cells — a flex row always fills, so no cell ever leaves a stub of
+      // border behind.
+      "flex min-w-0 flex-col gap-0.5 px-5 py-3",
+      "sm:flex-1 sm:border-l sm:border-line sm:px-4 sm:first:border-l-0"
+    )}
+  >
+    <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
+      {icon}
+      {label}
+    </span>
+    <span className={cn("text-sm leading-snug sm:text-base", valueClass)}>{children}</span>
+  </div>
+);
+
+interface OutcomeBandProps {
+  isOffer: boolean;
+  company?: string | null;
+  role?: string | null;
+  packageLabel: string | null;
+  location?: string | null;
+  /** Anchors the celebration burst to the offer mark instead of the viewport. */
+  markRef: React.RefObject<HTMLSpanElement>;
+}
+
+const OutcomeBand: React.FC<OutcomeBandProps> = ({
+  isOffer,
+  company,
+  role,
+  packageLabel,
+  location,
+  markRef,
+}) => {
+  const hasFacts = Boolean(company || role || packageLabel || location);
+
+  return (
+    <Focus delay={0.12} className="relative pb-3">
+      {/* The shelf the composition rests on — static, so depth costs nothing. */}
+      <span
+        aria-hidden="true"
+        className="absolute inset-x-4 bottom-0 top-6 rounded-2xl border border-line bg-raised shadow-xs"
+      />
+
+      <Tilt
+        max={2}
+        lift={1.006}
+        glare={false}
+        className="relative overflow-hidden rounded-2xl border border-line bg-surface shadow-md"
+      >
+        <div
+          className={cn(
+            "flex items-center gap-4 border-b px-5 py-4 sm:px-6",
+            isOffer ? "border-success/25 bg-success-soft" : "border-line bg-raised"
+          )}
+        >
+          <span
+            ref={markRef}
+            className={cn(
+              "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border bg-surface shadow-xs",
+              isOffer ? "border-success/30 text-success" : "border-line text-muted"
+            )}
+          >
+            {isOffer && (
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 rounded-xl bg-success/30 animate-pulse-ring"
+              />
+            )}
+            <span className="relative">
+              {isOffer ? (
+                <CheckCircle2 size={26} aria-hidden="true" />
+              ) : (
+                <ScrollText size={24} aria-hidden="true" />
+              )}
+            </span>
+          </span>
+
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted">Outcome</p>
+            <p className="mt-0.5 text-xl font-bold leading-tight tracking-tight text-heading sm:text-2xl">
+              {isOffer ? "Offer received" : "Interview completed"}
+            </p>
+          </div>
+        </div>
+
+        {hasFacts && (
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-row sm:items-stretch sm:gap-0">
+            {company && (
+              <Fact
+                icon={<Building2 size={14} className="text-primary" aria-hidden="true" />}
+                label="Company"
+                valueClass="font-semibold text-heading"
+              >
+                {company}
+              </Fact>
+            )}
+            {role && (
+              <Fact
+                icon={<Briefcase size={14} className="text-warning" aria-hidden="true" />}
+                label="Role"
+                valueClass="font-medium text-heading"
+              >
+                {role}
+              </Fact>
+            )}
+            {packageLabel && (
+              <Fact
+                icon={
+                  <Banknote
+                    size={14}
+                    className={isOffer ? "text-success" : "text-muted"}
+                    aria-hidden="true"
+                  />
+                }
+                label="Package"
+                valueClass={cn("tabular font-semibold", isOffer ? "text-success" : "text-heading")}
+              >
+                {packageLabel}
+              </Fact>
+            )}
+            {location && (
+              <Fact
+                icon={<MapPin size={14} className="text-muted" aria-hidden="true" />}
+                label="Location"
+                valueClass="text-body"
+              >
+                {location}
+              </Fact>
+            )}
+          </div>
+        )}
+      </Tilt>
+    </Focus>
+  );
+};
+
+/* ── Engagement controls ─────────────────────────────────────────────────── */
+
+interface EngagementButtonProps {
+  active?: boolean;
+  activeClass?: string;
+  count?: number;
+  label: string;
+  onClick: () => void;
+  filled?: boolean;
+  children: React.ReactNode;
+}
+
+/** Like / comment / share control: one recipe, `aria-pressed` for toggles. */
+const EngagementButton: React.FC<EngagementButtonProps> = ({
+  active,
+  activeClass = "text-primary",
+  count,
+  label,
+  onClick,
+  filled,
+  children,
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-label={count !== undefined ? `${label} (${count})` : label}
+    aria-pressed={active}
+    title={label}
+    className={cn(
+      "inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium",
+      "transition-[color,background-color,transform] duration-fast ease-swift active:scale-95",
+      active ? activeClass : "text-muted hover:bg-sunken/70 hover:text-heading"
+    )}
+  >
+    {/* `_svg` (not `>svg`) so an icon may be wrapped for its own motion. */}
+    <span className={cn(filled && active && "[&_svg]:fill-current")}>{children}</span>
+    {count !== undefined && <span className="tabular">{count}</span>}
+  </button>
+);
+
+/**
+ * The one playful accent on this page: a confirmed action stamps itself into
+ * place. Spring-driven so it lands with weight instead of easing politely.
+ */
+const IconPop: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <motion.span
+    className="inline-flex"
+    initial={{ scale: 0.6 }}
+    animate={{ scale: 1 }}
+    transition={SPRING.bouncy}
+  >
+    {children}
+  </motion.span>
+);
 
 export const ReportDetailPage: React.FC = () => {
   const { postId } = useParams<{ postId: string }>();
@@ -38,436 +277,509 @@ export const ReportDetailPage: React.FC = () => {
 
   const [post, setPost] = useState<PostOut | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
-  // Engagement state
+  // Engagement state. `likeCount` starts at 0 and is only ever populated from
+  // GET /posts/{id}/like — it is NEVER seeded from `view_count`, which is what
+  // previously made the heart display page views as likes when that request
+  // failed.
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [bookmarked, setBookmarked] = useState(false);
   const [shareCount, setShareCount] = useState(0);
   const [commentCount, setCommentCount] = useState(0);
 
-  // Mobile discussion drawer toggle
-  const [mobileDiscussionOpen, setMobileDiscussionOpen] = useState(false);
-
-  // Moderation Report modal
+  // Mobile: show EITHER the experience OR the discussion, never both squashed.
+  const [discussionOpen, setDiscussionOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [sharing, setSharing] = useState(false);
+
+  const celebratedRef = useRef(false);
+  const outcomeMarkRef = useRef<HTMLSpanElement>(null);
 
   const fetchPost = useCallback(async () => {
     if (!postId) return;
     setLoading(true);
+    setLoadFailed(false);
     try {
       const res = await postsApi.getById(postId);
       const data = res.data;
       setPost(data);
-      setLikeCount(data.view_count || 0);
       setShareCount(data.share_count || 0);
 
-      // Trigger celebration confetti if candidate received an offer!
-      if (data.is_offer_received) {
-        try {
-          confetti({
-            particleCount: 40,
-            spread: 60,
-            origin: { y: 0.25 },
-            colors: ["#6366F1", "#8B5CF6", "#10B981", "#EC4899"],
-          });
-        } catch {}
-      }
-
-      // Fetch like and bookmark states if available
+      // Public, optional-auth endpoint — correct source for the like count.
       try {
         const likeRes = await interactionsApi.getLikeStatus(postId);
         setLiked(likeRes.data.liked);
         setLikeCount(likeRes.data.like_count);
-      } catch {}
+      } catch {
+        // Leave at 0 rather than substituting an unrelated metric.
+        setLiked(false);
+        setLikeCount(0);
+      }
 
       if (isAuthenticated) {
         try {
           const bmRes = await interactionsApi.getBookmarkStatus(postId);
           setBookmarked(bmRes.data.bookmarked);
-        } catch {}
+        } catch {
+          /* bookmark state is cosmetic — ignore */
+        }
       }
-    } catch (err: any) {
-      error(err.response?.data?.detail || "Experience not found.");
-      navigate("/");
+    } catch (err: unknown) {
+      setLoadFailed(true);
+      error(errorMessage(err, "That experience could not be loaded."));
     } finally {
       setLoading(false);
     }
-  }, [postId, isAuthenticated, navigate, error]);
+  }, [postId, isAuthenticated, error]);
 
   useEffect(() => {
     fetchPost();
   }, [fetchPost]);
 
-  const handleToggleLike = async () => {
-    if (!isAuthenticated) {
-      openAuthModal("login");
-      return;
+  // Celebration: once per post per session, on-palette, and never for users
+  // who asked the OS to reduce motion.
+  //
+  // It waits for `loading` to clear so the burst is fired FROM the offer mark
+  // in the outcome band — the celebration belongs to that object, not to the
+  // whole viewport — and so it never fires at a skeleton.
+  useEffect(() => {
+    if (loading || !post?.is_offer_received || celebratedRef.current) return;
+
+    const storageKey = `prepshare_celebrated_${post.id}`;
+    if (prefersReducedMotion()) return;
+    try {
+      if (sessionStorage.getItem(storageKey)) return;
+      sessionStorage.setItem(storageKey, "1");
+    } catch {
+      /* storage blocked — still celebrate, just without deduping */
     }
-    if (!postId) return;
+
+    celebratedRef.current = true;
+    const rect = outcomeMarkRef.current?.getBoundingClientRect();
+    const origin =
+      rect && rect.width > 0 && window.innerWidth > 0 && window.innerHeight > 0
+        ? {
+            x: (rect.left + rect.width / 2) / window.innerWidth,
+            y: (rect.top + rect.height / 2) / window.innerHeight,
+          }
+        : { x: 0.5, y: 0.3 };
+
+    confetti({
+      particleCount: 45,
+      spread: 55,
+      scalar: 0.9,
+      origin,
+      colors: CELEBRATION_COLORS,
+    });
+  }, [post, loading]);
+
+  const requireAuth = useCallback(() => {
+    if (isAuthenticated) return true;
+    openAuthModal("login");
+    return false;
+  }, [isAuthenticated, openAuthModal]);
+
+  const handleToggleLike = async () => {
+    if (!requireAuth() || !postId) return;
     try {
       const res = await interactionsApi.toggleLike(postId);
       setLiked(res.data.liked);
       setLikeCount(res.data.like_count);
-      success(res.data.message || (res.data.liked ? "Liked experience" : "Unliked"));
-    } catch (err: any) {
-      error(err.response?.data?.detail || "Failed to update like status.");
+      success(res.data.message || (res.data.liked ? "Liked experience" : "Like removed"));
+    } catch (err: unknown) {
+      error(errorMessage(err, "Failed to update like."));
     }
   };
 
   const handleToggleBookmark = async () => {
-    if (!isAuthenticated) {
-      openAuthModal("login");
-      return;
-    }
-    if (!postId) return;
+    if (!requireAuth() || !postId) return;
     try {
       const res = await interactionsApi.toggleBookmark(postId);
       setBookmarked(res.data.bookmarked);
-      success(res.data.message || (res.data.bookmarked ? "Saved to bookmarks" : "Removed"));
-    } catch (err: any) {
-      error(err.response?.data?.detail || "Failed to update bookmark.");
+      success(res.data.message || (res.data.bookmarked ? "Saved to bookmarks" : "Removed from bookmarks"));
+    } catch (err: unknown) {
+      error(errorMessage(err, "Failed to update bookmark."));
     }
   };
 
   const handleShare = async () => {
     if (!postId) return;
+    const url = window.location.href;
+
+    const copy = async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        info("Link copied to clipboard.", "Link copied");
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    // Guests just copy — share counting requires an authenticated user.
+    if (!isAuthenticated) {
+      if (!(await copy())) info(url, "Copy this link");
+      return;
+    }
+
+    setSharing(true);
     try {
       const res = await postsApi.sharePost(postId);
       setShareCount(res.data.share_count);
-      await navigator.clipboard.writeText(window.location.href);
-      info("Experience link copied to clipboard.", "Link Copied");
+      await copy();
     } catch {
-      await navigator.clipboard.writeText(window.location.href);
-      info("Link copied to clipboard.");
+      // Share counter unavailable — copying the link still succeeded for user.
+      if (!(await copy())) info(url, "Copy this link");
+    } finally {
+      setSharing(false);
     }
   };
 
+  const scrollToDiscussion = () => {
+    setDiscussionOpen(true);
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById("discussion")
+        ?.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+    });
+  };
+
+  /* ── Loading ─────────────────────────────────────────────────────────── */
   if (loading) {
     return (
-      <AppShell>
-        <div className="max-w-[1600px] mx-auto py-12 px-4 sm:px-6 lg:px-8 xl:px-10 flex flex-col gap-6 animate-pulse">
-          <div className="h-8 bg-slate-800 rounded-xl w-1/3"></div>
-          <div className="h-48 bg-slate-800/80 rounded-2xl w-full"></div>
-          <div className="h-64 bg-slate-800/80 rounded-2xl w-full"></div>
-        </div>
-      </AppShell>
+      <div role="status" aria-live="polite" className={PANE_SHELL}>
+        <span className="sr-only">Loading experience…</span>
+
+        {/* Discussion rail placeholder — same geometry as the live rail. */}
+        <aside className={cn(DISCUSSION_PANE, "hidden lg:block")} aria-hidden="true">
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-5 w-28" />
+            <Skeleton className="h-[84px] w-full" delay={0.06} />
+            <Skeleton className="h-24 w-full" delay={0.12} />
+            <Skeleton className="h-24 w-full" delay={0.18} />
+          </div>
+        </aside>
+
+        <section className={EXPERIENCE_PANE} aria-hidden="true">
+          <div className="flex flex-col gap-4">
+            {/* Byline */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <Skeleton className="h-4 w-40" delay={0.06} />
+              </div>
+              <Skeleton className="h-5 w-24 rounded-full" delay={0.12} />
+            </div>
+
+            {/* Outcome band — mirrors the real composition's geometry */}
+            <div className="relative pb-3">
+              <span
+                className="absolute inset-x-4 bottom-0 top-6 rounded-2xl border border-line bg-raised"
+                aria-hidden="true"
+              />
+              <div className="relative overflow-hidden rounded-2xl border border-line bg-surface shadow-md">
+                <div className="flex items-center gap-4 border-b border-line bg-raised px-5 py-4 sm:px-6">
+                  <Skeleton className="h-12 w-12 rounded-xl" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <Skeleton className="h-3 w-16" delay={0.06} />
+                    <Skeleton className="h-6 w-44" delay={0.12} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-row sm:items-stretch sm:gap-0">
+                  {[0, 1, 2].map((cell) => (
+                    <div
+                      key={cell}
+                      className={cn(
+                        "min-w-0 px-5 py-3 sm:flex-1 sm:px-4",
+                        cell > 0 && "sm:border-l sm:border-line"
+                      )}
+                    >
+                      <Skeleton className="h-3 w-20" delay={0.18 + cell * 0.06} />
+                      <Skeleton className="mt-2 h-4 w-24" delay={0.24 + cell * 0.06} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Article placeholder */}
+            <div className="rounded-xl border border-line bg-surface p-5 shadow-xs sm:p-7">
+              <Skeleton className="h-8 w-2/3" />
+              <Skeleton className="mt-4 h-4 w-full" delay={0.12} />
+              <Skeleton className="mt-2 h-4 w-5/6" delay={0.18} />
+              <Skeleton className="mt-2 h-4 w-4/6" delay={0.24} />
+              <Skeleton className="mt-6 h-24 w-full" delay={0.3} />
+            </div>
+
+            <SkeletonCard />
+          </div>
+        </section>
+      </div>
     );
   }
 
-  if (!post) return null;
+  /* ── Error ───────────────────────────────────────────────────────────── */
+  if (loadFailed || !post) {
+    return (
+      <>
+        <PageContainer width="list">
+          <ErrorState
+            size="page"
+            art="stray"
+            title="We couldn't load this experience"
+            description="The post may have been removed, or the connection dropped part-way."
+            onRetry={postId ? fetchPost : undefined}
+            action={
+              <>
+                <Button variant="secondary" onClick={() => navigate(-1)}>
+                  Go back
+                </Button>
+                <Link to="/feed" className={LINK_PRIMARY}>
+                  Back to feed
+                </Link>
+              </>
+            }
+          />
+        </PageContainer>
+      </>
+    );
+  }
 
   const isDraft = post.status === "draft";
-  const formattedDate = post.published_at
-    ? new Date(post.published_at).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : new Date(post.created_at).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-
-  const formattedPackage = () => {
-    if (post.package_amount === undefined || post.package_amount === null) return null;
-    const currency = post.currency || "INR";
-    const symbol = currency.toUpperCase() === "INR" ? "₹" : "$";
-    return `${symbol} ${post.package_amount.toLocaleString()} ${currency.toUpperCase() === "INR" ? "LPA" : ""}`.trim();
-  };
+  const packageLabel = formatPackage(post.package_amount, post.currency);
+  const dateLabel = absoluteDate(post.published_at || post.created_at);
+  const roundCount = post.rounds?.length ?? 0;
 
   return (
-    <AppShell>
-      <div className="flex-1 flex flex-col md:flex-row w-full max-w-[1600px] mx-auto min-h-[calc(100vh-64px)] px-4 sm:px-6 lg:px-8 xl:px-10">
-        {/* Left Panel: Discussion / Comments (35% on desktop, toggleable modal/drawer on mobile) */}
+    <>
+      <div className={PANE_SHELL}>
+        {/* Discussion panel — full-width on mobile only when opened */}
         <aside
-          className={`w-full md:w-[35%] border-r border-[#e3dccd] bg-[#faf7ee]/80 split-scroll overflow-y-auto ${
-            mobileDiscussionOpen ? "block" : "hidden md:flex flex-col"
-          }`}
+          id="discussion"
+          aria-label="Discussion"
+          className={cn(
+            DISCUSSION_PANE,
+            discussionOpen ? "block border-b py-4 lg:border-b-0" : "hidden"
+          )}
         >
-          {/* Mobile close button */}
-          <div className="md:hidden p-3 border-b border-[#e3dccd] flex justify-end">
-            <button
-              onClick={() => setMobileDiscussionOpen(false)}
-              className="text-xs font-semibold text-[#2f6b47] px-3 py-1 bg-white border border-[#e3dccd] rounded-lg flex items-center gap-1 cursor-pointer"
-            >
-              <span>Back to Experience</span>
-              <X className="w-3.5 h-3.5" />
-            </button>
+          <div className="mb-3 flex items-center justify-between lg:hidden">
+            <h2 className="text-base font-semibold tracking-tight">Discussion</h2>
+            <Button variant="ghost" size="sm" onClick={() => setDiscussionOpen(false)}>
+              Back to experience
+            </Button>
           </div>
-          <CommentSection
-            postId={post.id}
-            onCommentCountChange={(count) => setCommentCount(count)}
-          />
+          <CommentSection postId={post.id} onCommentCountChange={setCommentCount} />
         </aside>
 
-        {/* Right Panel: Main Post Context (65% on desktop, full width on mobile) */}
-        <section className="flex-1 w-full md:w-[65%] split-scroll overflow-y-auto p-4 md:p-8 flex flex-col gap-6">
-          {/* Breadcrumb Navigation */}
-          <div className="flex items-center justify-between text-xs text-[#5f6e82]">
-            <Link
-              to="/"
-              className="flex items-center gap-1.5 text-[#2f6b47] hover:text-[#3f6f52] font-semibold transition-colors group"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
-              <span>Back to Feed</span>
-            </Link>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setMobileDiscussionOpen(!mobileDiscussionOpen)}
-                className="md:hidden flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#3f6f52] hover:bg-[#345c44] text-white text-xs font-semibold shadow-sm cursor-pointer"
-              >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span>Discussion ({commentCount})</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Draft Notice if viewing own unpublished draft */}
-          {isDraft && (
-            <motion.div
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-4 rounded-xl border border-[#b26a00]/30 bg-[#b26a00]/10 text-[#0f1926] flex flex-wrap items-center justify-between gap-3"
-            >
-              <div className="flex items-center gap-2 text-xs font-semibold text-[#b26a00]">
-                <ShieldAlert className="w-4 h-4" />
-                <span>Draft Experience — Visible only to you</span>
-              </div>
-              <Link
-                to="/draft"
-                className="px-3.5 py-1.5 rounded-xl bg-[#3f6f52] hover:bg-[#345c44] text-white font-semibold text-xs shadow-sm"
-              >
-                Resume Drafting →
-              </Link>
-            </motion.div>
+        {/* Experience panel */}
+        <section
+          className={cn(
+            EXPERIENCE_PANE,
+            discussionOpen && "hidden lg:block"
           )}
+        >
+          <Scene>
+            {/* Toolbar */}
+            <Section className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <Link
+                to="/feed"
+                className="group inline-flex items-center gap-1.5 text-sm font-medium text-primary transition-colors duration-fast ease-swift hover:text-[rgb(var(--primary-hover))]"
+              >
+                <ArrowLeft
+                  size={15}
+                  className="transition-transform duration-fast ease-swift group-hover:-translate-x-0.5"
+                  aria-hidden="true"
+                />
+                Back to feed
+              </Link>
 
-          {/* Post Header Card */}
-          <motion.article
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl border border-[#e3dccd] p-6 sm:p-7 shadow-sm flex flex-col gap-6 relative overflow-hidden"
-          >
-            {/* Top right decorative glow */}
-            <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-[#3f6f52]/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<MessageSquare size={15} aria-hidden="true" />}
+                onClick={scrollToDiscussion}
+                className="lg:hidden"
+              >
+                Discussion
+                <span className="tabular ml-1 text-muted">{commentCount}</span>
+              </Button>
+            </Section>
 
-            <div className="flex flex-col gap-4 relative z-10">
-              {/* Top Row: Author, Status, Category, Date */}
-              <div className="flex items-center justify-between w-full flex-wrap gap-3">
-                <div className="flex items-center gap-3">
-                  <AuthorDisplay
-                    author={post.author}
-                    isAnonymous={post.is_anonymous}
-                    size="md"
+            {/* Draft notice */}
+            {isDraft && (
+              <Section className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning/30 bg-warning-soft px-4 py-3">
+                <span className="flex items-center gap-2 text-sm font-medium text-warning">
+                  <ShieldAlert size={16} aria-hidden="true" />
+                  Draft experience — visible only to you
+                </span>
+                <Link to="/draft" className={LINK_SECONDARY}>
+                  Resume drafting
+                </Link>
+              </Section>
+            )}
+
+            <Section>
+              <article className="flex flex-col gap-6 rounded-xl border border-line bg-surface p-5 shadow-xs sm:p-7">
+                {/* Header */}
+                <header className="flex flex-col gap-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <AuthorDisplay author={post.author} isAnonymous={post.is_anonymous} size="md" />
+
+                    <div className="flex shrink-0 flex-wrap items-center gap-3">
+                      <CategoryBadge category={post.post_category} />
+                      <time
+                        className="text-sm text-muted"
+                        dateTime={post.published_at || post.created_at}
+                      >
+                        {dateLabel}
+                      </time>
+                    </div>
+                  </div>
+
+                  {/* Beat 1 — the outcome, staged as the page's anchor */}
+                  <OutcomeBand
+                    isOffer={post.is_offer_received}
+                    company={post.company_name}
+                    role={post.job_role}
+                    packageLabel={packageLabel}
+                    location={post.work_location}
+                    markRef={outcomeMarkRef}
                   />
-                </div>
 
-                <div className="flex items-center gap-2.5 shrink-0 ml-auto">
-                  {post.is_offer_received ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#2f7d52]/10 text-[#2f7d52] text-xs font-bold border border-[#2f7d52]/20 shadow-xs">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-[#2f7d52]" />
-                      Offer Received
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f3eee1] border border-[#e3dccd] text-[#5f6e82] text-xs font-medium">
-                      Interview Logged
-                    </span>
+                  <h1 className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+                    {post.title}
+                  </h1>
+
+                  {post.experience_text && (
+                    <p className="whitespace-pre-wrap text-base leading-relaxed text-body">
+                      {post.experience_text}
+                    </p>
                   )}
-                  <CategoryBadge category={post.post_category} />
-                  <span className="text-xs text-[#5f6e82]">{formattedDate}</span>
-                </div>
-              </div>
 
-              {/* Metadata Row: Company, Role, Compensation, Location */}
-              <div className="flex items-center gap-3 md:gap-4 flex-wrap text-xs sm:text-sm text-[#5f6e82] border-y border-[#e3dccd] py-3 mt-1">
-                {post.company_name && (
-                  <div className="flex items-center gap-1.5 font-semibold text-[#0f1926]">
-                    <Building2 className="w-4 h-4 text-[#3f6f52] shrink-0" />
-                    <span>{post.company_name}</span>
-                  </div>
-                )}
-
-                {post.job_role && (
-                  <>
-                    <div className="w-px h-3.5 bg-[#e3dccd] hidden sm:block"></div>
-                    <div className="flex items-center gap-1.5 font-medium text-[#b26a00]">
-                      <Briefcase className="w-4 h-4 text-[#b26a00] shrink-0" />
-                      <span>{post.job_role}</span>
+                  {post.tips && (
+                    <div className="rounded-xl border border-primary/25 bg-primary-soft/60 p-5">
+                      <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-primary">
+                        <Lightbulb size={16} className="text-warning" aria-hidden="true" />
+                        Candidate tips &amp; preparation strategy
+                      </div>
+                      <p className="whitespace-pre-wrap leading-relaxed text-body">{post.tips}</p>
                     </div>
-                  </>
-                )}
+                  )}
+                </header>
 
-                {formattedPackage() && (
-                  <>
-                    <div className="w-px h-3.5 bg-[#e3dccd] hidden sm:block"></div>
-                    <div className="flex items-center gap-1.5 font-semibold text-[#2f7d52] bg-[#2f7d52]/10 px-2.5 py-0.5 rounded-full border border-[#2f7d52]/20">
-                      <Banknote className="w-4 h-4 text-[#2f7d52] shrink-0" />
-                      <span>{formattedPackage()}</span>
-                    </div>
-                  </>
-                )}
-
-                {post.work_location && (
-                  <>
-                    <div className="w-px h-3.5 bg-[#e3dccd] hidden sm:block"></div>
-                    <div className="flex items-center gap-1.5 text-xs text-[#5f6e82]">
-                      <MapPin className="w-4 h-4 text-[#5f6e82] shrink-0" />
-                      <span>{post.work_location}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Post Title */}
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0f1926] leading-tight tracking-tight">
-                {post.title}
-              </h1>
-
-              {/* Narrative Experience Text */}
-              {post.experience_text && (
-                <div className="text-sm sm:text-base text-[#2b3a4f] leading-relaxed whitespace-pre-wrap mt-2 font-normal">
-                  {post.experience_text}
-                </div>
-              )}
-
-              {/* Tips & Strategy Section */}
-              {post.tips && (
-                <div className="p-5 rounded-2xl bg-[#faf7ee] border border-[#3f6f52]/25 text-xs sm:text-sm text-[#0f1926] flex flex-col gap-2 mt-2">
-                  <div className="flex items-center gap-2 font-bold text-[#2f6b47]">
-                    <Lightbulb className="w-4 h-4 text-[#b26a00]" />
-                    <span>Candidate Tips & Preparation Strategy</span>
-                  </div>
-                  <p className="leading-relaxed whitespace-pre-wrap text-[#2b3a4f]">
-                    {post.tips}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Rounds and Questions Section */}
-            <div className="flex flex-col gap-4 mt-2 relative z-10">
-              <h2 className="text-base sm:text-lg font-bold text-[#0f1926] flex items-center justify-between border-b border-[#e3dccd] pb-3">
-                <span className="flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-[#3f6f52]" />
-                  <span>Interview Rounds & Questions</span>
-                </span>
-                <span className="text-xs font-semibold text-[#2f6b47] bg-[#3f6f52]/10 border border-[#3f6f52]/20 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                  <Layers className="w-3 h-3" />
-                  {post.rounds?.length || 0} {post.rounds?.length === 1 ? "Round" : "Rounds"}
-                </span>
-              </h2>
-
-              {post.rounds && post.rounds.length > 0 ? (
+                {/* Beat 2 — the round sequence, sitting in a recessed well */}
                 <div className="flex flex-col gap-4">
-                  {post.rounds.map((round) => (
-                    <RoundAccordion key={round.post_round_id} round={round} />
-                  ))}
+                  <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
+                    <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+                      <Layers size={17} className="text-primary" aria-hidden="true" />
+                      Interview rounds &amp; questions
+                    </h2>
+                    <span className="tabular inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary-soft px-2.5 py-0.5 text-xs font-semibold text-primary">
+                      <Layers size={13} aria-hidden="true" />
+                      {roundCount} {roundCount === 1 ? "round" : "rounds"}
+                    </span>
+                  </div>
+
+                  {roundCount > 0 ? (
+                    <div className="rounded-2xl border border-line bg-sunken p-2 sm:p-2.5">
+                      <div className="flex flex-col gap-2 sm:gap-2.5">
+                        {post.rounds!.map((round) => (
+                          <RoundAccordion key={round.post_round_id} round={round} />
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <EmptyState
+                      art="rounds"
+                      title="No rounds recorded"
+                      description="No individual rounds or questions were recorded in this report."
+                    />
+                  )}
                 </div>
-              ) : (
-                <div className="p-8 rounded-xl border border-dashed border-[#e3dccd] bg-[#faf7ee] text-center text-xs text-[#5f6e82]">
-                  No individual rounds or questions were recorded in this report.
-                </div>
-              )}
-            </div>
 
-            {/* Engagement & Action Toolbar */}
-            <footer className="flex items-center justify-between pt-4 border-t border-[#e3dccd] flex-wrap gap-4 relative z-10">
-              <div className="flex items-center gap-5 flex-wrap">
-                {/* Like Button */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  type="button"
-                  onClick={handleToggleLike}
-                  className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-                    liked
-                      ? "text-[#b5462f]"
-                      : "text-[#5f6e82] hover:text-[#b5462f]"
-                  }`}
-                  title={liked ? "Unlike" : "Like"}
-                >
-                  <Heart
-                    className={`w-4 h-4 ${liked ? "fill-[#b5462f] text-[#b5462f]" : ""}`}
-                  />
-                  <span>{likeCount}</span>
-                </motion.button>
+                {/* Engagement toolbar */}
+                <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-line pt-4">
+                  <div className="flex flex-wrap items-center gap-1">
+                    <EngagementButton
+                      label={liked ? "Unlike" : "Like"}
+                      active={liked}
+                      activeClass="text-danger"
+                      count={likeCount}
+                      filled
+                      onClick={handleToggleLike}
+                    >
+                      <IconPop key={liked ? "liked" : "idle"}>
+                        <Heart size={17} aria-hidden="true" />
+                      </IconPop>
+                    </EngagementButton>
 
-                {/* Comment Count / Jump */}
-                <button
-                  type="button"
-                  onClick={() => setMobileDiscussionOpen(true)}
-                  className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#5f6e82] hover:text-[#3f6f52] transition-colors cursor-pointer"
-                  title="Discussion"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  <span>{commentCount}</span>
-                </button>
+                    <EngagementButton
+                      label="Jump to discussion"
+                      count={commentCount}
+                      onClick={scrollToDiscussion}
+                    >
+                      <MessageSquare size={17} aria-hidden="true" />
+                    </EngagementButton>
 
-                {/* Share Button */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  type="button"
-                  onClick={handleShare}
-                  className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#5f6e82] hover:text-[#3f6f52] transition-colors cursor-pointer"
-                  title="Share"
-                >
-                  <Share2 className="w-4 h-4" />
-                  <span>{shareCount}</span>
-                </motion.button>
-              </div>
+                    <EngagementButton
+                      label="Copy share link"
+                      count={shareCount}
+                      onClick={handleShare}
+                    >
+                      {sharing ? <Spinner size={15} /> : <Share2 size={17} aria-hidden="true" />}
+                    </EngagementButton>
+                  </div>
 
-              <div className="flex items-center gap-2 ml-auto">
-                {/* Bookmark Button */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  type="button"
-                  onClick={handleToggleBookmark}
-                  className={`p-2 rounded-xl transition-all cursor-pointer ${
-                    bookmarked
-                      ? "text-[#b26a00] bg-[#b26a00]/15 border border-[#b26a00]/30"
-                      : "text-[#5f6e82] hover:text-[#b26a00] hover:bg-[#f3eee1]"
-                  }`}
-                  title={bookmarked ? "Saved in Bookmarks" : "Save Bookmark"}
-                >
-                  <Bookmark
-                    className={`w-4 h-4 ${bookmarked ? "fill-[#b26a00] text-[#b26a00]" : ""}`}
-                  />
-                </motion.button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleToggleBookmark}
+                      aria-pressed={bookmarked}
+                      aria-label={bookmarked ? "Remove bookmark" : "Save bookmark"}
+                      title={bookmarked ? "Saved in bookmarks" : "Save bookmark"}
+                      className={cn(
+                        "inline-flex h-9 w-9 items-center justify-center rounded-lg",
+                        "transition-[color,background-color,border-color,transform] duration-fast ease-swift active:scale-95",
+                        bookmarked
+                          ? "border border-warning/30 bg-warning-soft text-warning [&_svg]:fill-current"
+                          : "text-muted hover:bg-sunken/70 hover:text-heading"
+                      )}
+                    >
+                      <Bookmark size={17} aria-hidden="true" />
+                    </button>
 
-                {/* Moderation Flag Button */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  type="button"
-                  onClick={() => {
-                    if (!isAuthenticated) {
-                      openAuthModal("login");
-                      return;
-                    }
-                    setReportModalOpen(true);
-                  }}
-                  className="p-2 rounded-xl text-[#5f6e82] hover:text-[#b5462f] hover:bg-[#b5462f]/10 transition-all cursor-pointer"
-                  title="Report Inappropriate Content"
-                >
-                  <Flag className="w-4 h-4" />
-                </motion.button>
-              </div>
-            </footer>
-          </motion.article>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!requireAuth()) return;
+                        setReportModalOpen(true);
+                      }}
+                      aria-label="Report this experience"
+                      title="Report inappropriate content"
+                      className={cn(
+                        "inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted",
+                        "transition-[color,background-color,transform] duration-fast ease-swift",
+                        "hover:bg-danger-soft hover:text-danger active:scale-95"
+                      )}
+                    >
+                      <Flag size={17} aria-hidden="true" />
+                    </button>
+                  </div>
+                </footer>
+              </article>
+            </Section>
+          </Scene>
         </section>
       </div>
 
-      {/* Moderation Report Modal */}
       <ReportModal
         isOpen={reportModalOpen}
         onClose={() => setReportModalOpen(false)}
         postId={post.id}
         postTitle={post.title}
       />
-    </AppShell>
+    </>
   );
 };

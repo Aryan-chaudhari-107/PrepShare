@@ -20,4 +20,3 @@ slowapi
 
 # Dev
 requests
-# pytest

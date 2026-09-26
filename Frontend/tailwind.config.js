@@ -1,23 +1,47 @@
 /** @type {import('tailwindcss').Config} */
+
+// Semantic tokens read from CSS custom properties (src/index.css) so the entire
+// surface / text / border / status palette can be retuned — or flipped to dark —
+// in ONE place. Brand scales below stay static for gradients and precise shades.
+
+const v = (name) => `rgb(var(--${name}) / <alpha-value>)`;
+
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   darkMode: "class",
   theme: {
     extend: {
       colors: {
-        // Alpine Olive, Warm Ivory & Deep Slate Navy Master Palette (Palette 2)
+        // ── Semantic, theme-aware ────────────────────────────────────────
+        canvas: v("canvas"),
+        surface: v("surface"),
+        raised: v("raised"),
+        sunken: v("sunken"),
+        line: v("line"),
+        "line-strong": v("line-strong"),
+
+        heading: v("heading"),
+        body: v("body"),
+        muted: v("muted"),
+        faint: v("faint"),
+        "olive-ink": v("olive-ink"),
+
+        primary: varScale("primary"),
+        accent: varScale("accent"),
+        success: varScale("success"),
+        warning: varScale("warning"),
+        danger: varScale("danger"),
+
+        // ── Brand scales (static) ────────────────────────────────────────
         olive: {
-          50: "#f4f7f5",
-          100: "#e5ede7",
-          200: "#c9dbcf",
+          50: "#f2f7f4",
+          100: "#e2ede7",
+          200: "#c6dbcf",
           300: "#a4c3ae",
-          400: "#588b6c",
-          500: "#3f6f52", // Alpine Olive Primary CTA
-          600: "#345c44", // Alpine Olive Hover
-          700: "#2f6b47", // Forest Olive Links/Accents
+          400: "#6f9c80",
+          500: "#3f6f52",
+          600: "#345c44",
+          700: "#2f6b47",
           800: "#254832",
           900: "#1a3223",
           950: "#0e1a12",
@@ -27,20 +51,19 @@ export default {
           100: "#f1f5f9",
           200: "#e2e8f0",
           300: "#94a3b8",
-          400: "#5f6e82", // Muted Slate Meta
+          400: "#5f6e82",
           500: "#475569",
           600: "#334155",
-          700: "#2b3a4f", // Slate Navy Body
+          700: "#2b3a4f",
           800: "#1e293b",
-          850: "#141f2d",
-          900: "#0f1926", // Deep Navy Headings
+          900: "#0f1926",
           950: "#080e16",
         },
         cream: {
           50: "#ffffff",
-          100: "#faf7ee", // Page Canvas Warm Ivory
-          200: "#f3eee1", // Soft Ivory Raised / Inputs
-          300: "#e3dccd", // Subtle Sand Border
+          100: "#faf7ee",
+          200: "#f3eee1",
+          300: "#e3dccd",
           400: "#d3c8b4",
           500: "#b8aa90",
           600: "#96876c",
@@ -48,110 +71,123 @@ export default {
           800: "#524835",
           900: "#332c1e",
         },
-        // Complementary Accent Colors
-        gold: {
-          DEFAULT: "#b26a00",
-          light: "#d97706",
-          dark: "#92400e",
-        },
-        terracotta: {
-          DEFAULT: "#b5462f",
-          light: "#dc2626",
-          dark: "#991b1b",
-        },
-        mint: {
-          DEFAULT: "#2f7d52",
-          light: "#16a34a",
-          dark: "#166534",
-        },
-
-        // Core UI Semantic Tokens
-        "primary": "#3f6f52",
-        "primary-container": "#e5ede7",
-        "primary-fixed": "#f4f7f5",
-        "primary-fixed-dim": "#c9dbcf",
-        "on-primary": "#ffffff",
-        "on-primary-container": "#0f1926",
-        "on-primary-fixed": "#0e1a12",
-        "on-primary-fixed-variant": "#254832",
-        "inverse-primary": "#a4c3ae",
-
-        "secondary": "#3f6f9e",
-        "secondary-container": "#e0ecf8",
-        "secondary-fixed": "#f0f4f8",
-        "secondary-fixed-dim": "#bcccdc",
-        "on-secondary": "#ffffff",
-        "on-secondary-container": "#0f1926",
-        "on-secondary-fixed": "#080e16",
-        "on-secondary-fixed-variant": "#2b3a4f",
-
-        "tertiary": "#b26a00",
-        "tertiary-container": "#fef3c7",
-        "tertiary-fixed": "#fffbeb",
-        "tertiary-fixed-dim": "#fde68a",
-        "on-tertiary": "#ffffff",
-        "on-tertiary-container": "#0f1926",
-        "on-tertiary-fixed": "#78350f",
-        "on-tertiary-fixed-variant": "#92400e",
-
-        "background": "#faf7ee",
-        "on-background": "#0f1926",
-
-        "surface": "#ffffff",
-        "surface-dim": "#faf7ee",
-        "surface-bright": "#ffffff",
-        "surface-variant": "#f3eee1",
-        "surface-container-lowest": "#ffffff",
-        "surface-container-low": "#faf7ee",
-        "surface-container": "#f3eee1",
-        "surface-container-high": "#e3dccd",
-        "surface-container-highest": "#d3c8b4",
-        "surface-elevated": "#ffffff",
-        "surface-tint": "#3f6f52",
-        "on-surface": "#0f1926",
-        "on-surface-variant": "#2b3a4f",
-        "inverse-surface": "#0f1926",
-        "inverse-on-surface": "#faf7ee",
-
-        "outline": "#e3dccd",
-        "outline-variant": "#f3eee1",
-        "border-subtle": "#e3dccd",
-
-        // Domain Badges & Statuses
-        "campus-badge": "#3f6f52",
-        "off-campus-badge": "#3f6f9e",
-        "difficulty-easy": "#2f7d52",
-        "difficulty-medium": "#b26a00",
-        "difficulty-hard": "#b5462f",
-
-        "error": "#b5462f",
-        "error-container": "#fee2e2",
-        "on-error": "#ffffff",
-        "on-error-container": "#7f1d1d",
+        gold: { DEFAULT: "#b26a00", light: "#d97706", dark: "#92400e" },
+        terracotta: { DEFAULT: "#b5462f", light: "#dc2626", dark: "#991b1b" },
+        mint: { DEFAULT: "#2f7d52", light: "#16a34a", dark: "#166534" },
       },
+
       fontFamily: {
-        "sans": ["Inter", "sans-serif"],
-        "body": ["Inter", "sans-serif"],
-        "headline": ["Inter", "sans-serif"],
-        "mono": ["JetBrains Mono", "monospace"],
-        "code": ["JetBrains Mono", "monospace"],
+        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["'JetBrains Mono'", "ui-monospace", "SFMono-Regular", "monospace"],
       },
+
+      fontSize: {
+        // Floor of 12px — no sub-legible text anywhere.
+        xs: ["12px", { lineHeight: "18px" }],
+        sm: ["13px", { lineHeight: "20px" }],
+        base: ["15px", { lineHeight: "24px" }],
+        lg: ["16px", { lineHeight: "26px" }],
+        xl: ["18px", { lineHeight: "28px" }],
+        "2xl": ["22px", { lineHeight: "30px" }],
+        "3xl": ["26px", { lineHeight: "34px" }],
+        "4xl": ["32px", { lineHeight: "40px" }],
+        "5xl": ["40px", { lineHeight: "46px", letterSpacing: "-0.022em" }],
+        "6xl": ["48px", { lineHeight: "54px", letterSpacing: "-0.024em" }],
+      },
+
       borderRadius: {
-        "DEFAULT": "0.25rem",
-        "lg": "0.5rem",
-        "xl": "0.75rem",
-        "2xl": "1rem",
-        "3xl": "1.5rem",
-        "full": "9999px",
+        DEFAULT: "6px",
+        sm: "6px",
+        md: "8px",
+        lg: "10px",
+        xl: "14px",
+        "2xl": "18px",
+        "3xl": "24px",
+        full: "9999px",
       },
+
+      boxShadow: {
+        xs: "0 1px 2px 0 rgb(13 18 25 / 0.05)",
+        sm: "0 1px 3px -1px rgb(13 18 25 / 0.07), 0 1px 2px -1px rgb(13 18 25 / 0.05)",
+        DEFAULT: "0 4px 12px -4px rgb(13 18 25 / 0.08), 0 2px 4px -2px rgb(13 18 25 / 0.04)",
+        md: "0 8px 20px -8px rgb(13 18 25 / 0.12), 0 2px 6px -3px rgb(13 18 25 / 0.06)",
+        lg: "0 16px 32px -12px rgb(13 18 25 / 0.16), 0 6px 12px -6px rgb(13 18 25 / 0.08)",
+        xl: "0 28px 56px -20px rgb(13 18 25 / 0.20), 0 10px 20px -10px rgb(13 18 25 / 0.10)",
+        "2xl": "0 40px 80px -28px rgb(13 18 25 / 0.26)",
+        focus: "0 0 0 3px rgb(var(--primary) / 0.18)",
+        none: "none",
+      },
+
+      // Direct-manipulation press feedback. Two tiers so a press carries the
+      // same weight everywhere: `press` for controls (buttons, tabs, chips),
+      // `nudge` for full-width rows that only need to acknowledge the touch.
+      // `recede` is NOT a press — it is the resting inset of a collapsed
+      // surface, so the two must not share a value.
+      scale: {
+        press: "0.98",
+        nudge: "0.995",
+        recede: "0.99",
+      },
+
+      // Blur tiers. `veil` is the scrim behind Modal/Drawer — deliberately
+      // light, enough to detach the dialog without smearing the page.
+      backdropBlur: {
+        veil: "2px",
+      },
+
       spacing: {
-        "gutter": "24px",
-        "margin-desktop": "32px",
-        "margin-mobile": "16px",
-        "base": "4px",
-        "form-step-gap": "48px",
-      }
+        // Single source of truth for the app bar height. Every sticky offset
+        // and scroll-margin in the app derives from --navbar-height in
+        // src/index.css, so this can never drift per page again.
+        header: "var(--navbar-height)",
+      },
+
+      maxWidth: {
+        shell: "1400px",
+        list: "1120px",
+        prose: "760px",
+        wizard: "860px",
+      },
+
+      // NOTE: there is no `shimmer` entry under keyframes/animation here on
+      // purpose — the skeleton sweep's keyframe and `.shimmer` recipe live in
+      // src/index.css (MOTION UTILITIES) so they always ship, regardless of
+      // which utilities happen to appear in scanned source.
+
+      // Named duration tiers. Pair with the timing functions below so CSS
+      // transitions follow the exact same scale as framer-motion's DURATION.
+      transitionDuration: {
+        instant: "80ms",
+        fast: "140ms",
+        base: "240ms",
+        slow: "380ms",
+        cinematic: "640ms",
+      },
+
+      transitionTimingFunction: {
+        swift: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+        enter: "cubic-bezier(0.16, 1, 0.3, 1)",
+        exit: "cubic-bezier(0.7, 0, 0.84, 0)",
+        emphasized: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+      },
+
+      zIndex: {
+        drawer: "60",
+        modal: "70",
+        toast: "80",
+      },
     },
   },
   plugins: [],
+};
+
+// Theme-aware colour family: DEFAULT (the hue), -fg (text drawn on it) and
+// -soft (a tinted background). All read CSS variables so one block in
+// src/index.css retunes — or flips — every status colour in the app.
+function varScale(name) {
+  return {
+    DEFAULT: v(name),
+    fg: v(`${name}-fg`),
+    soft: v(`${name}-soft`),
+  };
 }

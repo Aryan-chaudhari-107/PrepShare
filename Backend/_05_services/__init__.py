@@ -17,6 +17,7 @@ from _05_services import (
     comments,
     companies,
     completed_questions,
+    dashboard,
     education_history,
     follows,
     institutions,

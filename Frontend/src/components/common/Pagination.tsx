@@ -1,49 +1,132 @@
 import React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "../../lib/cn";
 
 interface PaginationProps {
   page: number;
   totalPages: number;
-  total: number;
-  hasNext: boolean;
-  hasPrevious: boolean;
-  onPageChange: (newPage: number) => void;
+  onPageChange: (page: number) => void;
+  /**
+   * Plural noun for the total line, e.g. "experiences", "notifications".
+   * Previously hard-coded to "experiences", so Notifications, Drafts and
+   * Completed Questions all read "(12 total experiences)".
+   */
+  noun?: string;
+  total?: number;
+  isLoading?: boolean;
+  className?: string;
+}
+
+const edge = cn(
+  "inline-flex h-9 items-center justify-center rounded-lg px-3 text-sm font-medium transition-colors duration-fast ease-swift",
+  "disabled:cursor-not-allowed disabled:opacity-40"
+);
+
+/** Page window: first … current±1 … last, with ellipsis markers. */
+function pageWindow(page: number, totalPages: number): (number | "…")[] {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+
+  const pages = new Set<number>([1, totalPages, page, page - 1, page + 1]);
+  const sorted = [...pages].filter((p) => p >= 1 && p <= totalPages).sort((a, b) => a - b);
+
+  const out: (number | "…")[] = [];
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0 && sorted[i] - sorted[i - 1] > 1) out.push("…");
+    out.push(sorted[i]);
+  }
+  return out;
 }
 
 export const Pagination: React.FC<PaginationProps> = ({
   page,
   totalPages,
-  total,
-  hasNext,
-  hasPrevious,
   onPageChange,
+  noun = "items",
+  total,
+  isLoading,
+  className,
 }) => {
-  if (totalPages <= 1) return null;
+  if (totalPages <= 1) {
+    if (total === undefined || total === 0) return null;
+    return (
+      <p className={cn("text-center text-sm text-muted", className)}>
+        {total} {noun}
+        {total === 1 ? "" : "s"}
+      </p>
+    );
+  }
+
+  const go = (next: number) => {
+    if (next < 1 || next > totalPages || next === page || isLoading) return;
+    onPageChange(next);
+  };
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-6 px-2 border-t border-[#e3dccd] text-xs text-[#5f6e82]">
-      <div>
-        Showing page <span className="font-semibold text-[#0f1926]">{page}</span> of{" "}
-        <span className="font-semibold text-[#0f1926]">{totalPages}</span> ({total} total experiences)
-      </div>
-      <div className="flex items-center gap-2">
+    <nav
+      aria-label="Pagination"
+      className={cn("flex flex-col items-center gap-3 sm:flex-row sm:justify-between", className)}
+    >
+      <p className="text-sm text-muted">
+        {total !== undefined && (
+          <span className="tabular">
+            {total} {noun}
+            {total === 1 ? "" : "s"} ·{" "}
+          </span>
+        )}
+        <span className="tabular">
+          Page {page} of {totalPages}
+        </span>
+      </p>
+
+      <div className="flex items-center gap-1">
         <button
-          disabled={!hasPrevious}
-          onClick={() => onPageChange(page - 1)}
-          className="px-3.5 py-2 rounded-xl border border-[#e3dccd] bg-white font-medium text-[#2b3a4f] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#f3eee1] hover:text-[#0f1926] transition-all active:scale-95 shadow-xs flex items-center gap-1.5 cursor-pointer"
+          type="button"
+          onClick={() => go(page - 1)}
+          disabled={page <= 1 || isLoading}
+          className={cn(edge, "border border-line bg-surface hover:bg-raised")}
         >
-          <ChevronLeft className="w-3.5 h-3.5" />
-          <span>Previous</span>
+          Previous
         </button>
+
+        <div className="hidden items-center gap-1 sm:flex">
+          {pageWindow(page, totalPages).map((entry, index) =>
+            entry === "…" ? (
+              <span key={`gap-${index}`} className="px-1.5 text-sm text-faint" aria-hidden="true">
+                …
+              </span>
+            ) : (
+              <button
+                key={entry}
+                type="button"
+                onClick={() => go(entry)}
+                disabled={isLoading}
+                aria-current={entry === page ? "page" : undefined}
+                aria-label={`Page ${entry}`}
+                className={cn(
+                  "tabular h-9 w-9 rounded-lg text-sm font-medium transition-colors duration-fast ease-swift disabled:cursor-not-allowed",
+                  entry === page
+                    ? "bg-primary text-primary-fg shadow-xs"
+                    : "text-muted hover:bg-raised hover:text-heading"
+                )}
+              >
+                {entry}
+              </button>
+            )
+          )}
+        </div>
+
+        <span className="tabular px-2 text-sm text-muted sm:hidden">
+          {page}/{totalPages}
+        </span>
+
         <button
-          disabled={!hasNext}
-          onClick={() => onPageChange(page + 1)}
-          className="px-3.5 py-2 rounded-xl bg-[#3f6f52] hover:bg-[#345c44] text-white font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 shadow-sm flex items-center gap-1.5 cursor-pointer"
+          type="button"
+          onClick={() => go(page + 1)}
+          disabled={page >= totalPages || isLoading}
+          className={cn(edge, "border border-line bg-surface hover:bg-raised")}
         >
-          <span>Next</span>
-          <ChevronRight className="w-3.5 h-3.5" />
+          Next
         </button>
       </div>
-    </div>
+    </nav>
   );
 };

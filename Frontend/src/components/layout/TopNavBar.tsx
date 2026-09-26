@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -13,116 +13,228 @@ import {
   FileText,
   LogOut,
   Menu,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { getMediaUrl } from "../../utils/media";
+import { useTheme } from "../../context/ThemeContext";
+import { Avatar } from "../ui/Avatar";
+import { initials } from "../../lib/format";
+import { DURATION, EASE } from "../../motion";
 
 interface TopNavBarProps {
-  onSearch?: (query: string) => void;
-  searchQuery?: string;
+  /** Opens the mobile navigation drawer. Owned by AppShell. */
   onToggleMobileMenu?: () => void;
+  onSearch?: (query: string) => void;
+  /** `undefined` when the layout has no feed query to mirror — see the sync
+   *  effect below; it must not wipe what the user has typed. */
+  searchQuery?: string;
   unreadCount?: number;
   unreadMessages?: number;
 }
 
+const ICON_BTN =
+  "relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted transition-colors duration-fast ease-swift hover:bg-sunken/70 hover:text-heading";
+
+function CountBadge({ count, tone }: { count: number; tone: "primary" | "danger" }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className={cnBadge(tone)}
+      aria-hidden="true"
+    >
+      {count > 9 ? "9+" : count}
+    </span>
+  );
+}
+
+function cnBadge(tone: "primary" | "danger") {
+  return [
+    "tabular absolute -right-0.5 -top-0.5 flex min-w-[16px] items-center justify-center",
+    "rounded-full px-1 py-0.5 text-xs font-bold leading-none text-white ring-2 ring-canvas",
+    tone === "danger" ? "bg-danger" : "bg-primary",
+  ].join(" ");
+}
+
+/**
+ * App bar: brand, global search, primary CTA, notification shortcuts and the
+ * account menu.
+ *
+ * Changes from the original:
+ *  - height locked to --navbar-height (was 72px while three pages offset by
+ *    64/80/96px, producing wrong scroll heights);
+ *  - the hamburger is now ALWAYS rendered on mobile and actually wired to
+ *    AppShell's drawer — previously it was conditional on a prop that no page
+ *    passed, so it never appeared;
+ *  - the account menu is a real `menu` widget with aria-expanded/haspopup,
+ *    Escape-to-close and focus return;
+ *  - a working light/dark toggle backs the `theme_preference` the settings
+ *    screen already persists to the API.
+ */
 export const TopNavBar: React.FC<TopNavBarProps> = ({
+  onToggleMobileMenu,
   onSearch,
   searchQuery = "",
-  onToggleMobileMenu,
   unreadCount = 0,
   unreadMessages = 0,
 }) => {
   const { isAuthenticated, user, openAuthModal, logout } = useAuth();
+  const { resolved, toggle } = useTheme();
   const navigate = useNavigate();
-  const [localSearch, setLocalSearch] = useState(searchQuery);
+  const location = useLocation();
+
+  const [localSearch, setLocalSearch] = useState(searchQuery ?? "");
   const [showUserMenu, setShowUserMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Sync only when the layout supplies a value. `undefined` means "not on the
+  // feed" — clearing the field there would discard a query the user is still
+  // composing while they look at a result.
+  useEffect(() => {
+    if (searchQuery !== undefined) setLocalSearch(searchQuery);
+  }, [searchQuery]);
 
   useEffect(() => {
+    if (!showUserMenu) return;
+
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setShowUserMenu(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowUserMenu(false);
+        menuButtonRef.current?.focus();
+      }
+    };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (onSearch) {
-      onSearch(localSearch);
-    } else {
-      navigate(`/?search=${encodeURIComponent(localSearch)}`);
-    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showUserMenu]);
+
+  // Close the menu on navigation so it never floats over a new page.
+  useEffect(() => setShowUserMenu(false), [location.pathname]);
+
+  const handleSearchSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (onSearch) onSearch(localSearch);
+    else navigate(`/feed?search=${encodeURIComponent(localSearch)}`);
   };
 
+  // The app-shell's breadcrumb: mirrors the current route as a section name.
+  const pageTitle = (() => {
+    const path = location.pathname;
+    if (path === "/") return "Dashboard";
+    if (path === "/feed") return "Explore Feed";
+    if (path.startsWith("/posts/")) return "Experience";
+    if (path.startsWith("/drafts")) return "Draft Archive";
+    if (path.startsWith("/draft")) return "Share Experience";
+    if (path.startsWith("/users/") || path === "/profile") return "Profile";
+    if (path.startsWith("/messages")) return "Messages";
+    if (path.startsWith("/notifications")) return "Notifications";
+    if (path.startsWith("/bookmarks")) return "Bookmarks";
+    if (path.startsWith("/completed-questions")) return "Solved Questions";
+    return "PrepShare";
+  })();
+
+  const menuItem =
+    "flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-raised";
+
   return (
-    <header className="fixed top-0 w-full z-40 bg-[#faf7ee]/90 backdrop-blur-xl border-b border-[#e3dccd] shadow-xs h-[72px]">
-      <div className="flex items-center justify-between px-[clamp(24px,4vw,64px)] h-full w-full max-w-[1680px] mx-auto gap-4">
-        {/* Left: Mobile Toggle, Brand & Search */}
-        <div className="flex items-center gap-6 lg:gap-8 flex-1">
-          {onToggleMobileMenu && (
-            <button
-              onClick={onToggleMobileMenu}
-              className="lg:hidden p-2 rounded-xl text-[#5f6e82] hover:text-[#0f1926] hover:bg-[#f3eee1] transition-colors cursor-pointer"
-              aria-label="Toggle navigation menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          )}
+    <header className="fixed inset-x-0 top-0 z-40 h-header border-b border-line bg-canvas/85 backdrop-blur-xl">
+      <div className="mx-auto flex h-full w-full max-w-shell items-center gap-3 px-4 sm:px-6 lg:px-8">
+        {/* Mobile nav toggle — always present below lg */}
+        <button
+          type="button"
+          onClick={onToggleMobileMenu}
+          aria-label="Open navigation menu"
+          className={`${ICON_BTN} lg:hidden`}
+        >
+          <Menu size={20} aria-hidden="true" />
+        </button>
 
-          <Link
-            to="/"
-            className="flex items-center gap-3 group transition-transform active:scale-98 shrink-0"
-          >
-            <div className="w-10 h-10 rounded-xl bg-[#3f6f52] text-white flex items-center justify-center font-black text-base shadow-sm group-hover:bg-[#345c44] transition-colors">
-              PS
-            </div>
-            <span className="text-[22px] font-extrabold tracking-tight text-[#0f1926]">
-              PrepShare
-            </span>
-          </Link>
+        <Link to="/" className="flex shrink-0 items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-sm font-black text-primary-fg shadow-xs">
+            PS
+          </span>
+          <span className="hidden text-xl font-extrabold tracking-tight text-heading sm:block">
+            PrepShare
+          </span>
+        </Link>
 
-          {/* Search Input */}
-          <form
-            onSubmit={handleSearchSubmit}
-            className="hidden md:flex items-center bg-[#f3eee1] rounded-xl px-4 h-[44px] w-[460px] lg:w-[520px] xl:w-[560px] border border-[#e3dccd] focus-within:border-[#3f6f52] focus-within:ring-2 focus-within:ring-[#3f6f52]/20 focus-within:bg-white transition-all shadow-inner"
-          >
-            <Search className="w-4.5 h-4.5 text-[#5f6e82] mr-3 shrink-0" />
-            <input
-              type="text"
-              value={localSearch}
-              onChange={(e) => setLocalSearch(e.target.value)}
-              placeholder="Search companies, roles, topics..."
-              className="bg-transparent border-none focus:ring-0 text-[15px] text-[#0f1926] w-full placeholder-[#5f6e82] focus:outline-none"
-            />
-          </form>
+        {/* Section breadcrumb — the app-shell's "where am I", hidden on the
+            smallest screens where the hero/page heading carries the context. */}
+        <div className="hidden min-w-0 flex-col leading-tight lg:flex">
+          <span className="text-[11px] text-faint">PrepShare</span>
+          <span className="truncate text-sm font-semibold text-heading">{pageTitle}</span>
         </div>
 
-        {/* Right: Actions & User Controls (Pushed to the far right) */}
-        <div className="flex items-center gap-3 shrink-0 ml-auto">
-          {/* Create Post CTA */}
+        {/* Global search — md and up; smaller screens reach search via the
+            feed's filter panel, which is surfaced in the nav drawer. */}
+        <form
+          onSubmit={handleSearchSubmit}
+          role="search"
+          className="ml-2 hidden max-w-xl flex-1 md:block"
+        >
+          <label htmlFor="global-search" className="sr-only">
+            Search companies, roles or topics
+          </label>
+          <div className="flex h-10 items-center gap-2 rounded-lg border border-line bg-sunken px-3 transition-colors focus-within:border-primary focus-within:bg-surface focus-within:ring-2 focus-within:ring-primary/20">
+            <Search size={16} className="shrink-0 text-faint" aria-hidden="true" />
+            <input
+              id="global-search"
+              type="search"
+              value={localSearch}
+              onChange={(event) => setLocalSearch(event.target.value)}
+              placeholder="Search companies, roles, topics…"
+              className="h-full w-full min-w-0 bg-transparent text-sm text-heading outline-none placeholder:text-faint"
+            />
+          </div>
+        </form>
+
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={`Switch to ${resolved === "dark" ? "light" : "dark"} theme`}
+            className={ICON_BTN}
+          >
+            {resolved === "dark" ? (
+              <Sun size={18} aria-hidden="true" />
+            ) : (
+              <Moon size={18} aria-hidden="true" />
+            )}
+          </button>
+
           {isAuthenticated ? (
             <Link
               to="/draft"
-              className="flex items-center gap-2 px-5 h-[44px] bg-[#3f6f52] hover:bg-[#345c44] text-white rounded-xl text-[15px] font-semibold hover:brightness-105 active:scale-95 shadow-sm transition-all"
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-3.5 text-sm font-medium text-primary-fg shadow-xs transition-colors hover:bg-[rgb(var(--primary-hover))] active:scale-press sm:px-4"
             >
-              <Plus className="w-4.5 h-4.5" />
-              <span className="hidden sm:inline">Share Experience</span>
+              <Plus size={16} aria-hidden="true" />
+              <span className="hidden lg:not-sr-only lg:inline">Share Experience</span>
+              <span className="sr-only">Share Experience</span>
             </Link>
           ) : (
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-1.5">
               <button
+                type="button"
                 onClick={() => openAuthModal("login")}
-                className="flex items-center gap-2 px-5 h-[44px] bg-[#3f6f52] hover:bg-[#345c44] text-white rounded-xl text-[15px] font-semibold hover:brightness-105 active:scale-95 shadow-sm transition-all cursor-pointer"
+                className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-3.5 text-sm font-medium text-primary-fg shadow-xs transition-colors hover:bg-[rgb(var(--primary-hover))] active:scale-press"
               >
-                <LogIn className="w-4.5 h-4.5" />
-                <span>Sign In</span>
+                <LogIn size={16} aria-hidden="true" />
+                Sign In
               </button>
               <button
+                type="button"
                 onClick={() => openAuthModal("register")}
-                className="hidden sm:inline-flex items-center px-4 h-[44px] rounded-xl text-[15px] font-semibold text-[#2b3a4f] hover:text-[#0f1926] hover:bg-[#f3eee1] border border-transparent hover:border-[#e3dccd] transition-all cursor-pointer"
+                className="hidden h-10 items-center rounded-lg border border-line bg-surface px-4 text-sm font-medium text-heading transition-colors hover:border-line-strong hover:bg-raised sm:inline-flex"
               >
                 Sign Up
               </button>
@@ -131,110 +243,99 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
 
           {isAuthenticated && (
             <>
-              {/* Direct Messages */}
               <Link
                 to="/messages"
-                className="relative text-[#2b3a4f] hover:text-[#0f1926] transition-colors p-2.5 rounded-xl hover:bg-[#f3eee1] active:scale-95 flex items-center justify-center h-[44px] w-[44px]"
-                title="Direct Messages"
+                className={ICON_BTN}
+                aria-label={`Direct messages${unreadMessages > 0 ? `, ${unreadMessages} unread` : ""}`}
               >
-                <MessageSquare className="w-5 h-5" />
-                {unreadMessages > 0 && (
-                  <span className="absolute top-1 right-1 w-4.5 h-4.5 bg-[#3f6f52] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#faf7ee]">
-                    {unreadMessages > 9 ? "9+" : unreadMessages}
-                  </span>
-                )}
+                <MessageSquare size={18} aria-hidden="true" />
+                <CountBadge count={unreadMessages} tone="primary" />
               </Link>
 
-              {/* Notifications */}
               <Link
                 to="/notifications"
-                className="relative text-[#2b3a4f] hover:text-[#0f1926] transition-colors p-2.5 rounded-xl hover:bg-[#f3eee1] active:scale-95 flex items-center justify-center h-[44px] w-[44px]"
-                title="Notifications"
+                className={ICON_BTN}
+                aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
               >
-                <Bell className="w-5 h-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-4.5 h-4.5 bg-[#b5462f] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#faf7ee]">
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
-                )}
+                <Bell size={18} aria-hidden="true" />
+                <CountBadge count={unreadCount} tone="danger" />
               </Link>
 
-              {/* User Avatar with Spring Dropdown */}
               <div className="relative" ref={menuRef}>
                 <button
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="w-10 h-10 rounded-full overflow-hidden border border-[#e3dccd] bg-[#f3eee1] flex items-center justify-center hover:ring-2 hover:ring-[#3f6f52]/40 transition-all text-xs font-bold text-[#0f1926] cursor-pointer"
-                  aria-label="User profile menu"
+                  ref={menuButtonRef}
+                  type="button"
+                  onClick={() => setShowUserMenu((open) => !open)}
+                  aria-haspopup="menu"
+                  aria-expanded={showUserMenu}
+                  aria-controls="account-menu"
+                  /* WCAG 2.5.3 (label in name): the button shows the avatar
+                     initials, so the accessible name must contain them. */
+                  aria-label={`${initials(user?.full_name || user?.username)} account menu`}
+                  className="ml-0.5 rounded-full ring-offset-2 ring-offset-canvas transition-shadow hover:ring-2 hover:ring-primary/40"
                 >
-                  {user?.profile_photo_url ? (
-                    <img
-                      src={getMediaUrl(user.profile_photo_url)}
-                      alt={user.username}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span>{user?.username?.slice(0, 2).toUpperCase() || "ME"}</span>
-                  )}
+                  <Avatar
+                    src={user?.profile_photo_url}
+                    name={user?.full_name || user?.username}
+                    size="sm"
+                  />
                 </button>
 
                 <AnimatePresence>
                   {showUserMenu && (
                     <motion.div
-                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                      id="account-menu"
+                      role="menu"
+                      aria-label="Account"
+                      initial={{ opacity: 0, y: -6, scale: 0.97 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 6, scale: 0.96 }}
-                      transition={{ type: "spring", damping: 20, stiffness: 300 }}
-                      className="absolute right-0 mt-2 w-60 bg-white rounded-2xl border border-[#e3dccd] shadow-xl py-2 z-50 text-[14.5px] overflow-hidden"
+                      exit={{
+                        opacity: 0,
+                        y: -4,
+                        scale: 0.97,
+                        transition: { duration: DURATION.fast, ease: EASE.exit },
+                      }}
+                      transition={{ duration: DURATION.base, ease: EASE.enter }}
+                      className="absolute right-0 mt-2 w-60 overflow-hidden rounded-xl border border-line bg-surface py-1.5 shadow-xl"
                     >
-                      <div className="px-4 py-3 border-b border-[#e3dccd] bg-[#faf7ee]">
-                        <p className="font-bold text-[#0f1926] truncate">
+                      <div className="border-b border-line px-3 py-2.5">
+                        <p className="truncate text-sm font-semibold text-heading">
                           {user?.full_name || user?.username}
                         </p>
-                        <p className="text-xs text-[#5f6e82] truncate mt-0.5">@{user?.username}</p>
+                        <p className="truncate text-xs text-muted">@{user?.username}</p>
                       </div>
+
                       <div className="py-1">
-                        <Link
-                          to="/profile"
-                          onClick={() => setShowUserMenu(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-[#2b3a4f] hover:text-[#0f1926] hover:bg-[#f3eee1] transition-colors"
-                        >
-                          <UserIcon className="w-4 h-4 text-[#3f6f52]" />
+                        <Link to="/profile" role="menuitem" className={menuItem}>
+                          <UserIcon size={16} className="text-primary" aria-hidden="true" />
                           My Profile
                         </Link>
-                        <Link
-                          to="/drafts"
-                          onClick={() => setShowUserMenu(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-[#2b3a4f] hover:text-[#0f1926] hover:bg-[#f3eee1] transition-colors"
-                        >
-                          <FileText className="w-4 h-4 text-[#3f6f52]" />
+                        <Link to="/drafts" role="menuitem" className={menuItem}>
+                          <FileText size={16} className="text-primary" aria-hidden="true" />
                           Drafts Archive
                         </Link>
-                        <Link
-                          to="/bookmarks"
-                          onClick={() => setShowUserMenu(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-[#2b3a4f] hover:text-[#0f1926] hover:bg-[#f3eee1] transition-colors"
-                        >
-                          <Bookmark className="w-4 h-4 text-[#b26a00]" />
+                        <Link to="/bookmarks" role="menuitem" className={menuItem}>
+                          <Bookmark size={16} className="text-warning" aria-hidden="true" />
                           Bookmarks
                         </Link>
-                        <Link
-                          to="/completed-questions"
-                          onClick={() => setShowUserMenu(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-[#2b3a4f] hover:text-[#0f1926] hover:bg-[#f3eee1] transition-colors"
-                        >
-                          <CheckCircle className="w-4 h-4 text-[#2f7d52]" />
+                        <Link to="/completed-questions" role="menuitem" className={menuItem}>
+                          <CheckCircle size={16} className="text-success" aria-hidden="true" />
                           Completed Questions
                         </Link>
                       </div>
-                      <div className="border-t border-[#e3dccd] my-1"></div>
+
+                      <div className="my-1 border-t border-line" />
+
                       <button
+                        type="button"
+                        role="menuitem"
                         onClick={() => {
                           setShowUserMenu(false);
                           logout();
                         }}
-                        className="flex items-center gap-3 w-full text-left px-4 py-2.5 text-[#b5462f] hover:bg-[#b5462f]/10 transition-colors cursor-pointer"
+                        className={`${menuItem} text-danger hover:bg-danger-soft`}
                       >
-                        <LogOut className="w-4 h-4" />
+                        <LogOut size={16} aria-hidden="true" />
                         Sign Out
                       </button>
                     </motion.div>

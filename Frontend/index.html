@@ -1,18 +1,61 @@
 <!doctype html>
-<html lang="en" class="light">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0c0f14" />
+    <meta
+      name="description"
+      content="PrepShare — real interview experiences, round-by-round questions and offer intelligence shared by students."
+    />
     <title>PrepShare — Interview Intelligence Archive</title>
-    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <!-- Social preview (OG / Twitter) — mirrors the description above -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="PrepShare" />
+    <meta property="og:title" content="PrepShare — Interview Intelligence Archive" />
+    <meta
+      property="og:description"
+      content="PrepShare — real interview experiences, round-by-round questions and offer intelligence shared by students."
+    />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="PrepShare — Interview Intelligence Archive" />
+    <meta
+      name="twitter:description"
+      content="PrepShare — real interview experiences, round-by-round questions and offer intelligence shared by students."
+    />
+    <script>
+      /* Paint dark before React mounts — no white flash on the dark-first UI.
+         Mirrors ThemeContext's stored-key logic; a failure falls back to dark. */
+      (function () {
+        var t = null;
+        try {
+          t = localStorage.getItem("prepshare_theme_v2");
+        } catch (e) {
+          /* storage blocked — dark default */
+        }
+        var dark;
+        if (t === "light") dark = false;
+        else if (t === "dark") dark = true;
+        else if (t === "system")
+          dark = !(window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches);
+        else dark = true;
+        document.documentElement.className = dark ? "dark" : "light";
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-    <!-- Material Symbols -->
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
   </head>
-  <body class="bg-background text-on-background font-sans antialiased min-h-screen">
+  <body class="min-h-screen bg-canvas font-sans text-body antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

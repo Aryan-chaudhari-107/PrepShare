@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { animate, useMotionValue, useMotionValueEvent, useReducedMotion } from "framer-motion";
 import {
   User,
   ShieldCheck,
@@ -24,29 +24,103 @@ import {
   FileText,
   CheckCircle2,
 } from "lucide-react";
-import { AppShell } from "../components/layout/AppShell";
+
+import { PageContainer } from "../components/layout/AppShell";
+import { Modal } from "../components/common/Modal";
+import { PostCard } from "../components/feed/PostCard";
+
+import { Avatar } from "../components/ui/Avatar";
+import { Badge } from "../components/ui/Badge";
+import { Button, IconButton } from "../components/ui/Button";
+import { Card, Stat } from "../components/ui/Card";
+import { Field, FieldControl, PasswordInput, Select, Textarea } from "../components/ui/Field";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { EmptyState, ErrorState, Skeleton } from "../components/ui/Feedback";
+import { Tabs } from "../components/ui/Tabs";
+
+import { DURATION, EASE, Focus, Reveal, RevealGroup, Scene, Section, Tilt } from "../motion";
+
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
-import { usersApi, followsApi, educationApi, interactionsApi, institutionsApi, uploadsApi, chatApi } from "../api";
+
+import {
+  usersApi,
+  followsApi,
+  educationApi,
+  interactionsApi,
+  institutionsApi,
+  uploadsApi,
+  chatApi,
+} from "../api";
 import {
   PublicProfile,
   PostListItem,
   EducationRecord,
   Institution,
   CompletedQuestionItem,
-  UserSettings,
 } from "../types";
-import { Modal } from "../components/common/Modal";
-import { PostCard } from "../components/feed/PostCard";
-import { getMediaUrl } from "../utils/media";
 
+import { cn } from "../lib/cn";
+import { absoluteDate, errorMessage } from "../lib/format";
+
+type ProfileTab = "overview" | "posts" | "solved";
+type ThemeChoice = "light" | "dark" | "system";
+
+const EMPTY_POSTS: { items: PostListItem[] } = { items: [] };
+const EMPTY_QUESTIONS: { items: CompletedQuestionItem[] } = { items: [] };
+
+/**
+ * The hero numeral counts up once as the identity plane lands, so the
+ * contribution score feels earned rather than merely printed.
+ *
+ * Reduced motion is checked explicitly instead of inherited:
+ * <MotionConfig reducedMotion="user"> only neutralises transform animations,
+ * and this count is plain JS driving a MotionValue — so it opts itself out.
+ */
+const CountUp: React.FC<{ value: number }> = ({ value }) => {
+  const reduce = useReducedMotion();
+  const count = useMotionValue(0);
+  const [display, setDisplay] = useState(() => (reduce ? value : 0));
+
+  useMotionValueEvent(count, "change", (latest) => setDisplay(Math.round(latest)));
+
+  useEffect(() => {
+    if (reduce) {
+      count.set(value);
+      setDisplay(value);
+      return;
+    }
+    // One token tier: fast enough to read as a flourish, never as something
+    // the user has to wait for.
+    const controls = animate(count, value, { duration: DURATION.slow, ease: EASE.enter });
+    return () => controls.stop();
+  }, [count, value, reduce]);
+
+  return <>{display.toLocaleString()}</>;
+};
+
+/**
+ * Public / own profile.
+ *
+ * Changes from the original:
+ *  - the previous code fell through to a hard-coded "User Not Found" for EVERY
+ *    failure — a dropped connection, a 500, or a signed-out visitor all read
+ *    the same message. Failures, signed-out and genuinely-missing are now
+ *    three visually distinct states with their own recovery actions;
+ *  - theme preference now actually applies (it was read from
+ *    `GET /users/me/settings` and then thrown away);
+ *  - `window.confirm()` replaced with the app's ConfirmDialog;
+ *  - every label associated with its control, every icon button named.
+ */
 export const ProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId?: string }>();
   const navigate = useNavigate();
   const { user: currentUser, isAuthenticated, openAuthModal, refreshUser } = useAuth();
+  const { theme, setTheme } = useTheme();
   const { success, error } = useToast();
 
-  const isSelf = !userId || (currentUser && currentUser.id === userId);
+  const isSelf = !userId || Boolean(currentUser && currentUser.id === userId);
 
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [posts, setPosts] = useState<PostListItem[]>([]);
@@ -57,25 +131,29 @@ export const ProfilePage: React.FC = () => {
   const [followingCount, setFollowingCount] = useState(0);
 
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "posts" | "solved">("overview");
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
 
-  // Settings Modal State
+  // Settings modal
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
-  const [themePref, setThemePref] = useState<"light" | "dark" | "system">("dark");
+  const [themePref, setThemePref] = useState<ThemeChoice>(theme);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
-  // Edit Profile Modal State
+  // Edit profile modal
   const [editProfileModalOpen, setEditProfileModalOpen] = useState(false);
   const [editFullName, setEditFullName] = useState("");
   const [editBio, setEditBio] = useState("");
   const [editPhotoUrl, setEditPhotoUrl] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [nameError, setNameError] = useState("");
 
-  // Education Modal State
+  // Education modal
   const [addEduModalOpen, setAddEduModalOpen] = useState(false);
   const [institutions, setInstitutions] = useState<Institution[]>([]);
+  const [institutionsLoading, setInstitutionsLoading] = useState(false);
   const [eduForm, setEduForm] = useState({
     degree_level: "Bachelors",
     institution_id: "",
@@ -86,21 +164,34 @@ export const ProfilePage: React.FC = () => {
     end_year: 2025,
     is_current: true,
   });
+  const [eduError, setEduError] = useState("");
+  const [eduToDelete, setEduToDelete] = useState<EducationRecord | null>(null);
+  const [deletingEdu, setDeletingEdu] = useState(false);
+
+  /* ── Loading ─────────────────────────────────────────────────────────── */
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setLoadFailed(false);
+
+    if (isSelf && !isAuthenticated) {
+      // Guest viewing "my profile": offer sign-in instead of a spinner that
+      // can never resolve into content.
+      setLoading(false);
+      openAuthModal("login");
+      return;
+    }
+
     try {
-      if (isSelf) {
-        if (!isAuthenticated) {
-          openAuthModal("login");
-          return;
-        }
+      if (isSelf && currentUser) {
         const [meRes, draftsRes, eduRes, setRes, compRes] = await Promise.all([
           usersApi.getMyProfile(),
-          currentUser ? usersApi.getPublicUserPosts(currentUser.id, 1, 50) : Promise.resolve({ data: { items: [] } }),
-          educationApi.getMyEducation().catch(() => ({ data: [] })),
-          usersApi.getMySettings().catch(() => ({ data: { theme_preference: "dark" } })),
-          interactionsApi.getMyCompletedQuestions(undefined, undefined, 1, 50).catch(() => ({ data: { items: [] } })),
+          usersApi.getPublicUserPosts(currentUser.id, 1, 50),
+          educationApi.getMyEducation().catch(() => ({ data: [] as EducationRecord[] })),
+          usersApi.getMySettings().catch(() => ({ data: null })),
+          interactionsApi
+            .getMyCompletedQuestions(undefined, undefined, 1, 50)
+            .catch(() => ({ data: EMPTY_QUESTIONS })),
         ]);
 
         const me = meRes.data;
@@ -110,7 +201,9 @@ export const ProfilePage: React.FC = () => {
           const pubRes = await usersApi.getPublicProfile(me.id);
           followers = pubRes.data.follower_count || 0;
           following = pubRes.data.following_count || 0;
-        } catch {}
+        } catch {
+          // Follower totals are non-critical — the profile still renders.
+        }
 
         setProfile({
           id: me.id,
@@ -128,16 +221,25 @@ export const ProfilePage: React.FC = () => {
         setEditPhotoUrl(me.profile_photo_url || "");
         setFollowerCount(followers);
         setFollowingCount(following);
-        setPosts((draftsRes.data as any).items || []);
+        setPosts(draftsRes.data?.items || EMPTY_POSTS.items);
         setEducation(eduRes.data || []);
         setCompletedQuestions(compRes.data.items || []);
-        setThemePref((setRes.data as UserSettings).theme_preference || "dark");
+
+        // The stored preference is now applied, not merely displayed.
+        const serverTheme = setRes.data?.theme_preference;
+        if (serverTheme === "light" || serverTheme === "dark" || serverTheme === "system") {
+          setThemePref(serverTheme);
+          setTheme(serverTheme);
+        }
       } else if (userId) {
         const [pubRes, postRes, compRes] = await Promise.all([
           usersApi.getPublicProfile(userId),
           usersApi.getPublicUserPosts(userId, 1, 50),
-          interactionsApi.getUserCompletedQuestions(userId, undefined, undefined, 1, 50).catch(() => ({ data: { items: [] } })),
+          interactionsApi
+            .getUserCompletedQuestions(userId, undefined, undefined, 1, 50)
+            .catch(() => ({ data: EMPTY_QUESTIONS })),
         ]);
+
         setProfile(pubRes.data);
         setFollowerCount(pubRes.data.follower_count || 0);
         setFollowingCount(pubRes.data.following_count || 0);
@@ -147,32 +249,56 @@ export const ProfilePage: React.FC = () => {
         if (isAuthenticated && currentUser) {
           try {
             const folRes = await followsApi.getFollowing(currentUser.id, 1, 100);
-            const isFol = folRes.data.items?.some((f: any) => f.user_id === userId || f.id === userId);
-            setIsFollowing(!!isFol);
-          } catch {}
+            const target = pubRes.data.id;
+            setIsFollowing(Boolean(folRes.data.items?.some((item) => item.user_id === target)));
+          } catch {
+            // Follow state is cosmetic; leaving it false is honest.
+          }
         }
       }
-    } catch (err: any) {
-      error(err.response?.data?.detail || "Failed to load user profile.");
+    } catch (err: unknown) {
+      setLoadFailed(true);
+      error(errorMessage(err, "Failed to load user profile."));
     } finally {
       setLoading(false);
     }
-  }, [isSelf, userId, isAuthenticated, currentUser, openAuthModal, error]);
+  }, [isSelf, userId, isAuthenticated, currentUser, openAuthModal, error, setTheme]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   useEffect(() => {
-    if (addEduModalOpen && institutions.length === 0) {
-      institutionsApi.list("", 1, 50).then((res) => {
-        setInstitutions(res.data.items || []);
-        if (res.data.items?.length > 0) {
-          setEduForm((prev) => ({ ...prev, institution_id: res.data.items[0].id }));
+    if (!addEduModalOpen || institutions.length > 0) return;
+    let cancelled = false;
+    setInstitutionsLoading(true);
+    institutionsApi
+      .list("", 1, 50)
+      .then((res) => {
+        if (cancelled) return;
+        const items = res.data.items || [];
+        setInstitutions(items);
+        if (items.length > 0) {
+          setEduForm((prev) => ({ ...prev, institution_id: prev.institution_id || items[0].id }));
         }
+      })
+      .catch(() => {
+        /* the select stays empty and the submit path reports it */
+      })
+      .finally(() => {
+        if (!cancelled) setInstitutionsLoading(false);
       });
-    }
+    return () => {
+      cancelled = true;
+    };
   }, [addEduModalOpen, institutions.length]);
+
+  // Keep the settings modal in sync with whatever the header toggle chose.
+  useEffect(() => {
+    setThemePref(theme);
+  }, [theme, settingsModalOpen]);
+
+  /* ── Actions (endpoints, payloads and response fields unchanged) ─────── */
 
   const handleToggleFollow = async () => {
     if (!isAuthenticated) {
@@ -185,8 +311,8 @@ export const ProfilePage: React.FC = () => {
       setIsFollowing(res.data.following);
       setFollowerCount(res.data.follower_count);
       success(res.data.message || (res.data.following ? "Following user" : "Unfollowed"));
-    } catch (err: any) {
-      error(err.response?.data?.detail || "Failed to update follow state.");
+    } catch (err: unknown) {
+      error(errorMessage(err, "Failed to update follow state."));
     }
   };
 
@@ -199,41 +325,67 @@ export const ProfilePage: React.FC = () => {
     try {
       await chatApi.startConversation(profile.id);
       navigate("/messages");
-    } catch (err: any) {
-      error(err.response?.data?.detail || "Failed to open conversation.");
+    } catch (err: unknown) {
+      error(errorMessage(err, "Failed to open conversation."));
+    }
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    // Allow re-picking the same file after a failed attempt.
+    event.target.value = "";
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const res = await uploadsApi.uploadFile(file);
+      await usersApi.updateMyProfile({ profile_photo_url: res.data.url });
+      setEditPhotoUrl(res.data.url);
+      success("Profile photo updated!", "Photo Saved");
+      if (refreshUser) refreshUser();
+      loadData();
+    } catch (err: unknown) {
+      error(errorMessage(err, "Photo upload failed."));
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
   const handleAddEducation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!eduForm.institution_id) {
-      error("Please select an institution.");
+      setEduError("Please select an institution.");
       return;
     }
+    setEduError("");
     try {
       await educationApi.addEducation(eduForm);
       success("Academic credential added.", "Education Added");
       setAddEduModalOpen(false);
       const res = await educationApi.getMyEducation();
       setEducation(res.data || []);
-    } catch (err: any) {
-      error(err.response?.data?.detail || "Failed to save education.");
+    } catch (err: unknown) {
+      setEduError(errorMessage(err, "Failed to save education."));
     }
   };
 
-  const handleDeleteEducation = async (eduId: string) => {
-    if (!window.confirm("Are you sure you want to delete this education entry?")) return;
+  const handleDeleteEducation = async () => {
+    if (!eduToDelete) return;
+    setDeletingEdu(true);
     try {
-      await educationApi.deleteEducation(eduId);
+      await educationApi.deleteEducation(eduToDelete.id);
       success("Education entry removed.", "Education Deleted");
-      setEducation((prev) => prev.filter((e) => e.id !== eduId));
-    } catch (err: any) {
-      error(err.response?.data?.detail || "Failed to delete education entry.");
+      setEducation((prev) => prev.filter((entry) => entry.id !== eduToDelete.id));
+      setEduToDelete(null);
+    } catch (err: unknown) {
+      error(errorMessage(err, "Failed to delete education entry."));
+    } finally {
+      setDeletingEdu(false);
     }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
 
     setUploadingPhoto(true);
@@ -241,8 +393,8 @@ export const ProfilePage: React.FC = () => {
       const res = await uploadsApi.uploadFile(file);
       setEditPhotoUrl(res.data.url);
       success("Photo uploaded.", "Media Uploaded");
-    } catch (err: any) {
-      error(err.response?.data?.detail || "Photo upload failed.");
+    } catch (err: unknown) {
+      error(errorMessage(err, "Photo upload failed."));
     } finally {
       setUploadingPhoto(false);
     }
@@ -250,6 +402,11 @@ export const ProfilePage: React.FC = () => {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (editFullName.trim().length > 80) {
+      setNameError("Full name must be 80 characters or fewer.");
+      return;
+    }
+    setNameError("");
     setSavingProfile(true);
     try {
       await usersApi.updateMyProfile({
@@ -261,8 +418,8 @@ export const ProfilePage: React.FC = () => {
       setEditProfileModalOpen(false);
       if (refreshUser) refreshUser();
       loadData();
-    } catch (err: any) {
-      error(err.response?.data?.detail || "Failed to update profile.");
+    } catch (err: unknown) {
+      error(errorMessage(err, "Failed to update profile."));
     } finally {
       setSavingProfile(false);
     }
@@ -270,647 +427,870 @@ export const ProfilePage: React.FC = () => {
 
   const handleUpdateSettings = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if ((currentPassword || newPassword) && newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters.");
+      return;
+    }
+    if (currentPassword && !newPassword) {
+      setPasswordError("Enter a new password to complete the change.");
+      return;
+    }
+    setPasswordError("");
+
     try {
       await usersApi.updateMySettings({ theme_preference: themePref });
+      setTheme(themePref);
       if (currentPassword && newPassword) {
-        await usersApi.changePassword({ current_password: currentPassword, new_password: newPassword });
+        await usersApi.changePassword({
+          current_password: currentPassword,
+          new_password: newPassword,
+        });
         setCurrentPassword("");
         setNewPassword("");
       }
       success("Settings saved successfully.", "Settings Updated");
       setSettingsModalOpen(false);
-    } catch (err: any) {
-      error(err.response?.data?.detail || "Failed to update settings.");
+    } catch (err: unknown) {
+      error(errorMessage(err, "Failed to update settings."));
     }
   };
 
+  /* ── Render guards ───────────────────────────────────────────────────── */
+
+  const signedOut = isSelf && !isAuthenticated && !profile;
+
   if (loading) {
     return (
-      <AppShell>
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-8 w-full animate-pulse flex flex-col gap-6">
-          <div className="bg-[#f3eee1] rounded-2xl border border-[#e3dccd] p-8 h-64"></div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="bg-[#f3eee1] rounded-2xl border border-[#e3dccd] p-6 h-96"></div>
-            <div className="lg:col-span-2 bg-[#f3eee1] rounded-2xl border border-[#e3dccd] p-6 h-96"></div>
+      <>
+        <PageContainer width="shell">
+          <div className="space-y-6" role="status" aria-live="polite">
+            <span className="sr-only">Loading profile…</span>
+            <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm sm:p-8">
+              <div className="flex flex-wrap items-center gap-5">
+                <Skeleton className="h-24 w-24 rounded-full" />
+                <div className="min-w-0 flex-1 space-y-3">
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-72 max-w-full" />
+                </div>
+              </div>
+              <div className="mt-6 rounded-xl border border-line bg-sunken p-4 sm:p-5">
+                <div className="flex flex-wrap items-end gap-6 sm:gap-10">
+                  <div className="space-y-2">
+                    <Skeleton className="h-11 w-28" />
+                    <Skeleton className="h-3.5 w-20" />
+                  </div>
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-8 w-16" />
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <Skeleton className="h-56 rounded-xl" />
+              <Skeleton className="h-96 rounded-xl lg:col-span-2" />
+            </div>
           </div>
-        </div>
-      </AppShell>
+        </PageContainer>
+      </>
+    );
+  }
+
+  if (signedOut) {
+    return (
+      <>
+        <PageContainer width="list">
+          <h1 className="sr-only">Profile</h1>
+          <EmptyState
+            size="page"
+            art="stack"
+            title="Sign in to view your profile"
+            description="Your experiences, education and saved questions live behind your account."
+            action={
+              <Button onClick={() => openAuthModal("login")}>Sign in</Button>
+            }
+          />
+        </PageContainer>
+      </>
     );
   }
 
   if (!profile) {
     return (
-      <AppShell>
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-16 text-center">
-          <h2 className="text-xl font-bold text-[#0f1926]">User Not Found</h2>
-          <p className="text-sm text-[#5f6e82] mt-2">
-            The profile you are trying to view does not exist or has been deactivated.
-          </p>
-        </div>
-      </AppShell>
+      <>
+        <PageContainer width="list">
+          <h1 className="sr-only">Profile</h1>
+          {loadFailed ? (
+            <ErrorState
+              size="page"
+              title="We couldn't load this profile"
+              description="The request didn't complete — check your connection and try again."
+              onRetry={loadData}
+              action={
+                <Button variant="secondary" onClick={() => navigate(-1)}>
+                  Go back
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState
+              size="page"
+              art="stray"
+              title="Profile not found"
+              description="This account may have been removed, deactivated, or the link is incorrect."
+              action={
+                <Button variant="secondary" onClick={() => navigate(-1)}>
+                  Go back
+                </Button>
+              }
+            />
+          )}
+        </PageContainer>
+      </>
     );
   }
 
-  const primaryEducation = education.find((e) => e.is_current) || education[0];
+  const primaryEducation = education.find((entry) => entry.is_current) || education[0];
+
+  const tabItems = [
+    { id: "overview", label: "Overview", icon: <LayoutDashboard size={15} aria-hidden="true" /> },
+    {
+      id: "posts",
+      label: "Experiences",
+      icon: <FileText size={15} aria-hidden="true" />,
+      badge: (
+        <Badge tone="primary" className="tabular ml-1">
+          {posts.length}
+        </Badge>
+      ),
+    },
+    {
+      id: "solved",
+      label: "Solved",
+      icon: <CheckCircle2 size={15} aria-hidden="true" />,
+      badge: (
+        <Badge tone="success" className="tabular ml-1">
+          {completedQuestions.length}
+        </Badge>
+      ),
+    },
+  ];
 
   return (
-    <AppShell>
-      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-6 w-full flex flex-col gap-6 flex-1">
-        {/* Header Profile Card */}
-        <motion.section
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl border border-[#e3dccd] shadow-sm p-6 sm:p-8 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between relative overflow-hidden"
-        >
-          <div className="flex flex-col gap-4 flex-1 relative z-10">
-            <div className="flex items-center gap-5 flex-wrap">
-              <div className="relative group w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-[#3f6f52]/30 bg-[#3f6f52] flex items-center justify-center text-white text-2xl font-bold shrink-0 shadow-sm">
-                {profile.profile_photo_url ? (
-                  <img
-                    src={getMediaUrl(profile.profile_photo_url)}
-                    alt={profile.username}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span>{profile.username.slice(0, 2).toUpperCase()}</span>
-                )}
-                {isSelf && (
-                  <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center cursor-pointer transition-opacity text-white text-[10px] font-semibold gap-1">
-                    <Camera className="w-4 h-4" />
-                    <span>Change</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        try {
-                          const res = await uploadsApi.uploadFile(file);
-                          await usersApi.updateMyProfile({ profile_photo_url: res.data.url });
-                          success("Profile photo updated!", "Photo Saved");
-                          if (refreshUser) refreshUser();
-                          loadData();
-                        } catch (err: any) {
-                          error(err.response?.data?.detail || "Photo upload failed.");
+    <>
+      <PageContainer width="shell">
+        {/* ── Identity space ─────────────────────────────────────────────── */}
+        <Scene>
+          {/* The page's one focal entrance: the identity plane lands
+              cinematically while the hero numeral counts up beneath it. */}
+          <Focus className="mb-6">
+            <section className="rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-7">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
+                  {/* Avatar plane. The human is the hero, so this is the one
+                      surface allowed to hover above the rest of the page. */}
+                  <Tilt max={6} lift={1.02} className="shrink-0 rounded-2xl">
+                    <div className="depth-lift rounded-2xl border border-line bg-raised p-1.5 shadow-md">
+                      <div className="group relative">
+                        <Avatar
+                          src={profile.profile_photo_url}
+                          name={profile.full_name || profile.username}
+                          size="xl"
+                        />
+                        {isSelf && (
+                          <label
+                            htmlFor="avatar-upload"
+                            className="absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-full bg-heading/60 text-xs font-semibold text-surface opacity-0 transition-opacity duration-fast ease-swift focus-within:opacity-100 group-hover:opacity-100"
+                          >
+                            <Camera size={16} aria-hidden="true" />
+                            <span>Change</span>
+                            <input
+                              id="avatar-upload"
+                              type="file"
+                              accept="image/*"
+                              className="sr-only"
+                              onChange={handleAvatarUpload}
+                              disabled={uploadingPhoto}
+                            />
+                          </label>
+                        )}
+                        {uploadingPhoto && (
+                          <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-fg">
+                            Uploading…
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </Tilt>
+
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                        {profile.full_name || `@${profile.username}`}
+                      </h1>
+                      <span title="Verified member" className="text-primary">
+                        <ShieldCheck size={18} aria-label="Verified member" role="img" />
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted">@{profile.username}</p>
+                    <p className="mt-1 text-sm capitalize text-faint">
+                      {profile.role?.replace(/_/g, " ") || "Student candidate"}
+                    </p>
+
+                    {profile.bio && (
+                      <p className="mt-3 max-w-2xl text-balance text-sm leading-relaxed text-body">
+                        {profile.bio}
+                      </p>
+                    )}
+
+                    {primaryEducation && (
+                      <p className="mt-2 flex items-center gap-1.5 text-sm text-muted">
+                        <School size={15} className="shrink-0 text-primary" aria-hidden="true" />
+                        {primaryEducation.degree_level} in {primaryEducation.course}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  {isSelf ? (
+                    <>
+                      <Button
+                        variant="secondary"
+                        icon={<Edit3 size={15} aria-hidden="true" />}
+                        onClick={() => setEditProfileModalOpen(true)}
+                      >
+                        Edit profile
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        icon={<Settings size={15} aria-hidden="true" />}
+                        onClick={() => setSettingsModalOpen(true)}
+                      >
+                        Settings
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        variant="secondary"
+                        icon={<MessageSquare size={15} aria-hidden="true" />}
+                        onClick={handleMessageUser}
+                      >
+                        Message
+                      </Button>
+                      <Button
+                        variant={isFollowing ? "secondary" : "primary"}
+                        icon={
+                          isFollowing ? (
+                            <Check size={15} aria-hidden="true" />
+                          ) : (
+                            <UserPlus size={15} aria-hidden="true" />
+                          )
                         }
-                      }}
+                        aria-pressed={isFollowing}
+                        onClick={handleToggleFollow}
+                      >
+                        {isFollowing ? "Following" : "Follow"}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Stats plane — recessed beneath the identity: the numbers are
+                  the supporting cast, set INTO the surface while the person
+                  above them is raised out of it. */}
+              <div className="mt-6 rounded-xl border border-line bg-sunken px-4 py-4 sm:px-6 sm:py-5">
+                <div className="flex flex-wrap items-end justify-between gap-4">
+                  <div className="flex flex-wrap items-end gap-x-6 gap-y-4 sm:gap-x-10">
+                    {/* Hero numeral — contribution is the number this page is
+                        about, so it gets scale, tabular rhythm and the one
+                        warm accent on the page. */}
+                    <div className="min-w-0">
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="tabular text-4xl font-semibold tracking-tight text-warning sm:text-5xl">
+                          <CountUp value={profile.contribution_score} />
+                        </span>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+                          pts
+                        </span>
+                      </div>
+                      <div className="mt-0.5 truncate text-sm text-muted">Contribution</div>
+                    </div>
+
+                    <span
+                      className="hidden h-12 w-px shrink-0 bg-line sm:block"
+                      aria-hidden="true"
                     />
-                  </label>
-                )}
-              </div>
 
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl sm:text-2xl font-extrabold text-[#0f1926] tracking-tight">
-                    {profile.full_name || `@${profile.username}`}
-                  </h1>
-                  <span title="Verified Member">
-                    <ShieldCheck className="w-5 h-5 text-[#3f6f52]" />
-                  </span>
-                </div>
-                <p className="text-xs sm:text-sm text-[#5f6e82] font-medium mt-0.5">
-                  @{profile.username}
-                </p>
-                <span className="text-xs text-[#5f6e82] mt-1 capitalize font-medium">
-                  {profile.role?.replace(/_/g, " ") || "Student Candidate"}
-                </span>
-              </div>
+                    <Stat label="Followers" value={followerCount.toLocaleString()} />
+                    <Stat label="Following" value={followingCount.toLocaleString()} />
+                  </div>
 
-              {/* Action Buttons */}
-              <div className="ml-auto flex items-center gap-2">
-                {isSelf ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setEditProfileModalOpen(true)}
-                      className="px-4 py-2 rounded-xl border border-[#e3dccd] bg-[#f3eee1] hover:bg-white text-[#0f1926] text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs active:scale-95"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>Edit Profile</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSettingsModalOpen(true)}
-                      className="px-4 py-2 rounded-xl border border-[#e3dccd] bg-[#f3eee1] hover:bg-white text-[#0f1926] text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs active:scale-95"
-                    >
-                      <Settings className="w-3.5 h-3.5" />
-                      <span>Settings</span>
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleMessageUser}
-                      className="px-4 py-2 rounded-xl border border-[#3f6f52]/30 bg-[#3f6f52]/10 text-[#2f6b47] hover:bg-[#3f6f52]/20 text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs active:scale-95"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      <span>Message</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleToggleFollow}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 ${
-                        isFollowing
-                          ? "bg-[#f3eee1] text-[#5f6e82] border border-[#e3dccd]"
-                          : "bg-[#3f6f52] hover:bg-[#345c44] text-white"
-                      }`}
-                    >
-                      {isFollowing ? (
-                        <Check className="w-3.5 h-3.5" />
-                      ) : (
-                        <UserPlus className="w-3.5 h-3.5" />
-                      )}
-                      <span>{isFollowing ? "Following" : "Follow"}</span>
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {primaryEducation && (
-              <div className="flex items-center gap-2 text-xs sm:text-sm text-[#2b3a4f] font-medium">
-                <School className="w-4 h-4 text-[#3f6f52]" />
-                <span>
-                  {primaryEducation.degree_level} in {primaryEducation.course}
-                </span>
-              </div>
-            )}
-
-            {profile.bio && (
-              <p className="text-xs sm:text-sm text-[#2b3a4f] leading-relaxed max-w-3xl">
-                {profile.bio}
-              </p>
-            )}
-
-            {/* Stats Row */}
-            <div className="flex flex-wrap items-center justify-between border-t border-[#e3dccd] pt-4 mt-2 gap-6">
-              <div className="flex items-center gap-8">
-                <div className="flex flex-col">
-                  <span className="text-lg sm:text-xl font-bold text-[#0f1926]">
-                    {profile.contribution_score.toLocaleString()}
-                  </span>
-                  <span className="text-[11px] font-semibold text-[#5f6e82] uppercase tracking-wider">
-                    Contribution
-                  </span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-lg sm:text-xl font-bold text-[#0f1926]">
-                    {followerCount.toLocaleString()}
-                  </span>
-                  <span className="text-[11px] font-semibold text-[#5f6e82] uppercase tracking-wider">
-                    Followers
-                  </span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-lg sm:text-xl font-bold text-[#0f1926]">
-                    {followingCount.toLocaleString()}
-                  </span>
-                  <span className="text-[11px] font-semibold text-[#5f6e82] uppercase tracking-wider">
-                    Following
-                  </span>
+                  {(profile.contribution_score || 0) > 0 && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-warning/30 bg-warning-soft px-3 py-1 text-xs font-semibold text-warning">
+                      <Award size={14} aria-hidden="true" />
+                      Active contributor
+                    </span>
+                  )}
                 </div>
               </div>
+            </section>
+          </Focus>
 
-              {profile.contribution_score > 0 && (
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#3f6f52]/10 border border-[#3f6f52]/20 text-[#2f6b47] text-xs font-bold">
-                  <Award className="w-3.5 h-3.5 text-[#b26a00]" />
-                  <span>Active Contributor</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </motion.section>
+          {/* ── Tabs ───────────────────────────────────────────────────────── */}
+          <Section className="mb-6">
+            <Tabs
+              items={tabItems}
+              value={activeTab}
+              onChange={(id) => setActiveTab(id as ProfileTab)}
+              label="Profile sections"
+            />
+          </Section>
+        </Scene>
 
-        {/* Profile Tabs */}
-        <div className="border-b border-[#e3dccd] flex items-center justify-between">
-          <nav className="flex space-x-6">
-            <button
-              onClick={() => setActiveTab("overview")}
-              className={`pb-3.5 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
-                activeTab === "overview"
-                  ? "border-[#3f6f52] text-[#2f6b47]"
-                  : "border-transparent text-[#5f6e82] hover:text-[#0f1926]"
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              <span>Profile Overview</span>
-            </button>
+        {/* Tab panels sit deliberately OUTSIDE the Scene: an animated panel
+            would double the perceived latency of keyboard tab navigation.
+            Rows inside reveal once, on scroll, and never re-animate. */}
 
-            <button
-              onClick={() => setActiveTab("posts")}
-              className={`pb-3.5 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
-                activeTab === "posts"
-                  ? "border-[#3f6f52] text-[#2f6b47]"
-                  : "border-transparent text-[#5f6e82] hover:text-[#0f1926]"
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              <span>Experiences ({posts.length})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("solved")}
-              className={`pb-3.5 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
-                activeTab === "solved"
-                  ? "border-[#3f6f52] text-[#2f6b47]"
-                  : "border-transparent text-[#5f6e82] hover:text-[#0f1926]"
-              }`}
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Solved Questions ({completedQuestions.length})</span>
-            </button>
-          </nav>
-        </div>
-
-        {/* Tab 1: Overview */}
+        {/* ── Overview ───────────────────────────────────────────────────── */}
         {activeTab === "overview" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column (1 col): About & Credentials */}
-            <div className="flex flex-col gap-6">
-              <div className="bg-white p-6 rounded-2xl border border-[#e3dccd] shadow-sm flex flex-col gap-4">
-                <h2 className="text-sm font-bold text-[#0f1926] flex items-center gap-2 border-b border-[#e3dccd] pb-3">
-                  <User className="w-4 h-4 text-[#3f6f52]" />
-                  <span>About User</span>
-                </h2>
-                <div className="flex flex-col gap-3 text-xs text-[#2b3a4f]">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[#5f6e82] font-medium">Username:</span>
-                    <span className="font-semibold text-[#0f1926]">@{profile.username}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[#5f6e82] font-medium">Role:</span>
-                    <span className="font-semibold text-[#0f1926] capitalize">{profile.role}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[#5f6e82] font-medium">Points:</span>
-                    <span className="font-bold text-[#b26a00]">{profile.contribution_score} pts</span>
-                  </div>
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+            <Card as="section">
+              <h2 className="mb-4 flex items-center gap-2 border-b border-line pb-3 text-base font-semibold tracking-tight">
+                <User size={16} className="text-primary" aria-hidden="true" />
+                About
+              </h2>
+              <dl className="space-y-3 text-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-muted">Username</dt>
+                  <dd className="font-medium text-heading">@{profile.username}</dd>
                 </div>
-              </div>
-            </div>
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-muted">Role</dt>
+                  <dd className="font-medium capitalize text-heading">
+                    {profile.role?.replace(/_/g, " ") || "student"}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-muted">Points</dt>
+                  <dd className="tabular font-semibold text-warning">
+                    {profile.contribution_score ?? 0} pts
+                  </dd>
+                </div>
+              </dl>
+            </Card>
 
-            {/* Right Column (2 cols): Education & Experiences */}
-            <div className="lg:col-span-2 flex flex-col gap-6">
-              {/* Education History Card */}
-              <div className="bg-white p-6 sm:p-7 rounded-2xl border border-[#e3dccd] shadow-sm flex flex-col gap-5">
-                <div className="flex items-center justify-between border-b border-[#e3dccd] pb-3">
-                  <h2 className="text-sm sm:text-base font-bold text-[#0f1926] flex items-center gap-2">
-                    <School className="w-4 h-4 text-[#3f6f52]" />
-                    <span>Education Background</span>
+            <div className="flex flex-col gap-6 lg:col-span-2">
+              {/* Education */}
+              <Card as="section">
+                <div className="mb-4 flex items-center justify-between gap-3 border-b border-line pb-3">
+                  <h2 className="flex items-center gap-2 text-base font-semibold tracking-tight">
+                    <School size={16} className="text-primary" aria-hidden="true" />
+                    Education background
                   </h2>
                   {isSelf && (
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={<Plus size={14} aria-hidden="true" />}
                       onClick={() => setAddEduModalOpen(true)}
-                      className="text-xs font-semibold text-[#2f6b47] hover:underline flex items-center gap-1 transition-colors"
                     >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add Education</span>
-                    </button>
+                      Add education
+                    </Button>
                   )}
                 </div>
 
                 {education.length > 0 ? (
-                  <div className="flex flex-col gap-3.5">
+                  <ul className="flex flex-col gap-3">
                     {education.map((edu) => (
-                      <div key={edu.id} className="flex gap-4 items-start p-3.5 bg-[#faf7ee] rounded-xl border border-[#e3dccd]">
-                        <div className="w-10 h-10 rounded-xl bg-[#3f6f52]/10 border border-[#3f6f52]/20 flex items-center justify-center shrink-0 text-[#3f6f52]">
-                          <BookOpen className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 flex flex-col">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-bold text-[#0f1926]">
-                              {edu.degree_level} in {edu.course}
-                            </h3>
-                            {isSelf && (
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteEducation(edu.id)}
-                                className="text-[#5f6e82] hover:text-[#b5462f] transition-colors p-1"
-                                title="Delete Education Entry"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                      <li key={edu.id}>
+                        <Reveal className="flex items-start gap-4 rounded-xl border border-line bg-raised p-4">
+                          <span
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary"
+                            aria-hidden="true"
+                          >
+                            <BookOpen size={18} />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <h3 className="text-sm font-semibold text-heading">
+                                {edu.degree_level} in {edu.course}
+                              </h3>
+                              {isSelf && (
+                                <IconButton
+                                  label={`Delete ${edu.degree_level} in ${edu.course}`}
+                                  tone="danger"
+                                  onClick={() => setEduToDelete(edu)}
+                                >
+                                  <Trash2 size={15} aria-hidden="true" />
+                                </IconButton>
+                              )}
+                            </div>
+                            {edu.branch && (
+                              <p className="mt-0.5 text-sm text-muted">
+                                Specialization: {edu.branch}
+                              </p>
                             )}
+                            <p className="mt-1 text-sm text-faint">
+                              {edu.start_year} — {edu.is_current ? "Present" : edu.end_year}
+                            </p>
                           </div>
-                          <p className="text-xs text-[#2b3a4f] font-medium mt-0.5">
-                            {edu.branch ? `Specialization: ${edu.branch}` : ""}
-                          </p>
-                          <p className="text-xs text-[#5f6e82] mt-1">
-                            {edu.start_year} — {edu.is_current ? "Present (Expected)" : edu.end_year}
-                          </p>
-                        </div>
-                      </div>
+                        </Reveal>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 ) : (
-                  <div className="p-6 text-center text-xs text-[#5f6e82] italic bg-[#faf7ee] rounded-xl border border-dashed border-[#e3dccd]">
-                    No academic education entries logged yet.
-                  </div>
+                  <EmptyState
+                    art="stack"
+                    title="No education entries yet"
+                    description={
+                      isSelf
+                        ? "Add your degree so others can filter experiences by background."
+                        : "This member hasn't added any academic credentials."
+                    }
+                    action={
+                      isSelf ? (
+                        <Button
+                          size="sm"
+                          icon={<Plus size={14} aria-hidden="true" />}
+                          onClick={() => setAddEduModalOpen(true)}
+                        >
+                          Add education
+                        </Button>
+                      ) : undefined
+                    }
+                  />
                 )}
-              </div>
+              </Card>
 
-              {/* Recent Experiences Card */}
-              <div className="bg-white p-6 sm:p-7 rounded-2xl border border-[#e3dccd] shadow-sm flex flex-col gap-5">
-                <div className="flex items-center justify-between border-b border-[#e3dccd] pb-3">
-                  <h2 className="text-sm sm:text-base font-bold text-[#0f1926] flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-[#3f6f52]" />
-                    <span>Shared Experiences</span>
+              {/* Recent experiences */}
+              <Card as="section">
+                <div className="mb-4 flex items-center justify-between gap-3 border-b border-line pb-3">
+                  <h2 className="flex items-center gap-2 text-base font-semibold tracking-tight">
+                    <Building2 size={16} className="text-primary" aria-hidden="true" />
+                    Shared experiences
                   </h2>
-                  <button
-                    onClick={() => setActiveTab("posts")}
-                    className="text-xs font-semibold text-[#2f6b47] hover:underline transition-colors"
-                  >
-                    View All ({posts.length})
-                  </button>
+                  <Button variant="link" size="sm" onClick={() => setActiveTab("posts")}>
+                    View all ({posts.length})
+                  </Button>
                 </div>
 
                 {posts.length > 0 ? (
-                  <div className="flex flex-col gap-3.5">
+                  <RevealGroup className="flex flex-col gap-4">
                     {posts.slice(0, 3).map((post) => (
                       <PostCard key={post.id} post={post} />
                     ))}
-                  </div>
+                  </RevealGroup>
                 ) : (
-                  <div className="p-6 text-center text-xs text-[#5f6e82] italic bg-[#faf7ee] rounded-xl border border-dashed border-[#e3dccd]">
-                    No interview experiences shared yet.
-                  </div>
+                  <EmptyState
+                    art="rounds"
+                    title="No experiences shared yet"
+                    description={
+                      isSelf
+                        ? "Share your first interview to help the next candidate prepare."
+                        : "This member hasn't published an experience."
+                    }
+                    action={
+                      isSelf ? (
+                        <Button onClick={() => navigate("/draft")}>Share an experience</Button>
+                      ) : undefined
+                    }
+                  />
                 )}
-              </div>
+              </Card>
             </div>
           </div>
         )}
 
-        {/* Tab 2: All Posts */}
+        {/* ── All experiences ────────────────────────────────────────────── */}
         {activeTab === "posts" && (
           <div className="flex flex-col gap-4">
             {posts.length > 0 ? (
-              posts.map((post) => <PostCard key={post.id} post={post} />)
+              <ul className="flex flex-col gap-4">
+                {posts.map((post) => (
+                  <li key={post.id}>
+                    <Reveal>
+                      <PostCard post={post} />
+                    </Reveal>
+                  </li>
+                ))}
+              </ul>
             ) : (
-              <div className="p-12 text-center text-sm text-[#5f6e82] bg-white rounded-2xl border border-[#e3dccd]">
-                No interview experiences found for this account.
-              </div>
+              <EmptyState
+                size="page"
+                art="rounds"
+                title="No experiences published"
+                description={
+                  isSelf
+                    ? "Everything you publish will appear here."
+                    : "This member hasn't published an experience yet."
+                }
+                action={
+                  isSelf ? (
+                    <Button onClick={() => navigate("/draft")}>Share an experience</Button>
+                  ) : undefined
+                }
+              />
             )}
           </div>
         )}
 
-        {/* Tab 3: Solved Questions */}
+        {/* ── Solved questions ───────────────────────────────────────────── */}
         {activeTab === "solved" && (
           <div className="flex flex-col gap-3">
             {completedQuestions.length > 0 ? (
-              completedQuestions.map((q) => (
-                <div key={q.question_id} className="p-5 bg-white rounded-2xl border border-[#e3dccd] shadow-sm flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#2f6b47] bg-[#3f6f52]/10 border border-[#3f6f52]/20 px-3 py-0.5 rounded-full">
-                      {q.post_title || "Interview Problem"}
-                    </span>
-                    <span className="text-xs text-[#5f6e82]">
-                      Solved on {new Date(q.completed_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <p className="text-sm text-[#0f1926] font-medium mt-1 leading-relaxed">
-                    {q.question_text || "Attachment Problem Statement"}
-                  </p>
-                </div>
-              ))
+              <ul className="flex flex-col gap-3">
+                {completedQuestions.map((question) => (
+                  <li key={question.question_id}>
+                    <Reveal className="rounded-xl border border-line bg-surface p-5 shadow-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <Badge tone="primary" className="max-w-full truncate">
+                          {question.post_title || "Interview problem"}
+                        </Badge>
+                        <span className="text-sm text-muted">
+                          Solved {absoluteDate(question.completed_at)}
+                        </span>
+                      </div>
+                      <p className="mt-3 text-sm font-medium leading-relaxed text-heading">
+                        {question.question_text || "Attachment problem statement"}
+                      </p>
+                    </Reveal>
+                  </li>
+                ))}
+              </ul>
             ) : (
-              <div className="p-12 text-center text-sm text-[#5f6e82] bg-white rounded-2xl border border-[#e3dccd]">
-                No questions marked as solved yet.
-              </div>
+              <EmptyState
+                size="page"
+                art="rounds"
+                title="No questions marked as solved"
+                description={
+                  isSelf
+                    ? "Mark questions you've completed while browsing experiences."
+                    : "This member hasn't marked any questions as solved."
+                }
+              />
             )}
           </div>
         )}
-      </main>
+      </PageContainer>
 
-      {/* Edit Profile Modal */}
-      <Modal isOpen={editProfileModalOpen} onClose={() => setEditProfileModalOpen(false)} title="Edit Public Profile">
-        <form onSubmit={handleSaveProfile} className="flex flex-col gap-5">
-          {/* Avatar Upload Preview */}
+      {/* ── Edit profile modal ───────────────────────────────────────────── */}
+      <Modal
+        isOpen={editProfileModalOpen}
+        onClose={() => setEditProfileModalOpen(false)}
+        title="Edit public profile"
+        subtitle="This is what other members see on your experiences."
+        maxWidth="max-w-xl"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setEditProfileModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="edit-profile-form"
+              loading={savingProfile}
+              disabled={uploadingPhoto}
+            >
+              Save changes
+            </Button>
+          </>
+        }
+      >
+        <form id="edit-profile-form" onSubmit={handleSaveProfile} className="space-y-5">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full overflow-hidden bg-[#f3eee1] border border-[#e3dccd] flex items-center justify-center font-bold text-[#0f1926] text-xl shrink-0">
-              {editPhotoUrl ? (
-                <img src={getMediaUrl(editPhotoUrl)} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                <span>{profile.username.slice(0, 2).toUpperCase()}</span>
-              )}
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-[#0f1926] flex items-center gap-1">
-                <Camera className="w-3.5 h-3.5 text-[#3f6f52]" />
-                Profile Photo
+            <Avatar
+              src={editPhotoUrl}
+              name={editFullName || profile.username}
+              size="lg"
+              alt={editFullName || profile.username}
+            />
+            <div className="min-w-0">
+              <label
+                htmlFor="profile-photo-file"
+                className="mb-1.5 block text-sm font-medium text-heading"
+              >
+                Profile photo
               </label>
               <input
+                id="profile-photo-file"
                 type="file"
                 accept="image/*"
                 onChange={handleFileUpload}
                 disabled={uploadingPhoto}
-                className="text-xs text-[#5f6e82] file:mr-2 file:py-1 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#3f6f52] file:text-white hover:file:bg-[#345c44] cursor-pointer"
+                className="block w-full cursor-pointer text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-fg hover:file:bg-[rgb(var(--primary-hover))] file:disabled:opacity-50"
               />
-              {uploadingPhoto && <span className="text-[10px] text-[#3f6f52] animate-pulse">Uploading photo...</span>}
+              {uploadingPhoto && (
+                <p className="mt-1 text-sm text-primary" role="status">
+                  Uploading photo…
+                </p>
+              )}
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-[#0f1926]">Full Name</label>
-            <input
-              type="text"
-              value={editFullName}
-              onChange={(e) => setEditFullName(e.target.value)}
-              placeholder="e.g. Jane Doe"
-              className="px-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none"
-            />
-          </div>
+          <FieldControl
+            label="Full name"
+            name="full_name"
+            autoComplete="name"
+            placeholder="e.g. Jane Doe"
+            value={editFullName}
+            onChange={(event) => setEditFullName(event.target.value)}
+            error={nameError}
+            hint="Shown instead of your username when set."
+          />
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-[#0f1926]">Bio / Headline</label>
-            <textarea
+          <Field label="Bio / headline" htmlFor="profile-bio">
+            <Textarea
+              id="profile-bio"
               rows={3}
+              maxLength={280}
               value={editBio}
-              onChange={(e) => setEditBio(e.target.value)}
-              placeholder="Share a short summary of your background..."
-              className="px-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none resize-none"
+              onChange={(event) => setEditBio(event.target.value)}
+              placeholder="A short summary of your background…"
             />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setEditProfileModalOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-[#5f6e82] hover:bg-[#f3eee1]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={savingProfile || uploadingPhoto}
-              className="px-5 py-2 rounded-xl bg-[#3f6f52] hover:bg-[#345c44] text-white text-xs font-bold shadow-sm disabled:opacity-50"
-            >
-              {savingProfile ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
+            <p className="text-xs text-faint">{editBio.length}/280 characters</p>
+          </Field>
         </form>
       </Modal>
 
-      {/* Add Education Modal */}
-      <Modal isOpen={addEduModalOpen} onClose={() => setAddEduModalOpen(false)} title="Add Academic Credential">
-        <form onSubmit={handleAddEducation} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-[#0f1926]">Institution</label>
-            <select
+      {/* ── Add education modal ──────────────────────────────────────────── */}
+      <Modal
+        isOpen={addEduModalOpen}
+        onClose={() => setAddEduModalOpen(false)}
+        title="Add academic credential"
+        maxWidth="max-w-lg"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setAddEduModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" form="add-education-form">
+              Save credential
+            </Button>
+          </>
+        }
+      >
+        <form id="add-education-form" onSubmit={handleAddEducation} className="space-y-4">
+          <Field
+            label="Institution"
+            htmlFor="edu-institution"
+            required
+            error={eduError}
+            hint={
+              institutionsLoading
+                ? "Loading institutions…"
+                : institutions.length === 0
+                  ? "No institutions were returned — try again."
+                  : undefined
+            }
+          >
+            <Select
+              id="edu-institution"
               value={eduForm.institution_id}
-              onChange={(e) => setEduForm({ ...eduForm, institution_id: e.target.value })}
-              className="px-3 py-2 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs text-[#0f1926] focus:bg-white outline-none"
+              onChange={(event) => {
+                setEduError("");
+                setEduForm({ ...eduForm, institution_id: event.target.value });
+              }}
+              required
+              disabled={institutionsLoading || institutions.length === 0}
             >
+              <option value="">Select an institution…</option>
               {institutions.map((inst) => (
-                <option key={inst.id} value={inst.id} className="bg-white text-[#0f1926]">
+                <option key={inst.id} value={inst.id}>
                   {inst.name} ({inst.city}, {inst.country})
                 </option>
               ))}
-            </select>
-          </div>
+            </Select>
+          </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-[#0f1926]">Degree Level</label>
-              <select
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Degree level" htmlFor="edu-degree">
+              <Select
+                id="edu-degree"
                 value={eduForm.degree_level}
-                onChange={(e) => setEduForm({ ...eduForm, degree_level: e.target.value })}
-                className="px-3 py-2 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs text-[#0f1926] focus:bg-white outline-none"
+                onChange={(event) => setEduForm({ ...eduForm, degree_level: event.target.value })}
               >
-                <option value="Bachelors" className="bg-white text-[#0f1926]">Bachelors</option>
-                <option value="Masters" className="bg-white text-[#0f1926]">Masters</option>
-                <option value="PhD" className="bg-white text-[#0f1926]">PhD</option>
-                <option value="Diploma" className="bg-white text-[#0f1926]">Diploma</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-[#0f1926]">Course</label>
-              <input
-                type="text"
-                value={eduForm.course}
-                onChange={(e) => setEduForm({ ...eduForm, course: e.target.value })}
-                className="px-3 py-2 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs text-[#0f1926] focus:bg-white outline-none"
-              />
-            </div>
-          </div>
+                <option value="Bachelors">Bachelors</option>
+                <option value="Masters">Masters</option>
+                <option value="PhD">PhD</option>
+                <option value="Diploma">Diploma</option>
+              </Select>
+            </Field>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-[#0f1926]">Specialization / Branch</label>
-            <input
-              type="text"
-              value={eduForm.branch}
-              onChange={(e) => setEduForm({ ...eduForm, branch: e.target.value })}
-              className="px-3 py-2 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs text-[#0f1926] focus:bg-white outline-none"
+            <FieldControl
+              label="Course"
+              name="edu-course"
+              value={eduForm.course}
+              onChange={(event) => setEduForm({ ...eduForm, course: event.target.value })}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-[#0f1926]">Start Year</label>
-              <input
-                type="number"
-                value={eduForm.start_year}
-                onChange={(e) => setEduForm({ ...eduForm, start_year: parseInt(e.target.value, 10) })}
-                className="px-3 py-2 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs text-[#0f1926] focus:bg-white outline-none"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-[#0f1926]">End Year</label>
-              <input
-                type="number"
-                value={eduForm.end_year}
-                onChange={(e) => setEduForm({ ...eduForm, end_year: parseInt(e.target.value, 10) })}
-                className="px-3 py-2 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs text-[#0f1926] focus:bg-white outline-none"
-              />
-            </div>
+          <FieldControl
+            label="Specialization / branch"
+            name="edu-branch"
+            value={eduForm.branch}
+            onChange={(event) => setEduForm({ ...eduForm, branch: event.target.value })}
+          />
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FieldControl
+              label="Start year"
+              name="edu-start-year"
+              type="number"
+              inputMode="numeric"
+              min={1950}
+              max={2100}
+              value={String(eduForm.start_year)}
+              onChange={(event) =>
+                setEduForm({
+                  ...eduForm,
+                  start_year: Number.parseInt(event.target.value, 10) || eduForm.start_year,
+                })
+              }
+            />
+            <FieldControl
+              label="End year"
+              name="edu-end-year"
+              type="number"
+              inputMode="numeric"
+              min={1950}
+              max={2100}
+              disabled={eduForm.is_current}
+              value={String(eduForm.end_year)}
+              onChange={(event) =>
+                setEduForm({
+                  ...eduForm,
+                  end_year: Number.parseInt(event.target.value, 10) || eduForm.end_year,
+                })
+              }
+              hint={eduForm.is_current ? "Still in progress." : undefined}
+            />
           </div>
 
-          <div className="flex justify-end gap-3 pt-3">
-            <button
-              type="button"
-              onClick={() => setAddEduModalOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-[#5f6e82] hover:bg-[#f3eee1]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-xl bg-[#3f6f52] hover:bg-[#345c44] text-white text-xs font-bold shadow-sm"
-            >
-              Save Credential
-            </button>
-          </div>
+          <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-line bg-raised px-3 py-2.5 text-sm text-body">
+            <input
+              type="checkbox"
+              checked={eduForm.is_current}
+              onChange={(event) => setEduForm({ ...eduForm, is_current: event.target.checked })}
+              className="h-4 w-4 rounded border-line-strong text-primary focus:ring-primary/30"
+            />
+            Currently studying here
+          </label>
         </form>
       </Modal>
 
-      {/* Settings Modal */}
-      <Modal isOpen={settingsModalOpen} onClose={() => setSettingsModalOpen(false)} title="Account Settings">
-        <form onSubmit={handleUpdateSettings} className="flex flex-col gap-5">
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-[#0f1926]">Theme Preference</label>
-            <div className="grid grid-cols-3 gap-2.5">
-              {(["light", "dark", "system"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setThemePref(t)}
-                  className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 capitalize text-xs font-semibold transition-all ${
-                    themePref === t
-                      ? "border-[#3f6f52] bg-[#3f6f52]/10 text-[#2f6b47] shadow-sm"
-                      : "border-[#e3dccd] bg-[#f3eee1] text-[#5f6e82] hover:border-[#3f6f52]/40"
-                  }`}
-                >
-                  {t === "light" && <Sun className="w-4 h-4" />}
-                  {t === "dark" && <Moon className="w-4 h-4" />}
-                  {t === "system" && <Monitor className="w-4 h-4" />}
-                  <span>{t}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="h-px bg-[#e3dccd]"></div>
-
-          <div className="flex flex-col gap-3">
-            <h3 className="text-xs font-bold text-[#0f1926] flex items-center gap-1.5">
-              <Key className="w-3.5 h-3.5 text-[#3f6f52]" />
-              <span>Change Password</span>
-            </h3>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="Current Password"
-              className="px-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none"
-            />
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="New Password (min 8 chars)"
-              className="px-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none"
-            />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-3">
-            <button
-              type="button"
-              onClick={() => setSettingsModalOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-[#5f6e82] hover:bg-[#f3eee1]"
-            >
+      {/* ── Settings modal ──────────────────────────────────────────────── */}
+      <Modal
+        isOpen={settingsModalOpen}
+        onClose={() => setSettingsModalOpen(false)}
+        title="Account settings"
+        maxWidth="max-w-lg"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setSettingsModalOpen(false)}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-xl bg-[#3f6f52] hover:bg-[#345c44] text-white text-xs font-bold shadow-sm"
+            </Button>
+            <Button type="submit" form="settings-form">
+              Save settings
+            </Button>
+          </>
+        }
+      >
+        <form id="settings-form" onSubmit={handleUpdateSettings} className="space-y-5">
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-heading">Theme preference</legend>
+            <div
+              role="radiogroup"
+              aria-label="Theme preference"
+              className="grid grid-cols-3 gap-2.5"
             >
-              Save Settings
-            </button>
-          </div>
+              {(["light", "dark", "system"] as ThemeChoice[]).map((option) => {
+                const selected = themePref === option;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setThemePref(option)}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-sm font-medium capitalize transition-all duration-fast ease-swift",
+                      "active:scale-press",
+                      selected
+                        ? "border-primary bg-primary-soft text-primary shadow-xs"
+                        : "border-line bg-raised text-muted hover:border-line-strong hover:text-heading"
+                    )}
+                  >
+                    {option === "light" && <Sun size={16} aria-hidden="true" />}
+                    {option === "dark" && <Moon size={16} aria-hidden="true" />}
+                    {option === "system" && <Monitor size={16} aria-hidden="true" />}
+                    <span>{option}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-faint">
+              Saved to your account, so it follows you to any device.
+            </p>
+          </fieldset>
+
+          <div className="h-px bg-line" role="separator" />
+
+          <fieldset className="space-y-3">
+            <legend className="flex items-center gap-1.5 text-sm font-medium text-heading">
+              <Key size={14} className="text-primary" aria-hidden="true" />
+              Change password
+            </legend>
+
+            <Field label="Current password" htmlFor="current-password" required>
+              <PasswordInput
+                id="current-password"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+              />
+            </Field>
+
+            <Field
+              label="New password"
+              htmlFor="new-password"
+              error={passwordError}
+              hint="Leave both blank to keep your current password."
+            >
+              <PasswordInput
+                id="new-password"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+              />
+            </Field>
+          </fieldset>
         </form>
       </Modal>
-    </AppShell>
+
+      {/* ── Delete education confirmation ────────────────────────────────── */}
+      <ConfirmDialog
+        isOpen={Boolean(eduToDelete)}
+        onClose={() => setEduToDelete(null)}
+        onConfirm={handleDeleteEducation}
+        loading={deletingEdu}
+        tone="danger"
+        title="Delete education entry?"
+        confirmLabel="Delete"
+        message={
+          eduToDelete ? (
+            <>
+              <strong>{eduToDelete.degree_level} in {eduToDelete.course}</strong> will be removed
+              from your profile. This cannot be undone.
+            </>
+          ) : (
+            "This entry will be removed from your profile."
+          )
+        }
+      />
+    </>
   );
 };

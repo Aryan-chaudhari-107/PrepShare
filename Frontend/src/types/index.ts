@@ -293,8 +293,6 @@ export interface NotificationItem {
   id: UUID;
   receiver_id: UUID;
   sender_id?: UUID | null;
-  sender_username?: string | null;
-  sender_profile_photo?: string | null;
   sender?: {
     username?: string;
     profile_photo_url?: string | null;
@@ -310,10 +308,13 @@ export type NotificationOut = NotificationItem;
 
 export interface NotificationListResponse {
   items: NotificationItem[];
-  total: number;
-  page: number;
-  total_pages: number;
   unread_count: number;
+  page: number;
+  limit: number;
+  total: number;
+  total_pages: number;
+  has_next: boolean;
+  has_previous: boolean;
 }
 
 // Completed Questions
@@ -390,4 +391,91 @@ export interface FileUploadResponse {
   filename: string;
   content_type: string;
   size_bytes: number;
+}
+
+// ── Dashboard ──────────────────────────────────────────────────────────────
+
+export interface DashboardCounts {
+  posts: number;
+  drafts: number;
+  replies_given: number;
+  comments_received: number;
+  bookmarks: number;
+  completed_questions: number;
+  followers: number;
+  following: number;
+  views: number;
+  shares: number;
+}
+
+export interface DashboardStreak {
+  current: number;
+  best: number;
+}
+
+export interface DashboardActivityDay {
+  date: string;
+  posts: number;
+  comments: number;
+  bookmarks: number;
+  completions: number;
+  total: number;
+}
+
+export interface DashboardTrend {
+  posts_this_week: number;
+  posts_last_week: number;
+  comments_this_week: number;
+  comments_last_week: number;
+}
+
+export interface DashboardWeeklyGoal {
+  completed: number;
+  goal: number;
+}
+
+export interface DashboardOfferSignal {
+  offers: number;
+  without_offer: number;
+  total: number;
+}
+
+export interface DashboardCategoryCount {
+  category: string;
+  count: number;
+}
+
+export interface ActiveDiscussion {
+  id: UUID;
+  title: string;
+  post_category: string | null;
+  comment_count: number;
+  last_activity_at: string | null;
+}
+
+export interface DashboardRecentDraft {
+  id: UUID;
+  title: string;
+  updated_at: string | null;
+}
+
+export interface DashboardPlatform {
+  total_posts: number;
+  total_contributors: number;
+  total_users: number;
+}
+
+export interface DashboardSummary {
+  signed_in: boolean;
+  generated_at: string;
+  platform: DashboardPlatform;
+  offer_signal: DashboardOfferSignal;
+  categories: DashboardCategoryCount[];
+  active_discussions: ActiveDiscussion[];
+  counts: DashboardCounts | null;
+  streak: DashboardStreak | null;
+  activity: DashboardActivityDay[];
+  trend: DashboardTrend | null;
+  weekly: DashboardWeeklyGoal | null;
+  recent_draft: DashboardRecentDraft | null;
 }

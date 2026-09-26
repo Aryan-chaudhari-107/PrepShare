@@ -4,7 +4,7 @@ calls _05_services/auth.py, returns HTTP responses. No database access,
 no business rules here.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from _01_core import get_current_user, get_db, limiter
@@ -15,9 +15,14 @@ from _05_services import auth
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+# Note: every rate-limited endpoint below declares `response: Response` —
+# slowapi writes the X-RateLimit-* headers onto that object, and FastAPI
+# merges them into the final response.
+
+
 @router.post("/request-otp")
 @limiter.limit("3/minute")
-def request_otp(request: Request, data: RequestOTP, db: Session = Depends(get_db)):
+def request_otp(request: Request, response: Response, data: RequestOTP, db: Session = Depends(get_db)):
     try:
         return auth.request_otp(db, data)
     except ValueError as e:
@@ -26,7 +31,7 @@ def request_otp(request: Request, data: RequestOTP, db: Session = Depends(get_db
 
 @router.post("/verify-and-register", response_model=Token)
 @limiter.limit("5/minute")
-def verify_and_register(request: Request, data: VerifyAndRegister, db: Session = Depends(get_db)):
+def verify_and_register(request: Request, response: Response, data: VerifyAndRegister, db: Session = Depends(get_db)):
     try:
         return auth.verify_and_register(db, data)
     except ValueError as e:
@@ -35,7 +40,7 @@ def verify_and_register(request: Request, data: VerifyAndRegister, db: Session =
 
 @router.post("/login", response_model=Token)
 @limiter.limit("5/minute")
-def login(request: Request, data: UserLogin, db: Session = Depends(get_db)):
+def login(request: Request, response: Response, data: UserLogin, db: Session = Depends(get_db)):
     try:
         return auth.login(db, data)
     except ValueError as e:
@@ -49,13 +54,13 @@ def login(request: Request, data: UserLogin, db: Session = Depends(get_db)):
 
 @router.post("/forgot-password")
 @limiter.limit("3/minute")
-def forgot_password(request: Request, data: RequestOTP, db: Session = Depends(get_db)):
+def forgot_password(request: Request, response: Response, data: RequestOTP, db: Session = Depends(get_db)):
     return auth.forgot_password(db, data)
 
 
 @router.post("/reset-password")
 @limiter.limit("5/minute")
-def reset_password(request: Request, data: ResetPassword, db: Session = Depends(get_db)):
+def reset_password(request: Request, response: Response, data: ResetPassword, db: Session = Depends(get_db)):
     try:
         return auth.reset_password(db, data)
     except ValueError as e:

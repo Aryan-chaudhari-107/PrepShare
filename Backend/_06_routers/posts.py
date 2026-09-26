@@ -11,6 +11,7 @@ from fastapi import (
     HTTPException,
     Query,
     Request,
+    Response,
     status,
 )
 from sqlalchemy.orm import Session
@@ -96,7 +97,9 @@ def update_post(
 @limiter.limit("20/minute")
 def share_post(
     request: Request,
+    response: Response,
     post_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     try:

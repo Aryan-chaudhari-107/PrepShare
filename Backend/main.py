@@ -1,6 +1,7 @@
 """FastAPI entry point for the PrepShare backend."""
 
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,12 +10,14 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from _01_core import limiter, settings
+from _01_core.database import wait_for_database
 from _06_routers import auth, posts, users
 from _06_routers import bookmarks as bookmarks_router
 from _06_routers import chat as chat_router
 from _06_routers import comments as comments_router
 from _06_routers import companies as companies_router
 from _06_routers import completed_questions as completed_questions_router
+from _06_routers import dashboard as dashboard_router
 from _06_routers import education_history as education_router
 from _06_routers import follows as follows_router
 from _06_routers import institutions as institutions_router
@@ -28,7 +31,17 @@ from _06_routers import uploads as uploads_router
 static_upload_dir = os.path.join(os.path.dirname(__file__), "static", "uploads")
 os.makedirs(static_upload_dir, exist_ok=True)
 
-app = FastAPI(title="PrepShare Platform")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Probe the database once at boot with backoff, so a cold Supabase
+    instance gets a few retries and a clear log line instead of the first
+    request failing with a cryptic 500."""
+    wait_for_database()
+    yield
+
+
+app = FastAPI(title="PrepShare Platform", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -38,6 +51,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Let browser JS read the quota headers cross-origin.
+    expose_headers=["Retry-After", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
 )
 
 # Static media mount
@@ -60,3 +75,5 @@ app.include_router(notifications_router.router)
 app.include_router(reports_router.router)
 app.include_router(chat_router.router)
 app.include_router(uploads_router.router)
+app.include_router(dashboard_router.router)
+app.include_router(dashboard_router.health_router)

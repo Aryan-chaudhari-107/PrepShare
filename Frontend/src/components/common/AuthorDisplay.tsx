@@ -2,7 +2,8 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { EyeOff, ShieldCheck } from "lucide-react";
 import { AuthorOut } from "../../types";
-import { getMediaUrl } from "../../utils/media";
+import { Avatar } from "../ui";
+import { cn } from "../../lib/cn";
 
 interface AuthorDisplayProps {
   author?: AuthorOut | null;
@@ -11,69 +12,92 @@ interface AuthorDisplayProps {
   size?: "sm" | "md" | "lg";
 }
 
+/** Matches `Avatar`'s built-in size boxes so both branches line up exactly. */
+const ANON_BOX: Record<NonNullable<AuthorDisplayProps["size"]>, string> = {
+  sm: "h-8 w-8 text-xs",
+  md: "h-10 w-10 text-sm",
+  lg: "h-14 w-14 text-lg",
+};
+
+const AVATAR_SIZE = { sm: "sm", md: "md", lg: "lg" } as const;
+
+/**
+ * One layout for every author state: anonymous, linkable and un-linkable.
+ * Both branches render the identical class list through `cn()` — only the
+ * root element differs (`<Link>` when there is a profile to open, otherwise a
+ * plain `<span>`) — so the two can never drift apart visually again.
+ */
 export const AuthorDisplay: React.FC<AuthorDisplayProps> = ({
   author,
   isAnonymous = false,
   score,
   size = "md",
 }) => {
-  const isAnon = isAnonymous || !author;
+  const shell = cn(
+    "group flex min-w-0 items-center gap-3",
+    "transition-transform duration-fast ease-swift active:scale-press"
+  );
+  const textColumn = "flex min-w-0 flex-col justify-center";
 
-  const avatarSizes = {
-    sm: "w-10 h-10 text-xs",
-    md: "w-11 h-11 sm:w-12 sm:h-12 text-sm",
-    lg: "w-13 h-13 text-base",
-  };
-
-  if (isAnon) {
+  if (isAnonymous || !author) {
     return (
-      <div className="flex items-center gap-3">
-        <div
-          className={`${avatarSizes[size]} rounded-full border border-[#e3dccd] bg-[#f3eee1] text-[#5f6e82] font-semibold flex items-center justify-center shrink-0 shadow-xs`}
+      <span className={shell}>
+        <span
+          className={cn(
+            "flex shrink-0 items-center justify-center overflow-hidden rounded-full",
+            "border border-line bg-sunken font-semibold text-muted shadow-xs",
+            ANON_BOX[size]
+          )}
+          aria-hidden="true"
         >
-          <EyeOff className="w-5 h-5 text-[#5f6e82]" />
-        </div>
-        <div className="flex flex-col justify-center">
-          <span className="text-[16px] font-semibold text-[#0f1926] flex items-center gap-1 leading-tight">
+          <EyeOff className="h-5 w-5" />
+        </span>
+        <span className={textColumn}>
+          <span className="flex items-center gap-1 text-lg font-semibold leading-tight text-heading">
             Anonymous Student
           </span>
-          <span className="text-[13.5px] text-[#5f6e82] leading-tight mt-0.5">Verified Experience</span>
-        </div>
-      </div>
+          <span className="mt-0.5 text-sm leading-tight text-muted">Verified Experience</span>
+        </span>
+      </span>
     );
   }
 
-  const initials = (author.username || "OP").substring(0, 2).toUpperCase();
-
-  return (
-    <Link
-      to={`/users/${author.user_id}`}
-      className="flex items-center gap-3 group transition-transform active:scale-98"
-    >
-      <div
-        className={`${avatarSizes[size]} rounded-full border border-[#e3dccd] overflow-hidden shrink-0 bg-[#3f6f52] text-white flex items-center justify-center font-bold shadow-xs group-hover:scale-105 transition-transform`}
-      >
-        {author.profile_photo_url ? (
-          <img
-            src={getMediaUrl(author.profile_photo_url)}
-            alt={author.username}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <span>{initials}</span>
-        )}
-      </div>
-      <div className="flex flex-col justify-center">
-        <span className="text-[16px] font-semibold text-[#0f1926] group-hover:text-[#3f6f52] transition-colors flex items-center gap-1.5 leading-tight">
+  const identity = (
+    <>
+      <Avatar
+        src={author.profile_photo_url}
+        name={author.username}
+        size={AVATAR_SIZE[size]}
+        className="transition-transform duration-fast ease-swift group-hover:scale-105"
+      />
+      <span className={textColumn}>
+        {/* `anywhere` (not `break-words`) because this span is a flex box: the
+            username becomes an anonymous flex item whose min-content floor
+            would otherwise push a very long name out of its card. */}
+        <span className="flex min-w-0 items-center gap-1.5 [overflow-wrap:anywhere] text-lg font-semibold leading-tight text-heading transition-colors duration-fast ease-swift group-hover:text-primary">
           @{author.username}
-          <ShieldCheck className="w-4 h-4 text-[#2f6b47] shrink-0" />
+          <ShieldCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
         </span>
         {score !== undefined ? (
-          <span className="text-[13.5px] text-[#5f6e82] leading-tight mt-0.5">Score: {score.toLocaleString()} pts</span>
+          <span className="tabular mt-0.5 text-sm leading-tight text-muted">
+            Score: {score.toLocaleString()} pts
+          </span>
         ) : (
-          <span className="text-[13.5px] text-[#2f6b47] font-medium leading-tight mt-0.5">Verified Contributor</span>
+          <span className="mt-0.5 text-sm font-medium leading-tight text-primary">
+            Verified Contributor
+          </span>
         )}
-      </div>
+      </span>
+    </>
+  );
+
+  if (!author.user_id) {
+    return <span className={shell}>{identity}</span>;
+  }
+
+  return (
+    <Link to={`/users/${author.user_id}`} className={shell}>
+      {identity}
     </Link>
   );
 };

@@ -1,29 +1,50 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion, type Variants } from "framer-motion";
 import {
-  Briefcase,
-  Globe,
-  School,
-  Building2,
-  MapPin,
-  ArrowRight,
   ArrowLeft,
-  Trash2,
-  Plus,
-  Paperclip,
-  Send,
+  ArrowRight,
+  Briefcase,
+  Building2,
+  Check,
   CheckCircle2,
-  XCircle,
   FileEdit,
+  Globe,
   GraduationCap,
+  MapPin,
+  Paperclip,
+  Plus,
+  Send,
+  School,
   Shield,
+  Trash2,
+  XCircle,
 } from "lucide-react";
-import { AppShell } from "../components/layout/AppShell";
-import { Company } from "../types";
+import { PageContainer } from "../components/layout/AppShell";
+import {
+  Button,
+  Card,
+  CardHeader,
+  ConfirmDialog,
+  Divider,
+  Field,
+  IconButton,
+  Input,
+  PageHeader,
+  Segmented,
+  Select,
+  Spinner,
+  Textarea,
+} from "../components/ui";
+import { DURATION, EASE, Focus, Scene, SPRING, Section, Tilt } from "../motion";
 import { postsApi, companiesApi, uploadsApi } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+import { Company, PostCategory } from "../types";
+import { cn } from "../lib/cn";
+import { errorMessage, localId } from "../lib/format";
+
+/* ── Draft data shapes ───────────────────────────────────────────────────── */
 
 interface QuestionDraft {
   id: string;
@@ -40,25 +61,496 @@ interface RoundDraft {
   questions: QuestionDraft[];
 }
 
+type RoundMode = RoundDraft["mode"];
+
+/** Every mutation the round/question editors can perform, bundled so each
+ *  RoundCard receives one prop instead of nine. */
+interface RoundActions {
+  onNameChange: (roundIndex: number, name: string) => void;
+  onModeChange: (roundIndex: number, mode: RoundMode) => void;
+  onRemoveRound: (roundIndex: number) => void;
+  onAddQuestion: (roundIndex: number) => void;
+  onQuestionChange: (roundIndex: number, questionIndex: number, text: string) => void;
+  onRemoveQuestion: (roundIndex: number, questionIndex: number) => void;
+  onUpload: (roundIndex: number, questionIndex: number, file: File) => void;
+  onBlurField: (key: string) => void;
+  fieldError: (key: string, invalid: boolean, message: string) => string | undefined;
+}
+
+/* ── Step 2 sub-components (module scope so typing never remounts them) ──── */
+
+interface QuestionRowProps {
+  question: QuestionDraft;
+  roundIndex: number;
+  index: number;
+  canRemove: boolean;
+  disabled: boolean;
+  actions: RoundActions;
+}
+
+const QuestionRow: React.FC<QuestionRowProps> = ({
+  question,
+  roundIndex,
+  index,
+  canRemove,
+  disabled,
+  actions,
+}) => {
+  const inputId = `question-text-${question.id}`;
+  const fileId = `question-file-${question.id}`;
+  const blurKey = `question:${question.id}`;
+  const error = actions.fieldError(
+    blurKey,
+    !question.question_text.trim(),
+    "Question text is required."
+  );
+
+  return (
+    <div className="rounded-xl border border-line bg-surface p-3">
+      <Field label={`Question ${index + 1}`} htmlFor={inputId} required error={error}>
+        <div className="flex items-start gap-2">
+          <Textarea
+            id={inputId}
+            rows={2}
+            required
+            value={question.question_text}
+            disabled={disabled}
+            invalid={Boolean(error)}
+            onChange={(event) => actions.onQuestionChange(roundIndex, index, event.target.value)}
+            onBlur={() => actions.onBlurField(blurKey)}
+            placeholder="Problem statement, algorithmic constraints, or system design questions..."
+            className="min-h-[76px] flex-1"
+          />
+          {canRemove && (
+            <IconButton
+              tone="danger"
+              label={`Remove question ${index + 1}`}
+              disabled={disabled}
+              onClick={() => actions.onRemoveQuestion(roundIndex, index)}
+              className="mt-1.5"
+            >
+              <Trash2 size={16} aria-hidden="true" />
+            </IconButton>
+          )}
+        </div>
+      </Field>
+
+      <div className="mt-2 flex flex-wrap items-center gap-3 sm:pl-8">
+        <span className="relative inline-flex">
+          <input
+            id={fileId}
+            type="file"
+            accept="image/*,application/pdf"
+            disabled={disabled}
+            className="peer sr-only"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              // Reset so the same file can be re-picked (e.g. after a failed upload).
+              event.target.value = "";
+              if (file) actions.onUpload(roundIndex, index, file);
+            }}
+          />
+          <label
+            htmlFor={fileId}
+            className={cn(
+              "inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium text-primary transition-colors hover:underline",
+              "peer-focus-visible:rounded-md peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary",
+              "peer-disabled:cursor-not-allowed peer-disabled:opacity-60"
+            )}
+          >
+            <Paperclip size={14} aria-hidden="true" />
+            <span>{question.attachment_url ? "Replace Attachment" : "Attach Diagram / PDF"}</span>
+          </label>
+        </span>
+        {question.attachment_url && (
+          <span className="inline-flex max-w-xs items-center gap-1.5 rounded-full border border-success/30 bg-success-soft px-2.5 py-0.5 text-xs font-medium text-success">
+            <CheckCircle2 size={12} aria-hidden="true" />
+            <span className="truncate">{question.attachment_url.split("/").pop()}</span>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+interface RoundCardProps {
+  round: RoundDraft;
+  index: number;
+  total: number;
+  disabled: boolean;
+  actions: RoundActions;
+}
+
+const RoundCard: React.FC<RoundCardProps> = ({ round, index, total, disabled, actions }) => {
+  const nameId = `round-name-${round.id}`;
+  const modeId = `round-mode-${round.id}`;
+  const nameError = actions.fieldError(
+    `round:${round.id}`,
+    !round.name.trim(),
+    "Round name is required."
+  );
+
+  return (
+    <Card as="article" className="flex flex-col gap-4 bg-raised p-4 sm:p-4">
+      <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
+        <h3 className="tabular flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-fg shadow-xs">
+          <span className="sr-only">Round </span>
+          {index + 1}
+        </h3>
+        {total > 1 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={disabled}
+            icon={<Trash2 size={14} aria-hidden="true" />}
+            onClick={() => actions.onRemoveRound(index)}
+            className="text-danger hover:bg-danger-soft hover:text-danger"
+          >
+            Remove Round
+          </Button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="sm:col-span-2">
+          <Field label="Round Name / Focus" htmlFor={nameId} required error={nameError}>
+            <Input
+              id={nameId}
+              type="text"
+              required
+              value={round.name}
+              disabled={disabled}
+              invalid={Boolean(nameError)}
+              onChange={(event) => actions.onNameChange(index, event.target.value)}
+              onBlur={() => actions.onBlurField(`round:${round.id}`)}
+              placeholder="e.g. Technical Round (DSA & System Design), HR, Online Assessment..."
+            />
+          </Field>
+        </div>
+        <Field label="Mode" htmlFor={modeId}>
+          <Select
+            id={modeId}
+            value={round.mode}
+            disabled={disabled}
+            onChange={(event) => actions.onModeChange(index, event.target.value as RoundMode)}
+          >
+            <option value="online">Virtual / Online</option>
+            <option value="offline">On-Site / Offline</option>
+          </Select>
+        </Field>
+      </div>
+
+      <fieldset className="m-0 min-w-0 border-0 p-0">
+        <legend className="p-0 text-sm font-medium text-heading">
+          Questions / Challenges Asked
+        </legend>
+        <div className="mt-3 flex flex-col gap-3">
+          {round.questions.map((question, questionIndex) => (
+            <QuestionRow
+              key={question.id}
+              question={question}
+              roundIndex={index}
+              index={questionIndex}
+              canRemove={round.questions.length > 1}
+              disabled={disabled}
+              actions={actions}
+            />
+          ))}
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={disabled}
+            icon={<Plus size={14} aria-hidden="true" />}
+            className="mt-1 self-start"
+            onClick={() => actions.onAddQuestion(index)}
+          >
+            Add Another Question
+          </Button>
+        </div>
+      </fieldset>
+    </Card>
+  );
+};
+
+/* ── Step metadata ───────────────────────────────────────────────────────── */
+
+type StepNumber = 1 | 2 | 3;
+
+const STEPS: { n: StepNumber; label: string }[] = [
+  { n: 1, label: "Basic Info" },
+  { n: 2, label: "Rounds" },
+  { n: 3, label: "Publish" },
+];
+
+interface CategoryOption {
+  value: PostCategory;
+  label: string;
+  description: string;
+  icon: React.ElementType;
+  tone: string;
+}
+
+const CATEGORY_OPTIONS: CategoryOption[] = [
+  {
+    value: "campus_placement",
+    label: "Campus Placement",
+    description: "Interview processes and recruitment drives held on your college campus.",
+    icon: Briefcase,
+    tone: "text-primary",
+  },
+  {
+    value: "off_campus_placement",
+    label: "Off-Campus Placement",
+    description: "Independent career applications, direct referrals, and external hiring.",
+    icon: Globe,
+    tone: "text-accent",
+  },
+  {
+    value: "campus_hackathon",
+    label: "Campus Hackathon",
+    description: "Experience from university-hosted and internal collegiate hackathons.",
+    icon: School,
+    tone: "text-warning",
+  },
+  {
+    value: "off_campus_hackathon",
+    label: "Off-Campus Hackathon",
+    description: "External, corporate, national, or open global hackathon evaluations.",
+    icon: Building2,
+    tone: "text-warning",
+  },
+];
+
+/** Blocking reason for the Step 2 continue button — mirrors the native
+ *  `required` validation the original markup relied on. */
+function getStep2Issue(rounds: RoundDraft[]): string | null {
+  for (let i = 0; i < rounds.length; i++) {
+    const round = rounds[i];
+    if (!round.name.trim()) return `Round ${i + 1} needs a name before continuing.`;
+    for (let j = 0; j < round.questions.length; j++) {
+      if (!round.questions[j].question_text.trim()) {
+        return `Question ${j + 1} in round ${i + 1} needs text before continuing.`;
+      }
+    }
+  }
+  return null;
+}
+
+type PendingRemoval =
+  | { kind: "round"; roundIndex: number }
+  | { kind: "question"; roundIndex: number; questionIndex: number };
+
+const focusById = (id: string) => {
+  document.getElementById(id)?.focus();
+};
+
+/* ── Wizard motion ───────────────────────────────────────────────────────── */
+
+/**
+ * Step travel — the shared direction-carrying grammar (the same shape as
+ * `bubble` in motion/variants.ts) applied to whole panels. Next pushes the
+ * outgoing panel left and brings the new one in from the right; Back mirrors
+ * it exactly. Direction lives in `custom` rather than in the variant set, so
+ * forward and backward are literally the same animation reflected — "back"
+ * can never degrade into a replay of "next".
+ *
+ * `custom` arrives from two places: the entering panel reads its own prop,
+ * while the exiting panel reads `AnimatePresence`'s (its props are already
+ * frozen by the time it starts leaving).
+ */
+const stepVariants: Variants = {
+  hidden: (dir: number) => ({ opacity: 0, x: dir * 24 }),
+  show: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: DURATION.base, ease: EASE.enter },
+  },
+  exit: (dir: number) => ({
+    opacity: 0,
+    x: dir * -16,
+    // A departing panel must never be clickable mid-flight.
+    pointerEvents: "none" as const,
+    transition: { duration: DURATION.fast, ease: EASE.exit },
+  }),
+};
+
+/**
+ * How long the completion beat holds before the route hands off — two
+ * cinematic beats. Long enough for the resolution to register, far too short
+ * to feel like waiting. Derived from DURATION so it can never drift from the
+ * rest of the system.
+ */
+const RESOLVE_HOLD = DURATION.cinematic * 2;
+
+/**
+ * Progress rail — the visual moment of this page.
+ *
+ * One track runs behind the three nodes and the filled segment TRAVELS to
+ * the active node (scaleX only: compositor-friendly, never a width
+ * animation), so moving between steps reads as moving through a case file
+ * rather than watching a bar fill. Completed nodes stay tappable to jump
+ * back, the active node is the only one that swells, and future nodes sit
+ * recessed on the bare rail. Labels live under the nodes in equal columns,
+ * so the rail stays straight even when a label wraps on a narrow screen.
+ */
+const WizardStepper: React.FC<{
+  step: StepNumber;
+  disabled: boolean;
+  onSelect: (n: StepNumber) => void;
+}> = ({ step, disabled, onSelect }) => {
+  const progress = (step - 1) / (STEPS.length - 1);
+
+  return (
+    <nav aria-label="Wizard progress">
+      <div className="rounded-2xl border border-line bg-raised px-4 pb-4 pt-3.5 shadow-xs sm:px-6">
+        <div className="mb-3 flex items-baseline justify-between gap-3">
+          <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+            Report progress
+          </span>
+          <span className="tabular text-xs text-muted">
+            Step {step} of {STEPS.length}
+          </span>
+        </div>
+
+        <ol className="relative flex items-start">
+          {/* The rail. Nodes carry `relative`, so they paint above these
+              absolutely-positioned tracks (positioned elements win by
+              DOM order, and the tracks come first). */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-[calc(100%/6)] top-[17px] h-0.5 rounded-full bg-line"
+          />
+          <motion.span
+            aria-hidden="true"
+            initial={false}
+            animate={{ scaleX: progress }}
+            transition={SPRING.gentle}
+            className="pointer-events-none absolute inset-x-[calc(100%/6)] top-[17px] h-0.5 origin-left rounded-full bg-primary"
+          />
+
+          {STEPS.map(({ n, label }) => {
+            const isCurrent = n === step;
+            const isComplete = n < step;
+            const marker = (
+              <motion.span
+                aria-hidden="true"
+                initial={false}
+                animate={{ scale: isCurrent ? 1.08 : 1 }}
+                transition={SPRING.gentle}
+                className={cn(
+                  "relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                  isComplete && "bg-primary text-primary-fg shadow-xs",
+                  isCurrent && "border-2 border-primary bg-surface text-primary shadow-sm",
+                  !isComplete && !isCurrent && "border border-line bg-surface text-muted"
+                )}
+              >
+                {isComplete ? <Check size={13} strokeWidth={3} /> : n}
+              </motion.span>
+            );
+            const stepLabel = (
+              <span
+                className={cn(
+                  "text-center text-xs font-medium leading-tight",
+                  isCurrent ? "text-heading" : isComplete ? "text-primary" : "text-muted"
+                )}
+              >
+                <span className="sr-only">Step {n}: </span>
+                {label}
+              </span>
+            );
+
+            return (
+              <li
+                key={n}
+                aria-current={isCurrent ? "step" : undefined}
+                className="flex min-w-0 flex-1 flex-col items-center"
+              >
+                {isComplete ? (
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onSelect(n)}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 rounded-lg px-1 py-1 transition-colors duration-fast ease-swift",
+                      "hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-50"
+                    )}
+                  >
+                    {marker}
+                    {stepLabel}
+                  </button>
+                ) : (
+                  <span className="flex flex-col items-center gap-1.5 px-1 py-1">
+                    {marker}
+                    {stepLabel}
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    </nav>
+  );
+};
+
+/**
+ * The wizard's closing beat: one mark, one line, then the route hands off.
+ * Mounts inside the step AnimatePresence, so the final page turns away like
+ * every other step before the resolution lands. `Focus` gives it the
+ * cinematic entrance reserved for focal moments and the check springs in on
+ * SPRING.bouncy — the tokens' one playful accent, reserved for
+ * confirmations. No loops, no confetti: it lives for two beats and is gone.
+ * Announcements stay with the toast, so screen readers hear the outcome
+ * exactly once.
+ */
+const PublishedBeat: React.FC = () => (
+  <div className="rounded-xl border border-success/30 bg-surface px-6 py-10 text-center shadow-md">
+    <Focus delay={0.05} className="flex flex-col items-center gap-3">
+      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-success-soft text-success">
+        <motion.span
+          initial={{ scale: 0.5, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={SPRING.bouncy}
+        >
+          <CheckCircle2 size={30} aria-hidden="true" />
+        </motion.span>
+      </span>
+      <h2 className="text-xl font-semibold tracking-tight">Experience published</h2>
+      <p className="text-sm text-muted">Opening your report…</p>
+    </Focus>
+  </div>
+);
+
+/* ── Page ────────────────────────────────────────────────────────────────── */
+
 export const DraftReportPage: React.FC = () => {
   const { isAuthenticated, openAuthModal } = useAuth();
   const { success, error } = useToast();
   const navigate = useNavigate();
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<StepNumber>(1);
+  // Shared, mutable view of the active step so a panel that is animating out
+  // cannot submit a second time (it would duplicate the draft/rounds).
+  const stepRef = useRef<StepNumber>(1);
+  stepRef.current = step;
+  const [direction, setDirection] = useState(1);
   const [createdPostId, setCreatedPostId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  // True once the final publish resolves: replaces the last step with the
+  // resolution beat, which in turn owns the navigation away (see the effect).
+  const [isPublished, setIsPublished] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [pendingRemoval, setPendingRemoval] = useState<PendingRemoval | null>(null);
 
   // Available Companies
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [companiesLoading, setCompaniesLoading] = useState(false);
   const [showNewCompanyInput, setShowNewCompanyInput] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState("");
 
   // STEP 1 STATE: General Intelligence
   const [title, setTitle] = useState("");
-  const [postCategory, setPostCategory] = useState<
-    "campus_placement" | "off_campus_placement" | "campus_hackathon" | "off_campus_hackathon"
-  >("campus_placement");
+  const [postCategory, setPostCategory] = useState<PostCategory>("campus_placement");
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
   const [collegeName, setCollegeName] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -91,6 +583,21 @@ export const DraftReportPage: React.FC = () => {
   const [packageAmount, setPackageAmount] = useState<string>("1200000");
   const [currency, setCurrency] = useState("INR");
 
+  // Stable ids so every label stays associated with its control.
+  const titleId = useId();
+  const companyId = useId();
+  const collegeId = useId();
+  const jobRoleStep1Id = useId();
+  const locationId = useId();
+  const yearId = useId();
+  const experienceYearsId = useId();
+  const anonymousId = useId();
+  const experienceTextId = useId();
+  const tipsId = useId();
+  const jobRoleStep3Id = useId();
+  const currencyId = useId();
+  const packageId = useId();
+
   useEffect(() => {
     if (!isAuthenticated) {
       openAuthModal("login");
@@ -98,27 +605,79 @@ export const DraftReportPage: React.FC = () => {
   }, [isAuthenticated, openAuthModal]);
 
   useEffect(() => {
+    setCompaniesLoading(true);
     companiesApi
       .list(undefined, 1, 100)
       .then((res) => {
         setCompanies(res.data.items || []);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setCompaniesLoading(false));
   }, []);
 
-  // Step 1: Submit Draft Post
+  // The completion beat owns navigation: the resolution mark gets its moment
+  // BEFORE the route changes, and an unmount during the hold (browser Back,
+  // link) cancels cleanly.
+  useEffect(() => {
+    if (!isPublished || !createdPostId) return;
+    const timer = window.setTimeout(
+      () => navigate(`/posts/${createdPostId}`),
+      RESOLVE_HOLD * 1000
+    );
+    return () => window.clearTimeout(timer);
+  }, [isPublished, createdPostId, navigate]);
+
+  /* ── Validation helpers ──────────────────────────────────────────────── */
+
+  const markTouched = (key: string) =>
+    setTouched((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+
+  const fieldError = (key: string, invalid: boolean, message: string): string | undefined =>
+    touched[key] && invalid ? message : undefined;
+
+  const titleError = fieldError("title", !title.trim(), "Experience title is required.");
+  const experienceError = fieldError(
+    "experience",
+    !experienceText.trim(),
+    "Experience narrative is required."
+  );
+  const jobRoleStep3Error = fieldError(
+    "jobRole",
+    !jobRole.trim(),
+    "Job role is required when an offer is received."
+  );
+
+  const step1Issue = title.trim() ? null : "Experience title is required.";
+  const step2Issue = getStep2Issue(rounds);
+  const step3Issue = !experienceText.trim()
+    ? "Experience narrative is required."
+    : isOfferReceived && !jobRole.trim()
+      ? "Job role is required when an offer is received."
+      : null;
+
+  const goToStep = (target: StepNumber) => {
+    if (target === step) return;
+    setDirection(target > step ? 1 : -1);
+    setStep(target);
+  };
+
+  /* ── Step 1: Submit Draft Post ───────────────────────────────────────── */
+
   const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting || stepRef.current !== 1) return;
     if (!isAuthenticated) {
       openAuthModal("login");
       return;
     }
     if (!title.trim()) {
+      markTouched("title");
+      focusById(titleId);
       error("Experience title is required.");
       return;
     }
 
-    setLoading(true);
+    setIsSubmitting(true);
     try {
       let compId = selectedCompanyId;
       if (showNewCompanyInput && newCompanyName.trim()) {
@@ -141,78 +700,45 @@ export const DraftReportPage: React.FC = () => {
       const res = await postsApi.createDraft(payload);
       setCreatedPostId(res.data.post_id);
       success("Draft initialized successfully.", "Draft Saved");
-      setStep(2);
-    } catch (err: any) {
-      error(err.response?.data?.detail || "Failed to initialize draft experience.");
+      goToStep(2);
+    } catch (err: unknown) {
+      error(errorMessage(err, "Failed to initialize draft experience."));
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  // Step 2: Add Round / Question Local Helpers with immutable updates & unique keys
+  /* ── Step 2: Round / question local helpers (immutable updates) ─────── */
+
   const addRound = () => {
-    const uniqueId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    const qUniqueId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     setRounds((prev) => [
       ...prev,
       {
-        id: `round-${uniqueId}`,
+        id: `round-${localId()}`,
         name: "",
         mode: "online",
         duration_minutes: 45,
         difficulty: "medium",
-        questions: [{ id: `q-${qUniqueId}`, question_text: "" }],
+        questions: [{ id: `q-${localId()}`, question_text: "" }],
       },
     ]);
   };
 
-  const removeRound = (roundIndex: number) => {
-    if (rounds.length <= 1) {
-      error("At least one evaluation round is required.");
-      return;
-    }
-    setRounds((prev) => prev.filter((_, i) => i !== roundIndex));
-  };
-
   const updateRoundName = (roundIndex: number, name: string) => {
-    setRounds((prev) =>
-      prev.map((r, rIdx) => (rIdx === roundIndex ? { ...r, name } : r))
-    );
+    setRounds((prev) => prev.map((r, rIdx) => (rIdx === roundIndex ? { ...r, name } : r)));
   };
 
-  const updateRoundMode = (roundIndex: number, mode: "online" | "offline") => {
-    setRounds((prev) =>
-      prev.map((r, rIdx) => (rIdx === roundIndex ? { ...r, mode } : r))
-    );
+  const updateRoundMode = (roundIndex: number, mode: RoundMode) => {
+    setRounds((prev) => prev.map((r, rIdx) => (rIdx === roundIndex ? { ...r, mode } : r)));
   };
 
   const addQuestionToRound = (roundIndex: number) => {
-    const uniqueId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     setRounds((prev) =>
       prev.map((r, rIdx) => {
         if (rIdx !== roundIndex) return r;
         return {
           ...r,
-          questions: [
-            ...r.questions,
-            {
-              id: `q-${uniqueId}`,
-              question_text: "",
-            },
-          ],
-        };
-      })
-    );
-  };
-
-  const removeQuestionFromRound = (roundIndex: number, qIndex: number) => {
-    setRounds((prev) =>
-      prev.map((r, rIdx) => {
-        if (rIdx !== roundIndex) return r;
-        if (r.questions.length <= 1) return r;
-        return {
-          ...r,
-          questions: r.questions.filter((_, qIdx) => qIdx !== qIndex),
+          questions: [...r.questions, { id: `q-${localId()}`, question_text: "" }],
         };
       })
     );
@@ -232,6 +758,37 @@ export const DraftReportPage: React.FC = () => {
     );
   };
 
+  const requestRemoveRound = (roundIndex: number) => {
+    if (rounds.length <= 1) {
+      error("At least one evaluation round is required.");
+      return;
+    }
+    setPendingRemoval({ kind: "round", roundIndex });
+  };
+
+  const requestRemoveQuestion = (roundIndex: number, questionIndex: number) => {
+    if (!rounds[roundIndex] || rounds[roundIndex].questions.length <= 1) return;
+    setPendingRemoval({ kind: "question", roundIndex, questionIndex });
+  };
+
+  const confirmRemoval = () => {
+    if (!pendingRemoval) return;
+    if (pendingRemoval.kind === "round") {
+      const { roundIndex } = pendingRemoval;
+      setRounds((prev) => prev.filter((_, i) => i !== roundIndex));
+    } else {
+      const { roundIndex, questionIndex } = pendingRemoval;
+      setRounds((prev) =>
+        prev.map((r, rIdx) =>
+          rIdx === roundIndex
+            ? { ...r, questions: r.questions.filter((_, qIdx) => qIdx !== questionIndex) }
+            : r
+        )
+      );
+    }
+    setPendingRemoval(null);
+  };
+
   const handleQuestionFileUpload = async (roundIndex: number, qIndex: number, file: File) => {
     try {
       const res = await uploadsApi.uploadFile(file);
@@ -247,21 +804,36 @@ export const DraftReportPage: React.FC = () => {
         })
       );
       success("Attachment uploaded.", "File Uploaded");
-    } catch (err: any) {
-      error(err.response?.data?.detail || "Failed to upload question attachment.");
+    } catch (err: unknown) {
+      error(errorMessage(err, "Failed to upload question attachment."));
     }
+  };
+
+  const roundActions: RoundActions = {
+    onNameChange: updateRoundName,
+    onModeChange: updateRoundMode,
+    onRemoveRound: requestRemoveRound,
+    onAddQuestion: addQuestionToRound,
+    onQuestionChange: updateQuestionText,
+    onRemoveQuestion: requestRemoveQuestion,
+    onUpload: handleQuestionFileUpload,
+    onBlurField: markTouched,
+    fieldError,
   };
 
   const handleStep2Submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting || stepRef.current !== 2) return;
     if (!createdPostId) {
       error("Missing post identifier. Please return to Step 1.");
-      setStep(1);
+      goToStep(1);
       return;
     }
 
-    setLoading(true);
+    setIsSubmitting(true);
     try {
+      // Sequential on purpose: rounds must exist before their questions can
+      // reference them, and a retry must never run concurrently with itself.
       for (let i = 0; i < rounds.length; i++) {
         const r = rounds[i];
         const rRes = await postsApi.addRound(createdPostId, {
@@ -284,31 +856,37 @@ export const DraftReportPage: React.FC = () => {
       }
 
       success("Rounds and questions saved to draft.", "Rounds Saved");
-      setStep(3);
-    } catch (err: any) {
-      error(err.response?.data?.detail || "Failed to commit rounds to draft.");
+      goToStep(3);
+    } catch (err: unknown) {
+      error(errorMessage(err, "Failed to commit rounds to draft."));
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  // Step 3: Final Publishing
+  /* ── Step 3: Final Publishing ────────────────────────────────────────── */
+
   const handleStep3Publish = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting || stepRef.current !== 3) return;
     if (!createdPostId) {
       error("Missing post identifier. Please return to Step 1.");
       return;
     }
     if (!experienceText.trim()) {
+      markTouched("experience");
+      focusById(experienceTextId);
       error("Experience narrative is required.");
       return;
     }
     if (isOfferReceived && !jobRole.trim()) {
+      markTouched("jobRole");
+      focusById(jobRoleStep3Id);
       error("Job role is required when an offer is received.");
       return;
     }
 
-    setLoading(true);
+    setIsSubmitting(true);
     try {
       await postsApi.publishDraft(createdPostId, {
         experience_text: experienceText.trim(),
@@ -320,626 +898,618 @@ export const DraftReportPage: React.FC = () => {
       });
 
       success("Experience published to public feed!", "Published");
-      navigate(`/posts/${createdPostId}`);
-    } catch (err: any) {
-      error(err.response?.data?.detail || "Failed to publish experience.");
+      // Hold on the resolution beat; the effect above performs the hand-off
+      // to the published report once the beat has landed.
+      setIsPublished(true);
+    } catch (err: unknown) {
+      error(errorMessage(err, "Failed to publish experience."));
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
+  /* ── Derived render data ─────────────────────────────────────────────── */
+
   const isCampus = postCategory.includes("campus") && !postCategory.includes("off");
 
+  const pendingRound =
+    pendingRemoval?.kind === "round" ? rounds[pendingRemoval.roundIndex] : undefined;
+  const pendingQuestion =
+    pendingRemoval?.kind === "question"
+      ? rounds[pendingRemoval.roundIndex]?.questions[pendingRemoval.questionIndex]
+      : undefined;
+  const removalMessage =
+    pendingRemoval?.kind === "round"
+      ? `Round ${pendingRemoval.roundIndex + 1}${
+          pendingRound?.name ? ` "${pendingRound.name}"` : ""
+        } and its ${pendingRound?.questions.length ?? 0} question(s) will be removed from this draft. This cannot be undone.`
+      : pendingRemoval?.kind === "question"
+        ? `"${pendingQuestion?.question_text?.trim() || "This question"}" and any attached file will be removed from this draft. This cannot be undone.`
+        : "";
+
+  /**
+   * One step panel: keyed, direction-aware via `stepVariants`, and wired to
+   * `direction` from both sides — its own `custom` drives the entrance, and
+   * AnimatePresence's (identical value) drives the exit of whichever panel
+   * is leaving.
+   */
+  const panelMotion = (key: string) => ({
+    key,
+    custom: direction,
+    variants: stepVariants,
+    initial: "hidden" as const,
+    animate: "show" as const,
+    exit: "exit" as const,
+  });
+
   return (
-    <AppShell>
-      <main className="max-w-4xl mx-auto px-4 md:px-8 py-8 w-full flex flex-col gap-6 flex-1">
-        {/* Step Breadcrumbs */}
-        <div className="flex flex-wrap items-center justify-between border-b border-[#e3dccd] pb-5 gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-[#2f6b47] mb-1">
-              <FileEdit className="w-4 h-4 text-[#3f6f52]" />
-              <span className="uppercase tracking-wider">CREATOR WORKSPACE</span>
-            </div>
-            <h1 className="text-2xl font-bold text-[#0f1926]">Share Interview Experience</h1>
-            <p className="text-xs text-[#5f6e82] mt-0.5">
-              Help fellow students and candidates by detailing your real interview rounds and questions.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 text-xs font-semibold">
-            <span
-              className={`px-3 py-1 rounded-full transition-all ${
-                step === 1
-                  ? "bg-[#3f6f52] text-white shadow-sm font-bold"
-                  : "bg-[#f3eee1] text-[#5f6e82] border border-[#e3dccd]"
-              }`}
-            >
-              1. Basic Info
-            </span>
-            <span className="text-[#5f6e82]/50">→</span>
-            <span
-              className={`px-3 py-1 rounded-full transition-all ${
-                step === 2
-                  ? "bg-[#3f6f52] text-white shadow-sm font-bold"
-                  : "bg-[#f3eee1] text-[#5f6e82] border border-[#e3dccd]"
-              }`}
-            >
-              2. Rounds
-            </span>
-            <span className="text-[#5f6e82]/50">→</span>
-            <span
-              className={`px-3 py-1 rounded-full transition-all ${
-                step === 3
-                  ? "bg-[#3f6f52] text-white shadow-sm font-bold"
-                  : "bg-[#f3eee1] text-[#5f6e82] border border-[#e3dccd]"
-              }`}
-            >
-              3. Publish
-            </span>
-          </div>
-        </div>
+    <>
+      <PageContainer width="wizard">
+        <Scene>
+          <Section>
+            <PageHeader
+              icon={<FileEdit size={20} aria-hidden="true" />}
+              title={
+                <>
+                  <span className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+                    Creator Workspace
+                  </span>
+                  Share Interview Experience
+                </>
+              }
+              description="Help fellow students and candidates by detailing your real interview rounds and questions."
+            />
+          </Section>
 
-        {/* STEP 1 FORM */}
-        {step === 1 && (
-          <motion.form
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            onSubmit={handleStep1Submit}
-            className="bg-white rounded-2xl border border-[#e3dccd] p-6 sm:p-8 shadow-sm flex flex-col gap-6"
-          >
-            {/* Category Cards (2x2 Layout) */}
-            <div className="flex flex-col gap-3">
-              <label className="text-xs font-bold text-[#0f1926] uppercase tracking-wider">Select Category *</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                {/* Campus Placement */}
-                <label
-                  onClick={() => setPostCategory("campus_placement")}
-                  className={`cursor-pointer rounded-2xl border-2 p-4 flex flex-col gap-1.5 transition-all ${
-                    postCategory === "campus_placement"
-                      ? "border-[#3f6f52] bg-[#3f6f52]/10 shadow-sm"
-                      : "border-[#e3dccd] hover:border-[#3f6f52]/50 bg-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="w-4 h-4 text-[#3f6f52]" />
-                    <span className="font-bold text-sm text-[#0f1926]">Campus Placement</span>
-                  </div>
-                  <p className="text-xs text-[#5f6e82]">
-                    Interview processes and recruitment drives held on your college campus.
-                  </p>
-                </label>
+          {/* The stepper is this page's hero: it owns the cinematic entrance
+              and lands just after the header has begun to settle. */}
+          <Focus delay={0.08} className="mb-6">
+            <WizardStepper
+              step={step}
+              disabled={isSubmitting || isPublished}
+              onSelect={goToStep}
+            />
+          </Focus>
 
-                {/* Off-Campus Placement */}
-                <label
-                  onClick={() => setPostCategory("off_campus_placement")}
-                  className={`cursor-pointer rounded-2xl border-2 p-4 flex flex-col gap-1.5 transition-all ${
-                    postCategory === "off_campus_placement"
-                      ? "border-[#3f6f52] bg-[#3f6f52]/10 shadow-sm"
-                      : "border-[#e3dccd] hover:border-[#3f6f52]/50 bg-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-[#3f6f9e]" />
-                    <span className="font-bold text-sm text-[#0f1926]">Off-Campus Placement</span>
-                  </div>
-                  <p className="text-xs text-[#5f6e82]">
-                    Independent career applications, direct referrals, and external hiring.
-                  </p>
-                </label>
-
-                {/* Campus Hackathon */}
-                <label
-                  onClick={() => setPostCategory("campus_hackathon")}
-                  className={`cursor-pointer rounded-2xl border-2 p-4 flex flex-col gap-1.5 transition-all ${
-                    postCategory === "campus_hackathon"
-                      ? "border-[#3f6f52] bg-[#3f6f52]/10 shadow-sm"
-                      : "border-[#e3dccd] hover:border-[#3f6f52]/50 bg-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <School className="w-4 h-4 text-[#b26a00]" />
-                    <span className="font-bold text-sm text-[#0f1926]">Campus Hackathon</span>
-                  </div>
-                  <p className="text-xs text-[#5f6e82]">
-                    Experience from university-hosted and internal collegiate hackathons.
-                  </p>
-                </label>
-
-                {/* Off-Campus Hackathon */}
-                <label
-                  onClick={() => setPostCategory("off_campus_hackathon")}
-                  className={`cursor-pointer rounded-2xl border-2 p-4 flex flex-col gap-1.5 transition-all ${
-                    postCategory === "off_campus_hackathon"
-                      ? "border-[#3f6f52] bg-[#3f6f52]/10 shadow-sm"
-                      : "border-[#e3dccd] hover:border-[#3f6f52]/50 bg-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-[#b26a00]" />
-                    <span className="font-bold text-sm text-[#0f1926]">Off-Campus Hackathon</span>
-                  </div>
-                  <p className="text-xs text-[#5f6e82]">
-                    External, corporate, national, or open global hackathon evaluations.
-                  </p>
-                </label>
-              </div>
-            </div>
-
-            <div className="h-px bg-[#e3dccd] my-1"></div>
-
-            {/* Title */}
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-[#0f1926]">Experience Title *</label>
-              <input
-                type="text"
-                required
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Google Software Engineer Intern Interview Experience 2024"
-                className="w-full bg-[#f3eee1] border border-[#e3dccd] rounded-xl px-4 py-3 text-xs sm:text-sm text-[#0f1926] placeholder-[#5f6e82] focus:ring-1 focus:ring-[#3f6f52] focus:border-[#3f6f52] focus:bg-white outline-none transition-all"
+          <Section>
+            <div className="relative pb-3">
+              {/* The sheet the current step rests on — static depth, so the
+                  card reads as the top of a deck for zero per-frame work. */}
+              <span
+                aria-hidden="true"
+                className="absolute inset-x-4 bottom-0 top-6 rounded-2xl border border-line bg-raised shadow-xs"
               />
-            </div>
+              {/* Pointer tilt on the deck: max 2°, and Tilt switches itself
+                  off entirely for touch pointers and reduced-motion users. */}
+              <Tilt max={2} lift={1.006} glare={false}>
+                <AnimatePresence mode="wait" initial={false} custom={direction}>
+                  {/* STEP 1 FORM */}
+                  {step === 1 && (
+                    <motion.form {...panelMotion("step-1")} onSubmit={handleStep1Submit}>
+                      <Card as="section" className="flex flex-col gap-6 shadow-md">
+                        <CardHeader
+                          as="h2"
+                          title="Basic information"
+                          subtitle="Choose a category and tell us where this experience happened."
+                        />
 
-            {/* Basic Info Fields (2x2 Grid) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Company Field */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold text-[#0f1926]">Company / Organization</label>
-                  <button
-                    type="button"
-                    onClick={() => setShowNewCompanyInput(!showNewCompanyInput)}
-                    className="text-[11px] text-[#2f6b47] font-semibold hover:underline"
-                  >
-                    {showNewCompanyInput ? "Select Existing" : "+ Add New"}
-                  </button>
-                </div>
-                <div className="relative">
-                  <Building2 className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#5f6e82] pointer-events-none" />
-                  {showNewCompanyInput ? (
-                    <input
-                      type="text"
-                      value={newCompanyName}
-                      onChange={(e) => setNewCompanyName(e.target.value)}
-                      placeholder="e.g. Google, Microsoft, Amazon"
-                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] placeholder-[#5f6e82] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none"
-                    />
-                  ) : (
-                    <select
-                      value={selectedCompanyId}
-                      onChange={(e) => setSelectedCompanyId(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none cursor-pointer"
-                    >
-                      <option value="" className="bg-white text-[#0f1926]">-- Select Company (Optional) --</option>
-                      {companies.map((c) => (
-                        <option key={c.id} value={c.id} className="bg-white text-[#0f1926]">
-                          {c.name} {c.industry ? `(${c.industry})` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              </div>
-
-              {/* College Field */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-[#0f1926]">
-                  College / University {isCampus && <span className="text-[#3f6f52]">*</span>}
-                </label>
-                <div className="relative">
-                  <GraduationCap className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#5f6e82] pointer-events-none" />
-                  <input
-                    type="text"
-                    value={collegeName}
-                    onChange={(e) => setCollegeName(e.target.value)}
-                    placeholder="e.g. MIT, Stanford, IIT Bombay"
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] placeholder-[#5f6e82] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Job Role Field */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-[#0f1926]">Job Role / Position</label>
-                <div className="relative">
-                  <Briefcase className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#5f6e82] pointer-events-none" />
-                  <input
-                    type="text"
-                    value={jobRole}
-                    onChange={(e) => setJobRole(e.target.value)}
-                    placeholder="e.g. Software Engineer Intern"
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] placeholder-[#5f6e82] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Location */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-[#0f1926]">Location / Work Mode</label>
-                <div className="relative">
-                  <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#5f6e82] pointer-events-none" />
-                  <input
-                    type="text"
-                    value={workLocation}
-                    onChange={(e) => setWorkLocation(e.target.value)}
-                    placeholder="e.g. Bengaluru / Remote"
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] placeholder-[#5f6e82] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Year of Study or Experience */}
-              {isCampus ? (
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-[#0f1926]">Year of Study</label>
-                  <select
-                    value={yearOfStudy}
-                    onChange={(e) => setYearOfStudy(parseInt(e.target.value, 10))}
-                    className="w-full px-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none cursor-pointer"
-                  >
-                    <option value={1} className="bg-white text-[#0f1926]">1st Year (Undergraduate)</option>
-                    <option value={2} className="bg-white text-[#0f1926]">2nd Year (Undergraduate)</option>
-                    <option value={3} className="bg-white text-[#0f1926]">3rd Year (Pre-final)</option>
-                    <option value={4} className="bg-white text-[#0f1926]">4th Year (Final Year)</option>
-                    <option value={5} className="bg-white text-[#0f1926]">Postgraduate / Masters</option>
-                  </select>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-[#0f1926]">Years of Experience</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    value={experienceYears}
-                    onChange={(e) => setExperienceYears(e.target.value)}
-                    placeholder="e.g. 2.5"
-                    className="w-full px-4 py-2.5 rounded-xl border border-[#e3dccd] bg-[#f3eee1] text-xs sm:text-sm text-[#0f1926] placeholder-[#5f6e82] focus:ring-1 focus:ring-[#3f6f52] focus:bg-white outline-none"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Anonymity Switch */}
-            <div className="p-4 rounded-xl border border-[#e3dccd] bg-[#faf7ee] flex items-center justify-between gap-4">
-              <div className="flex flex-col">
-                <span className="text-xs sm:text-sm font-bold text-[#0f1926] flex items-center gap-1.5">
-                  <Shield className="w-4 h-4 text-[#3f6f52]" />
-                  Post Anonymously
-                </span>
-                <span className="text-[11px] text-[#5f6e82] mt-0.5">
-                  Protect identity. Your name, avatar, and profile handle will be fully redacted.
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsAnonymous(!isAnonymous)}
-                className={`w-12 h-6 rounded-full p-0.5 transition-colors flex items-center ${
-                  isAnonymous ? "bg-[#3f6f52]" : "bg-[#e3dccd]"
-                }`}
-              >
-                <div
-                  className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
-                    isAnonymous ? "translate-x-6" : "translate-x-0"
-                  }`}
-                />
-              </button>
-            </div>
-
-            {/* Step 1 Submit Button */}
-            <div className="flex justify-end pt-4 border-t border-[#e3dccd]">
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-2.5 bg-[#3f6f52] hover:bg-[#345c44] text-white font-semibold text-xs rounded-xl transition-all active:scale-95 flex items-center gap-2 shadow-sm disabled:opacity-50"
-              >
-                <span>Continue to Rounds</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </motion.form>
-        )}
-
-        {/* STEP 2 FORM */}
-        {step === 2 && (
-          <motion.form
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            onSubmit={handleStep2Submit}
-            className="bg-white rounded-2xl border border-[#e3dccd] p-6 sm:p-8 shadow-sm flex flex-col gap-6"
-          >
-            <div className="flex justify-between items-center border-b border-[#e3dccd] pb-4">
-              <div>
-                <h2 className="text-lg font-bold text-[#0f1926]">Interview Rounds & Questions</h2>
-                <p className="text-xs text-[#5f6e82] mt-0.5">
-                  Record each round's format and the specific technical challenges asked.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-5">
-              {rounds.map((round, rIndex) => (
-                <div
-                  key={round.id}
-                  className="bg-[#faf7ee] rounded-2xl border border-[#e3dccd] p-5 shadow-xs flex flex-col gap-4"
-                >
-                  <div className="flex items-center justify-between border-b border-[#e3dccd] pb-3">
-                    <span className="w-7 h-7 rounded-lg bg-[#3f6f52] text-white flex items-center justify-center text-xs font-bold shadow-xs">
-                      {rIndex + 1}
-                    </span>
-                    {rounds.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeRound(rIndex)}
-                        className="text-xs font-semibold text-[#b5462f] hover:underline flex items-center gap-1 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Remove Round</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="sm:col-span-2 flex flex-col gap-1">
-                      <label className="text-xs font-bold text-[#0f1926]">Round Name / Focus *</label>
-                      <input
-                        type="text"
-                        required
-                        value={round.name}
-                        onChange={(e) => updateRoundName(rIndex, e.target.value)}
-                        placeholder="e.g. Technical Round (DSA & System Design), HR, Online Assessment..."
-                        className="p-2.5 bg-white border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] outline-none focus:ring-1 focus:ring-[#3f6f52]"
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-bold text-[#0f1926]">Mode</label>
-                      <select
-                        value={round.mode}
-                        onChange={(e) => updateRoundMode(rIndex, e.target.value as "online" | "offline")}
-                        className="p-2.5 bg-white border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] outline-none"
-                      >
-                        <option value="online">Virtual / Online</option>
-                        <option value="offline">On-Site / Offline</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Questions in round */}
-                  <div className="flex flex-col gap-3 pt-2">
-                    <label className="text-xs font-bold text-[#0f1926]">
-                      Questions / Challenges Asked
-                    </label>
-
-                    {round.questions.map((q, qIndex) => (
-                      <div key={q.id} className="flex flex-col gap-2 p-3 bg-white rounded-xl border border-[#e3dccd]">
-                        <div className="flex gap-2 items-start">
-                          <span className="w-6 h-6 rounded-lg bg-[#f3eee1] flex items-center justify-center font-bold text-[11px] text-[#5f6e82] shrink-0 mt-2">
-                            Q{qIndex + 1}
-                          </span>
-                          <textarea
-                            rows={2}
-                            required
-                            value={q.question_text}
-                            onChange={(e) => updateQuestionText(rIndex, qIndex, e.target.value)}
-                            placeholder="Problem statement, algorithmic constraints, or system design questions..."
-                            className="flex-grow p-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] outline-none focus:ring-1 focus:ring-[#3f6f52] focus:bg-white resize-none"
-                          />
-                          {round.questions.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removeQuestionFromRound(rIndex, qIndex)}
-                              className="p-2 text-[#5f6e82] hover:text-[#b5462f] transition-colors mt-2"
-                              title="Remove Question"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Attachment Upload Row */}
-                        <div className="flex items-center gap-3 pl-8 text-xs">
-                          <label className="cursor-pointer inline-flex items-center gap-1.5 text-[#2f6b47] hover:underline font-semibold transition-colors">
-                            <Paperclip className="w-3.5 h-3.5" />
-                            <span>{q.attachment_url ? "Replace Attachment" : "Attach Diagram / PDF"}</span>
-                            <input
-                              type="file"
-                              accept="image/*,application/pdf"
-                              className="hidden"
-                              onChange={(e) => {
-                                const f = e.target.files?.[0];
-                                if (f) handleQuestionFileUpload(rIndex, qIndex, f);
-                              }}
-                            />
-                          </label>
-                          {q.attachment_url && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#3f6f52]/10 border border-[#3f6f52]/20 text-[#2f6b47] text-[11px] font-medium truncate max-w-xs">
-                              <CheckCircle2 className="w-3 h-3" />
-                              <span className="truncate">{q.attachment_url.split("/").pop()}</span>
+                        {/* Category radios (2x2 layout) */}
+                        <fieldset className="m-0 min-w-0 border-0 p-0">
+                          <legend className="p-0 text-sm font-medium text-heading">
+                            Select Category
+                            <span className="ml-0.5 text-danger" aria-hidden="true">
+                              *
                             </span>
+                          </legend>
+                          <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2">
+                            {CATEGORY_OPTIONS.map((option) => {
+                              const Icon = option.icon;
+                              const selected = postCategory === option.value;
+                              const optionId = `post-category-${option.value}`;
+                              return (
+                                <div key={option.value} className="relative">
+                                  <input
+                                    id={optionId}
+                                    type="radio"
+                                    name="post-category"
+                                    value={option.value}
+                                    checked={selected}
+                                    disabled={isSubmitting}
+                                    className="peer sr-only"
+                                    onChange={() => setPostCategory(option.value)}
+                                  />
+                                  <label
+                                    htmlFor={optionId}
+                                    className={cn(
+                                      "flex cursor-pointer flex-col gap-1.5 rounded-xl border-2 p-4 transition-colors duration-fast ease-swift",
+                                      "peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary",
+                                      "peer-disabled:cursor-not-allowed peer-disabled:opacity-60",
+                                      selected
+                                        ? "border-primary bg-primary-soft"
+                                        : "border-line bg-surface hover:border-primary/50"
+                                    )}
+                                  >
+                                    <span className="flex items-center gap-2">
+                                      <Icon size={16} className={cn("shrink-0", option.tone)} aria-hidden="true" />
+                                      <span className="text-sm font-semibold text-heading">
+                                        {option.label}
+                                      </span>
+                                    </span>
+                                    <span className="block text-xs text-muted">{option.description}</span>
+                                  </label>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </fieldset>
+
+                        <Divider className="my-1" />
+
+                        {/* Title */}
+                        <Field label="Experience Title" htmlFor={titleId} required error={titleError}>
+                          <Input
+                            id={titleId}
+                            type="text"
+                            required
+                            value={title}
+                            disabled={isSubmitting}
+                            invalid={Boolean(titleError)}
+                            onChange={(e) => setTitle(e.target.value)}
+                            onBlur={() => markTouched("title")}
+                            placeholder="e.g. Google Software Engineer Intern Interview Experience 2024"
+                            autoComplete="off"
+                          />
+                        </Field>
+
+                        {/* Basic info fields (2x2 grid) */}
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          {/* Company / organization */}
+                          <Field
+                            label="Company / Organization"
+                            htmlFor={companyId}
+                            hint={companiesLoading ? "Loading companies…" : undefined}
+                            action={
+                              <Button
+                                variant="link"
+                                size="sm"
+                                disabled={isSubmitting}
+                                onClick={() => setShowNewCompanyInput((open) => !open)}
+                              >
+                                {showNewCompanyInput ? "Select Existing" : "+ Add New"}
+                              </Button>
+                            }
+                          >
+                            <div className="relative">
+                              <Building2
+                                size={16}
+                                aria-hidden="true"
+                                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint"
+                              />
+                              {showNewCompanyInput ? (
+                                <Input
+                                  id={companyId}
+                                  type="text"
+                                  value={newCompanyName}
+                                  disabled={isSubmitting}
+                                  onChange={(e) => setNewCompanyName(e.target.value)}
+                                  placeholder="e.g. Google, Microsoft, Amazon"
+                                  autoComplete="organization"
+                                  className="pl-9"
+                                />
+                              ) : (
+                                <>
+                                  <Select
+                                    id={companyId}
+                                    value={selectedCompanyId}
+                                    disabled={isSubmitting}
+                                    onChange={(e) => setSelectedCompanyId(e.target.value)}
+                                    className="pl-9"
+                                  >
+                                    <option value="">-- Select Company (Optional) --</option>
+                                    {companies.map((c) => (
+                                      <option key={c.id} value={c.id}>
+                                        {c.name} {c.industry ? `(${c.industry})` : ""}
+                                      </option>
+                                    ))}
+                                  </Select>
+                                  {companiesLoading && (
+                                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+                                      <Spinner size={16} />
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </Field>
+
+                          {/* College / university */}
+                          <Field label="College / University" htmlFor={collegeId} required={isCampus}>
+                            <div className="relative">
+                              <GraduationCap
+                                size={16}
+                                aria-hidden="true"
+                                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint"
+                              />
+                              <Input
+                                id={collegeId}
+                                type="text"
+                                value={collegeName}
+                                disabled={isSubmitting}
+                                onChange={(e) => setCollegeName(e.target.value)}
+                                placeholder="e.g. MIT, Stanford, IIT Bombay"
+                                className="pl-9"
+                              />
+                            </div>
+                          </Field>
+
+                          {/* Job role / position */}
+                          <Field label="Job Role / Position" htmlFor={jobRoleStep1Id}>
+                            <div className="relative">
+                              <Briefcase
+                                size={16}
+                                aria-hidden="true"
+                                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint"
+                              />
+                              <Input
+                                id={jobRoleStep1Id}
+                                type="text"
+                                value={jobRole}
+                                disabled={isSubmitting}
+                                onChange={(e) => setJobRole(e.target.value)}
+                                placeholder="e.g. Software Engineer Intern"
+                                autoComplete="organization-title"
+                                className="pl-9"
+                              />
+                            </div>
+                          </Field>
+
+                          {/* Location / work mode */}
+                          <Field label="Location / Work Mode" htmlFor={locationId}>
+                            <div className="relative">
+                              <MapPin
+                                size={16}
+                                aria-hidden="true"
+                                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint"
+                              />
+                              <Input
+                                id={locationId}
+                                type="text"
+                                value={workLocation}
+                                disabled={isSubmitting}
+                                onChange={(e) => setWorkLocation(e.target.value)}
+                                placeholder="e.g. Bengaluru / Remote"
+                                className="pl-9"
+                              />
+                            </div>
+                          </Field>
+
+                          {/* Year of study or years of experience */}
+                          {isCampus ? (
+                            <Field label="Year of Study" htmlFor={yearId}>
+                              <Select
+                                id={yearId}
+                                value={yearOfStudy}
+                                disabled={isSubmitting}
+                                onChange={(e) => setYearOfStudy(parseInt(e.target.value, 10))}
+                              >
+                                <option value={1}>1st Year (Undergraduate)</option>
+                                <option value={2}>2nd Year (Undergraduate)</option>
+                                <option value={3}>3rd Year (Pre-final)</option>
+                                <option value={4}>4th Year (Final Year)</option>
+                                <option value={5}>Postgraduate / Masters</option>
+                              </Select>
+                            </Field>
+                          ) : (
+                            <Field label="Years of Experience" htmlFor={experienceYearsId}>
+                              <Input
+                                id={experienceYearsId}
+                                type="number"
+                                step="0.5"
+                                min="0"
+                                value={experienceYears}
+                                disabled={isSubmitting}
+                                onChange={(e) => setExperienceYears(e.target.value)}
+                                placeholder="e.g. 2.5"
+                              />
+                            </Field>
                           )}
                         </div>
-                      </div>
-                    ))}
 
-                    <button
-                      type="button"
-                      onClick={() => addQuestionToRound(rIndex)}
-                      className="self-start px-3 py-1.5 rounded-xl border border-[#e3dccd] bg-white text-xs font-semibold text-[#2f6b47] hover:bg-[#f3eee1] transition-all flex items-center gap-1.5 mt-1"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add Another Question</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
+                        {/* Anonymity switch */}
+                        <label
+                          htmlFor={anonymousId}
+                          className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-line bg-sunken/60 p-4"
+                        >
+                          <span className="flex min-w-0 items-start gap-2.5">
+                            <Shield size={16} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+                            <span className="min-w-0">
+                              <span className="block text-sm font-medium text-heading">
+                                Post Anonymously
+                              </span>
+                              <span className="mt-0.5 block text-xs text-muted">
+                                Protect identity. Your name, avatar, and profile handle will be fully
+                                redacted.
+                              </span>
+                            </span>
+                          </span>
+                          <input
+                            id={anonymousId}
+                            type="checkbox"
+                            role="switch"
+                            checked={isAnonymous}
+                            disabled={isSubmitting}
+                            className="peer sr-only"
+                            onChange={(e) => setIsAnonymous(e.target.checked)}
+                          />
+                          <span
+                            aria-hidden="true"
+                            className={cn(
+                              "inline-flex h-6 w-11 shrink-0 items-center rounded-full px-0.5 transition-colors duration-fast ease-swift",
+                              "peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary",
+                              isAnonymous ? "bg-primary" : "bg-line"
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "h-5 w-5 rounded-full bg-surface shadow-xs transition-transform duration-fast ease-swift",
+                                isAnonymous && "translate-x-5"
+                              )}
+                            />
+                          </span>
+                        </label>
 
-              <button
-                type="button"
-                onClick={addRound}
-                className="w-full py-3 rounded-xl border border-dashed border-[#3f6f52]/40 bg-[#3f6f52]/5 hover:bg-[#3f6f52]/10 text-xs font-bold text-[#2f6b47] transition-all flex items-center justify-center gap-1.5"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Another Round</span>
-              </button>
+                        {/* Step 1 submit */}
+                        <div className="flex flex-col items-start gap-1.5 border-t border-line pt-4 sm:items-end">
+                          {step1Issue && <p className="text-sm text-muted">{step1Issue}</p>}
+                          <Button
+                            type="submit"
+                            size="lg"
+                            loading={isSubmitting}
+                            disabled={Boolean(step1Issue)}
+                            iconRight={<ArrowRight size={18} aria-hidden="true" />}
+                          >
+                            Continue to Rounds
+                          </Button>
+                        </div>
+                      </Card>
+                    </motion.form>
+                  )}
+
+                  {/* STEP 2 FORM */}
+                  {step === 2 && (
+                    <motion.form {...panelMotion("step-2")} onSubmit={handleStep2Submit}>
+                      <Card as="section" className="flex flex-col gap-6 shadow-md">
+                        <CardHeader
+                          as="h2"
+                          title="Interview Rounds & Questions"
+                          subtitle="Record each round's format and the specific technical challenges asked."
+                        />
+
+                        <div className="flex flex-col gap-5">
+                          {rounds.map((round, rIndex) => (
+                            <RoundCard
+                              key={round.id}
+                              round={round}
+                              index={rIndex}
+                              total={rounds.length}
+                              disabled={isSubmitting}
+                              actions={roundActions}
+                            />
+                          ))}
+
+                          <Button
+                            fullWidth
+                            variant="secondary"
+                            disabled={isSubmitting}
+                            icon={<Plus size={16} aria-hidden="true" />}
+                            onClick={addRound}
+                            className="border-dashed border-primary/40 py-3 text-primary hover:border-primary/60 hover:bg-primary-soft hover:text-primary"
+                          >
+                            Add Another Round
+                          </Button>
+                        </div>
+
+                        <div className="flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
+                          <Button
+                            variant="secondary"
+                            disabled={isSubmitting}
+                            icon={<ArrowLeft size={16} aria-hidden="true" />}
+                            onClick={() => goToStep(1)}
+                          >
+                            Back to Step 1
+                          </Button>
+                          <div className="flex flex-col items-start gap-1.5 sm:items-end">
+                            {step2Issue && <p className="text-sm text-muted">{step2Issue}</p>}
+                            <Button
+                              type="submit"
+                              size="lg"
+                              loading={isSubmitting}
+                              disabled={Boolean(step2Issue)}
+                              iconRight={<ArrowRight size={18} aria-hidden="true" />}
+                            >
+                              Continue to Review
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    </motion.form>
+                  )}
+
+                  {/* STEP 3 FORM — suppressed once published so the
+                      completion beat takes this slot via mode="wait". */}
+                  {step === 3 && !isPublished && (
+                    <motion.form {...panelMotion("step-3")} onSubmit={handleStep3Publish}>
+                      <Card as="section" className="flex flex-col gap-6 shadow-md">
+                        <CardHeader
+                          as="h2"
+                          title="Experience Review & Narrative"
+                          subtitle="Share your overall experience narrative, outcome, and advice for future candidates."
+                        />
+
+                        {/* Outcome / offer status */}
+                        <fieldset className="m-0 min-w-0 border-0 p-0" disabled={isSubmitting}>
+                          <legend className="p-0 text-sm font-medium text-heading">
+                            Outcome / Offer Status
+                            <span className="ml-0.5 text-danger" aria-hidden="true">
+                              *
+                            </span>
+                          </legend>
+                          <Segmented
+                            className="mt-2 grid w-full grid-cols-2"
+                            label="Outcome / offer status"
+                            value={isOfferReceived ? "offer" : "no-offer"}
+                            onChange={(value) => setIsOfferReceived(value === "offer")}
+                            tone={(value) => (value === "offer" ? "text-success" : "text-danger")}
+                            options={[
+                              {
+                                value: "offer",
+                                label: "Offer Received",
+                                icon: <CheckCircle2 size={15} className="text-success" aria-hidden="true" />,
+                              },
+                              {
+                                value: "no-offer",
+                                label: "No Offer",
+                                icon: <XCircle size={15} className="text-danger" aria-hidden="true" />,
+                              },
+                            ]}
+                          />
+                        </fieldset>
+
+                        {/* Package & role, only when an offer was received */}
+                        {isOfferReceived && (
+                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                            <Field
+                              label="Offered Position"
+                              htmlFor={jobRoleStep3Id}
+                              required
+                              error={jobRoleStep3Error}
+                            >
+                              <Input
+                                id={jobRoleStep3Id}
+                                type="text"
+                                required
+                                value={jobRole}
+                                disabled={isSubmitting}
+                                invalid={Boolean(jobRoleStep3Error)}
+                                onChange={(e) => setJobRole(e.target.value)}
+                                onBlur={() => markTouched("jobRole")}
+                                placeholder="e.g. Associate Software Engineer"
+                                autoComplete="organization-title"
+                              />
+                            </Field>
+                            <Field label="Currency" htmlFor={currencyId}>
+                              <Select
+                                id={currencyId}
+                                value={currency}
+                                disabled={isSubmitting}
+                                onChange={(e) => setCurrency(e.target.value)}
+                              >
+                                <option value="INR">INR (₹)</option>
+                                <option value="USD">USD ($)</option>
+                                <option value="EUR">EUR (€)</option>
+                              </Select>
+                            </Field>
+                            <Field label="Total Package / CTC" htmlFor={packageId}>
+                              <Input
+                                id={packageId}
+                                type="number"
+                                min="0"
+                                value={packageAmount}
+                                disabled={isSubmitting}
+                                onChange={(e) => setPackageAmount(e.target.value)}
+                                placeholder="e.g. 1800000"
+                              />
+                            </Field>
+                          </div>
+                        )}
+
+                        {/* Experience narrative */}
+                        <Field
+                          label="Overall Interview Experience Narrative"
+                          htmlFor={experienceTextId}
+                          required
+                          error={experienceError}
+                        >
+                          <Textarea
+                            id={experienceTextId}
+                            rows={5}
+                            required
+                            value={experienceText}
+                            disabled={isSubmitting}
+                            invalid={Boolean(experienceError)}
+                            onChange={(e) => setExperienceText(e.target.value)}
+                            onBlur={() => markTouched("experience")}
+                            placeholder="Detail your timeline, how the interviewers conducted themselves, technical depth, and strategies that helped..."
+                          />
+                        </Field>
+
+                        {/* Preparation tips */}
+                        <Field
+                          label="Key Preparation Tips & Recommended Topics"
+                          htmlFor={tipsId}
+                        >
+                          <Textarea
+                            id={tipsId}
+                            rows={3}
+                            value={tips}
+                            disabled={isSubmitting}
+                            onChange={(e) => setTips(e.target.value)}
+                            placeholder="Important algorithms, system design topics, mock resources, or common pitfalls to avoid..."
+                          />
+                        </Field>
+
+                        {/* Publish actions */}
+                        <div className="flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
+                          <Button
+                            variant="secondary"
+                            disabled={isSubmitting}
+                            icon={<ArrowLeft size={16} aria-hidden="true" />}
+                            onClick={() => goToStep(2)}
+                          >
+                            Back to Step 2
+                          </Button>
+                          <div className="flex flex-col items-start gap-1.5 sm:items-end">
+                            {step3Issue && <p className="text-sm text-muted">{step3Issue}</p>}
+                            <Button
+                              type="submit"
+                              size="lg"
+                              loading={isSubmitting}
+                              disabled={Boolean(step3Issue)}
+                              icon={<Send size={18} aria-hidden="true" />}
+                            >
+                              {isSubmitting ? "Publishing..." : "Publish Experience"}
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    </motion.form>
+                  )}
+
+                  {/* The completion beat: the final page turns away like any
+                      other step, then the resolution lands before the route
+                      hands off (navigation is owned by the RESOLVE_HOLD
+                      effect above). */}
+                  {isPublished && <PublishedBeat key="published" />}
+                </AnimatePresence>
+              </Tilt>
             </div>
+          </Section>
+        </Scene>
 
-            <div className="flex justify-between items-center pt-4 border-t border-[#e3dccd]">
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="px-4 py-2 rounded-xl border border-[#e3dccd] text-xs font-semibold text-[#2b3a4f] hover:bg-[#f3eee1] flex items-center gap-1.5 transition-colors"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to Step 1</span>
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-2 bg-[#3f6f52] hover:bg-[#345c44] text-white font-semibold text-xs rounded-xl transition-all active:scale-95 flex items-center gap-2 shadow-sm disabled:opacity-50"
-              >
-                <span>Continue to Review</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </motion.form>
-        )}
-
-        {/* STEP 3 FORM */}
-        {step === 3 && (
-          <motion.form
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            onSubmit={handleStep3Publish}
-            className="bg-white rounded-2xl border border-[#e3dccd] p-6 sm:p-8 shadow-sm flex flex-col gap-6"
-          >
-            <div className="border-b border-[#e3dccd] pb-4">
-              <h2 className="text-lg font-bold text-[#0f1926]">Experience Review & Narrative</h2>
-              <p className="text-xs text-[#5f6e82] mt-0.5">
-                Share your overall experience narrative, outcome, and advice for future candidates.
-              </p>
-            </div>
-
-            {/* Offer Received Toggle */}
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-[#0f1926]">Outcome / Offer Status *</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsOfferReceived(true)}
-                  className={`p-3.5 rounded-xl border-2 flex items-center gap-2.5 transition-all ${
-                    isOfferReceived
-                      ? "border-[#2f7d52] bg-[#2f7d52]/10 text-[#2f7d52] font-bold shadow-sm"
-                      : "border-[#e3dccd] bg-white text-[#5f6e82]"
-                  }`}
-                >
-                  <CheckCircle2 className="w-4 h-4 text-[#2f7d52]" />
-                  <span className="text-xs sm:text-sm">Offer Received</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsOfferReceived(false)}
-                  className={`p-3.5 rounded-xl border-2 flex items-center gap-2.5 transition-all ${
-                    !isOfferReceived
-                      ? "border-[#b5462f] bg-[#b5462f]/10 text-[#b5462f] font-bold shadow-sm"
-                      : "border-[#e3dccd] bg-white text-[#5f6e82]"
-                  }`}
-                >
-                  <XCircle className="w-4 h-4 text-[#b5462f]" />
-                  <span className="text-xs sm:text-sm">No Offer</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Package & Role if Offer Received */}
-            {isOfferReceived && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-[#0f1926]">Offered Position *</label>
-                  <input
-                    type="text"
-                    required
-                    value={jobRole}
-                    onChange={(e) => setJobRole(e.target.value)}
-                    placeholder="e.g. Associate Software Engineer"
-                    className="p-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] outline-none focus:ring-1 focus:ring-[#3f6f52] focus:bg-white"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-[#0f1926]">Total Package / CTC</label>
-                  <div className="flex gap-2">
-                    <select
-                      value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                      className="p-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] w-24 outline-none"
-                    >
-                      <option value="INR">INR (₹)</option>
-                      <option value="USD">USD ($)</option>
-                      <option value="EUR">EUR (€)</option>
-                    </select>
-                    <input
-                      type="number"
-                      min="0"
-                      value={packageAmount}
-                      onChange={(e) => setPackageAmount(e.target.value)}
-                      placeholder="e.g. 1800000"
-                      className="flex-grow p-2.5 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] outline-none focus:ring-1 focus:ring-[#3f6f52] focus:bg-white"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Experience Text */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-[#0f1926]">
-                Overall Interview Experience Narrative *
-              </label>
-              <textarea
-                rows={5}
-                required
-                value={experienceText}
-                onChange={(e) => setExperienceText(e.target.value)}
-                placeholder="Detail your timeline, how the interviewers conducted themselves, technical depth, and strategies that helped..."
-                className="p-3 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] leading-relaxed outline-none focus:ring-1 focus:ring-[#3f6f52] focus:bg-white resize-none"
-              />
-            </div>
-
-            {/* Preparation Tips */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-[#0f1926]">
-                Key Preparation Tips & Recommended Topics
-              </label>
-              <textarea
-                rows={3}
-                value={tips}
-                onChange={(e) => setTips(e.target.value)}
-                placeholder="Important algorithms, system design topics, mock resources, or common pitfalls to avoid..."
-                className="p-3 bg-[#f3eee1] border border-[#e3dccd] rounded-xl text-xs text-[#0f1926] leading-relaxed outline-none focus:ring-1 focus:ring-[#3f6f52] focus:bg-white resize-none"
-              />
-            </div>
-
-            {/* Publish Actions */}
-            <div className="flex justify-between items-center pt-4 border-t border-[#e3dccd]">
-              <button
-                type="button"
-                onClick={() => setStep(2)}
-                className="px-4 py-2 rounded-xl border border-[#e3dccd] text-xs font-semibold text-[#2b3a4f] hover:bg-[#f3eee1] flex items-center gap-1.5 transition-colors"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to Step 2</span>
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-2.5 bg-[#3f6f52] hover:bg-[#345c44] text-white font-bold text-xs rounded-xl transition-all active:scale-95 shadow-sm flex items-center gap-2 disabled:opacity-50"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>{loading ? "Publishing..." : "Publish Experience"}</span>
-              </button>
-            </div>
-          </motion.form>
-        )}
-      </main>
-    </AppShell>
+        {/* Destructive removals always confirm — never window.confirm */}
+        <ConfirmDialog
+          isOpen={pendingRemoval !== null}
+          onClose={() => setPendingRemoval(null)}
+          onConfirm={confirmRemoval}
+          tone="danger"
+          title={pendingRemoval?.kind === "round" ? "Remove this round?" : "Remove this question?"}
+          confirmLabel={
+            pendingRemoval?.kind === "round" ? "Remove round" : "Remove question"
+          }
+          cancelLabel="Keep"
+          message={removalMessage}
+        />
+      </PageContainer>
+    </>
   );
 };

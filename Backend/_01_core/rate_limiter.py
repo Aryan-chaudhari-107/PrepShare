@@ -34,5 +34,8 @@ def get_real_client_ip(request: Request) -> str:
     return direct_ip
 
 
-limiter = Limiter(key_func=get_real_client_ip)
+# headers_enabled: every rate-limited response advertises X-RateLimit-Limit /
+# -Remaining / -Reset (and Retry-After on 429) so clients can back off
+# intelligently instead of guessing their quota.
+limiter = Limiter(key_func=get_real_client_ip, headers_enabled=True)
 

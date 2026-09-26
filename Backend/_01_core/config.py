@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
 
+    # Dashboard: weekly contribution goal shown on the bento dashboard.
+    # Tunable via env without a schema migration.
+    DASHBOARD_WEEKLY_GOAL: int = 8
+
     SMTP_HOST: str
     SMTP_PORT: int
     SMTP_USERNAME: str

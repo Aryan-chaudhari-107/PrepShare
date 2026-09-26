@@ -1,36 +1,65 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import React, { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
+  ArrowRight,
   Bell,
+  CheckCheck,
+  FileText,
   Heart,
+  Lock,
   MessageSquare,
   UserPlus,
-  FileText,
-  CheckCheck,
-  Inbox,
-  ArrowRight,
 } from "lucide-react";
-import { AppShell } from "../components/layout/AppShell";
+import { PageContainer } from "../components/layout/AppShell";
+import { Pagination } from "../components/common/Pagination";
+import {
+  Badge,
+  Button,
+  Divider,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  SkeletonList,
+} from "../components/ui";
+import { Scene, Section } from "../motion";
 import { NotificationOut } from "../types";
 import { notificationsApi } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
-import { Pagination } from "../components/common/Pagination";
+import { cn } from "../lib/cn";
+import { emitUnreadChanged } from "../lib/events";
+import { errorMessage, fullDate, relativeDate } from "../lib/format";
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.05,
-    },
-  },
-};
+/** The five panels that can occupy the list region — one slot, one rhythm. */
+type Slot = "signed-out" | "loading" | "error" | "empty" | "list";
 
+/**
+ * Activity inbox.
+ *
+ * Guest handling: the fetch bails out BEFORE any request and releases the
+ * loading flag; the signed-out state renders below instead of a spinner that
+ * could never resolve.
+ *
+ * LIST LANGUAGE (identical on Bookmarks / Drafts / Completed questions):
+ *  - the page is a `Scene`: header → list → pagination cascade on the design
+ *    system's own `item` rhythm, so no page carries a private timing literal;
+ *  - all five states share ONE keyed `Section` slot. Nothing waits to leave —
+ *    the outgoing panel unmounts instantly instead of sitting through a
+ *    `mode="wait"` exit — and the incoming panel mounts immediately and
+ *    settles with `item`. The loading placeholder is `still`: skeletons paint
+ *    at once, resolved content lands.
+ *  - rows carry no per-row stagger. A utility list arrives as one surface, so
+ *    mark-as-read refetches and page changes never re-fire a cascade.
+ *
+ * ROW ANATOMY (the one this page owns): leading type mark → message (primary)
+ * → timestamp (metadata) → unread state → trailing affordance. Depth is spent
+ * only where it means something: the row itself is the link, so it is the one
+ * surface in the app's lists allowed to lift and press.
+ */
 export const NotificationsPage: React.FC = () => {
-  const { isAuthenticated, openAuthModal } = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading, openAuthModal } = useAuth();
   const { success, error } = useToast();
+  const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState<NotificationOut[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,59 +67,70 @@ export const NotificationsPage: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [markingAll, setMarkingAll] = useState(false);
 
   const fetchNotifs = useCallback(async () => {
     if (!isAuthenticated) {
-      openAuthModal("login");
+      setLoading(false);
       return;
     }
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await notificationsApi.list(page, 20);
       setNotifications(res.data.items || []);
       setTotalPages(res.data.total_pages || 1);
       setTotal(res.data.total || 0);
       setUnreadCount(res.data.unread_count || 0);
-    } catch (err: any) {
-      error(err.response?.data?.detail || "Failed to load notifications.");
+    } catch (err: unknown) {
+      // Keep the previous page on screen — an error is not "empty".
+      setLoadError(errorMessage(err, "Failed to load notifications."));
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, page, openAuthModal, error]);
+  }, [isAuthenticated, page]);
 
   useEffect(() => {
     fetchNotifs();
   }, [fetchNotifs]);
 
   const handleMarkAllRead = async () => {
+    setMarkingAll(true);
     try {
-      await notificationsApi.markAllAsRead();
+      await notificationsApi.markAllRead();
       success("All notifications marked as read.", "Inbox Updated");
+      emitUnreadChanged(); // header badge clears without a full reload
       fetchNotifs();
-    } catch (err: any) {
-      error(err.response?.data?.detail || "Failed to mark all as read.");
+    } catch (err: unknown) {
+      error(errorMessage(err, "Failed to mark all as read."));
+    } finally {
+      setMarkingAll(false);
     }
   };
 
   const handleMarkOne = async (id: string) => {
     try {
-      await notificationsApi.markAsRead(id);
+      await notificationsApi.markRead(id);
+      emitUnreadChanged(); // header badge clears without a full reload
       fetchNotifs();
-    } catch {}
+    } catch (err: unknown) {
+      error(errorMessage(err, "Failed to mark notification as read."));
+    }
   };
 
-  const getNotificationIcon = (type: string) => {
+  const getNotificationIcon = (type: NotificationOut["type"]) => {
     switch (type) {
       case "LIKE":
-        return <Heart className="w-4 h-4 text-[#b5462f]" />;
+        return <Heart size={18} className="text-danger" aria-hidden="true" />;
       case "COMMENT":
-        return <MessageSquare className="w-4 h-4 text-[#3f6f52]" />;
+        return <MessageSquare size={18} className="text-primary" aria-hidden="true" />;
       case "FOLLOW":
-        return <UserPlus className="w-4 h-4 text-[#3f6f9e]" />;
+        return <UserPlus size={18} className="text-accent" aria-hidden="true" />;
       case "NEW_POST":
-        return <FileText className="w-4 h-4 text-[#b26a00]" />;
+        return <FileText size={18} className="text-warning" aria-hidden="true" />;
       default:
-        return <Bell className="w-4 h-4 text-[#3f6f52]" />;
+        return <Bell size={18} className="text-muted" aria-hidden="true" />;
     }
   };
 
@@ -103,127 +143,171 @@ export const NotificationsPage: React.FC = () => {
     return `${sender} sent a notification.`;
   };
 
+  const slot: Slot = !isAuthLoading && !isAuthenticated
+    ? "signed-out"
+    : isAuthLoading || loading
+    ? "loading"
+    : loadError
+    ? "error"
+    : notifications.length === 0
+    ? "empty"
+    : "list";
+
   return (
-    <AppShell>
-      <main className="max-w-4xl mx-auto px-4 md:px-8 py-8 w-full flex flex-col gap-6 flex-1">
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="border-b border-[#e3dccd] pb-4 flex flex-wrap items-center justify-between gap-4"
-        >
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-[#2f6b47] mb-1">
-              <Bell className="w-4 h-4 text-[#3f6f52]" />
-              <span className="uppercase tracking-wider">ACTIVITY CENTER</span>
-            </div>
-            <h1 className="text-2xl font-bold text-[#0f1926]">
-              Notifications {unreadCount > 0 && `(${unreadCount} Unread)`}
-            </h1>
-            <p className="text-xs text-[#5f6e82] mt-0.5">
-              Stay updated on discussions, likes, and profile followers.
-            </p>
-          </div>
-
-          {unreadCount > 0 && (
-            <button
-              onClick={handleMarkAllRead}
-              className="px-4 py-2 rounded-xl bg-white border border-[#e3dccd] hover:bg-[#f3eee1] text-xs font-semibold text-[#2f6b47] transition-all shadow-xs active:scale-95 flex items-center gap-1.5"
+    <>
+      <PageContainer width="list">
+        <Scene>
+          <Section key="header">
+            <PageHeader
+              title="Notifications"
+              description="Stay updated on discussions, likes, and profile followers."
+              icon={<Bell size={20} aria-hidden="true" />}
+              actions={
+                unreadCount > 0 ? (
+                  <>
+                    <Badge tone="danger">{unreadCount} unread</Badge>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={<CheckCheck size={14} aria-hidden="true" />}
+                      onClick={handleMarkAllRead}
+                      loading={markingAll}
+                      disabled={markingAll}
+                    >
+                      Mark all as read
+                    </Button>
+                  </>
+                ) : null
+              }
             >
-              <CheckCheck className="w-4 h-4" />
-              <span>Mark All as Read</span>
-            </button>
+              {/* The rule the index hangs from: chrome above, content below. */}
+              <Divider className="mt-5" />
+            </PageHeader>
+          </Section>
+
+          <Section key={slot} still={slot === "loading"}>
+            {slot === "signed-out" ? (
+              <EmptyState
+                art="chat"
+                title="Sign in to see your notifications"
+                description="Likes, comments and followers are only visible on your own account."
+                action={
+                  <Button
+                    icon={<Lock size={16} aria-hidden="true" />}
+                    onClick={() => openAuthModal("login")}
+                  >
+                    Sign in
+                  </Button>
+                }
+              />
+            ) : slot === "loading" ? (
+              <SkeletonList count={5} />
+            ) : slot === "error" ? (
+              <ErrorState description={loadError} onRetry={fetchNotifs} />
+            ) : slot === "empty" ? (
+              <EmptyState
+                art="signal"
+                title="You're all caught up"
+                description="New likes, comments and followers will show up here as they happen."
+                action={
+                  <Button
+                    iconRight={<ArrowRight size={16} aria-hidden="true" />}
+                    onClick={() => navigate("/feed")}
+                  >
+                    Explore the feed
+                  </Button>
+                }
+              />
+            ) : (
+              <ul className="space-y-3">
+                {notifications.map((n) => {
+                  const targetUrl =
+                    n.reference_type === "post" ||
+                    n.reference_type === "comment" ||
+                    n.type === "COMMENT" ||
+                    n.type === "LIKE" ||
+                    n.type === "NEW_POST"
+                      ? `/posts/${n.reference_id}`
+                      : n.reference_type === "user" || n.type === "FOLLOW"
+                      ? `/users/${n.reference_id}`
+                      : "/";
+
+                  return (
+                    <li key={n.id}>
+                      {/* The whole row is the link: pointer, keyboard and screen
+                          readers all land on the same target. */}
+                      <Link
+                        to={targetUrl}
+                        onClick={() => {
+                          if (!n.is_read) handleMarkOne(n.id);
+                        }}
+                        className={cn(
+                          "group relative flex w-full items-center gap-4 rounded-xl border p-4 shadow-xs",
+                          "transition-[border-color,transform] duration-fast ease-swift",
+                          "hover:-translate-y-px active:scale-nudge",
+                          n.is_read
+                            ? "border-line bg-surface hover:border-line-strong"
+                            : "border-primary/30 bg-primary-soft/60 hover:border-primary/50"
+                        )}
+                      >
+                        <span
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-sunken"
+                          aria-hidden="true"
+                        >
+                          {getNotificationIcon(n.type)}
+                        </span>
+
+                        <span className="min-w-0 flex-1">
+                          {!n.is_read && <span className="sr-only">Unread — </span>}
+                          <span
+                            className={cn(
+                              "block break-words text-sm leading-snug transition-colors duration-fast ease-swift group-hover:text-primary",
+                              n.is_read ? "font-normal text-body" : "font-semibold text-heading"
+                            )}
+                          >
+                            {getMessage(n)}
+                          </span>
+                          <time
+                            className="mt-1 block text-xs tabular text-muted"
+                            dateTime={n.created_at}
+                            title={fullDate(n.created_at)}
+                          >
+                            {relativeDate(n.created_at)}
+                          </time>
+                        </span>
+
+                        {!n.is_read && <Badge dot tone="primary" />}
+
+                        <span className="hidden shrink-0 items-center gap-1 text-sm font-medium text-primary sm:flex">
+                          <span>View</span>
+                          <ArrowRight
+                            size={14}
+                            className="transition-transform duration-fast ease-swift group-hover:translate-x-0.5"
+                            aria-hidden="true"
+                          />
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Section>
+
+          {isAuthenticated && !loadError && (
+            <Section key="pagination" className="mt-6">
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                total={total}
+                noun="notification"
+                isLoading={loading}
+                onPageChange={(p) => setPage(p)}
+              />
+            </Section>
           )}
-        </motion.div>
-
-        {loading ? (
-          <div className="py-12 text-center text-xs text-[#5f6e82] animate-pulse">
-            Loading notifications...
-          </div>
-        ) : notifications.length > 0 ? (
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-            className="flex flex-col gap-2.5"
-          >
-            {notifications.map((n) => {
-              const targetUrl =
-                n.reference_type === "post" ||
-                n.reference_type === "comment" ||
-                n.type === "COMMENT" ||
-                n.type === "LIKE" ||
-                n.type === "NEW_POST"
-                  ? `/posts/${n.reference_id}`
-                  : n.reference_type === "user" || n.type === "FOLLOW"
-                  ? `/users/${n.reference_id}`
-                  : "/";
-
-              return (
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  key={n.id}
-                  onClick={() => !n.is_read && handleMarkOne(n.id)}
-                  className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-4 cursor-pointer ${
-                    !n.is_read
-                      ? "bg-[#3f6f52]/10 border-[#3f6f52]/30 shadow-xs"
-                      : "bg-white border-[#e3dccd] hover:border-[#3f6f52]/40 shadow-xs"
-                  }`}
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-10 h-10 rounded-xl bg-[#f3eee1] border border-[#e3dccd] flex items-center justify-center shrink-0 shadow-xs">
-                      {getNotificationIcon(n.type)}
-                    </div>
-                    <Link
-                      to={targetUrl}
-                      className="text-xs sm:text-sm font-medium text-[#0f1926] hover:text-[#2f6b47] transition-colors leading-relaxed"
-                    >
-                      {getMessage(n)}
-                    </Link>
-                  </div>
-
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-[11px] text-[#5f6e82]">
-                      {new Date(n.created_at).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </span>
-                    <Link
-                      to={targetUrl}
-                      className="px-3 py-1 rounded-xl bg-[#f3eee1] hover:bg-white border border-[#e3dccd] text-xs font-semibold text-[#2b3a4f] hover:text-[#0f1926] flex items-center gap-1 transition-all"
-                    >
-                      <span>View</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </Link>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="p-16 text-center bg-white rounded-2xl border border-dashed border-[#e3dccd] flex flex-col items-center gap-3"
-          >
-            <div className="w-14 h-14 rounded-2xl bg-[#3f6f52]/10 border border-[#3f6f52]/20 flex items-center justify-center text-[#3f6f52]">
-              <Inbox className="w-7 h-7" />
-            </div>
-            <p className="text-sm font-bold text-[#0f1926]">No Notifications</p>
-            <p className="text-xs text-[#5f6e82] mt-0.5">You have no unread alerts or activity updates at this time.</p>
-          </motion.div>
-        )}
-
-        <Pagination
-          page={page}
-          totalPages={totalPages}
-          total={total}
-          hasNext={page < totalPages}
-          hasPrevious={page > 1}
-          onPageChange={(p) => setPage(p)}
-        />
-      </main>
-    </AppShell>
+        </Scene>
+      </PageContainer>
+    </>
   );
 };

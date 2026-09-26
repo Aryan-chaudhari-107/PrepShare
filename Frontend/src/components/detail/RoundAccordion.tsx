@@ -1,87 +1,134 @@
-import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Clock, Video, Layers } from "lucide-react";
+import React, { useId, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronRight, Clock, Layers, Video } from "lucide-react";
+import { cn } from "../../lib/cn";
 import { RoundOut } from "../../types";
+import { disclosure } from "../../motion";
 import { QuestionItem } from "./QuestionItem";
 
 interface RoundAccordionProps {
   round: RoundOut;
 }
 
+/**
+ * Disclosure for one interview round — and one sheet of the round STACK.
+ *
+ * Depth is entirely transform + the existing shadow scale: the open round sits
+ * at full size with an elevated shadow, closed rounds settle back a single
+ * percent and drop to the resting shadow, and the whole stack lives in a
+ * recessed well (see ReportDetailPage). No glow, no animated box-shadow, no
+ * layout shift — the surrounding sheet never moves under you.
+ *
+ * The header is a real `<button>` nested inside the `<h3>` (headings may only
+ * contain phrasing content, so the button cannot wrap the heading) and carries
+ * `aria-expanded` / `aria-controls` so the expanded state is announced instead
+ * of being purely visual.
+ */
 export const RoundAccordion: React.FC<RoundAccordionProps> = ({ round }) => {
   const [expanded, setExpanded] = useState(true);
+  const baseId = useId();
+  const titleId = `${baseId}-round-title`;
+  const panelId = `${baseId}-round-panel`;
+  const questionCount = round.questions.length;
 
   return (
-    <div className="bg-white rounded-2xl border border-[#e3dccd] shadow-xs overflow-hidden mb-4">
-      {/* Round Header */}
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="w-full p-4 sm:p-5 bg-white border-b border-[#e3dccd] flex flex-wrap items-center justify-between gap-3 text-left hover:bg-[#faf7ee] transition-colors cursor-pointer"
-      >
-        <div className="flex items-center gap-3.5">
-          <span className="w-8 h-8 rounded-xl bg-[#3f6f52] text-white font-bold text-xs flex items-center justify-center shadow-xs">
-            {round.round_number}
-          </span>
-          <div className="flex flex-col">
-            <h3 className="text-sm sm:text-base font-bold text-[#0f1926]">
-              {round.name || `Round ${round.round_number}`}
-            </h3>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-[#5f6e82] mt-0.5">
-              {round.mode && (
-                <span className="capitalize font-medium text-[#2f6b47] bg-[#3f6f52]/10 border border-[#3f6f52]/20 px-2 py-0.5 rounded-md flex items-center gap-1">
-                  <Video className="w-3 h-3" />
-                  {round.mode} Mode
-                </span>
-              )}
-              {round.duration_minutes && (
-                <span className="flex items-center gap-1 text-[#5f6e82]">
-                  <Clock className="w-3 h-3 text-[#5f6e82]" />
-                  {round.duration_minutes} mins
-                </span>
-              )}
-              <span className="text-[#e3dccd]">•</span>
-              <span className="flex items-center gap-1">
-                <Layers className="w-3 h-3 text-[#5f6e82]" />
-                {round.questions.length} {round.questions.length === 1 ? "Question" : "Questions"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <motion.div
-          animate={{ rotate: expanded ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-          className="text-[#5f6e82]"
+    <section
+      className={cn(
+        "relative overflow-hidden rounded-xl border bg-surface origin-top",
+        "transition-[transform,box-shadow,border-color] duration-base ease-swift",
+        expanded ? "border-line-strong shadow-md" : "border-line scale-recede shadow-xs"
+      )}
+    >
+      <h3>
+        <button
+          type="button"
+          id={titleId}
+          onClick={() => setExpanded((open) => !open)}
+          aria-expanded={expanded}
+          aria-controls={panelId}
+          className={cn(
+            "flex w-full cursor-pointer flex-wrap items-center justify-between gap-3 px-4 py-4 text-left sm:px-5",
+            "transition-[background-color,transform] duration-fast ease-swift",
+            "hover:bg-raised active:scale-nudge",
+            expanded ? "border-b border-line" : "border-b-0"
+          )}
         >
-          <ChevronDown className="w-5 h-5" />
-        </motion.div>
-      </button>
+          <span className="flex min-w-0 items-center gap-3.5">
+            <span
+              className={cn(
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold shadow-xs",
+                "transition-colors duration-fast ease-swift",
+                expanded ? "bg-primary text-primary-fg" : "bg-primary-soft text-primary"
+              )}
+            >
+              {round.round_number}
+            </span>
 
-      {/* Questions list with AnimatePresence */}
+            <span className="flex min-w-0 flex-col">
+              <span className="text-base font-semibold text-heading sm:text-lg">
+                {round.name || `Round ${round.round_number}`}
+              </span>
+
+              <span className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted">
+                {round.mode && (
+                  <span className="flex items-center gap-1 rounded-md border border-primary/20 bg-primary-soft px-2 py-0.5 font-medium text-primary">
+                    <Video className="h-3 w-3" aria-hidden="true" />
+                    {round.mode} Mode
+                  </span>
+                )}
+                {round.duration_minutes ? (
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" aria-hidden="true" />
+                    {round.duration_minutes} mins
+                  </span>
+                ) : null}
+                <span aria-hidden="true">•</span>
+                <span className="flex items-center gap-1">
+                  <Layers className="h-3 w-3" aria-hidden="true" />
+                  {questionCount} {questionCount === 1 ? "Question" : "Questions"}
+                </span>
+              </span>
+            </span>
+          </span>
+
+          <span
+            aria-hidden="true"
+            className={cn(
+              "shrink-0 text-muted transition-transform duration-fast ease-swift",
+              expanded && "rotate-90"
+            )}
+          >
+            <ChevronRight className="h-5 w-5" />
+          </span>
+        </button>
+      </h3>
+
       <AnimatePresence initial={false}>
         {expanded && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: "easeInOut" }}
+            id={panelId}
+            role="region"
+            aria-labelledby={titleId}
+            variants={disclosure}
+            initial="hidden"
+            animate="show"
+            exit="exit"
             className="overflow-hidden"
           >
-            <div className="p-4 sm:p-5 flex flex-col gap-3 bg-[#faf7ee]">
-              {round.questions.length > 0 ? (
-                round.questions.map((q, idx) => (
-                  <QuestionItem key={q.id} question={q} index={idx} />
+            <div className="flex flex-col gap-3 bg-raised p-4 sm:p-5">
+              {questionCount > 0 ? (
+                round.questions.map((question, index) => (
+                  <QuestionItem key={question.id} question={question} index={index} />
                 ))
               ) : (
-                <div className="p-6 text-center text-xs text-[#5f6e82] italic bg-white rounded-xl border border-dashed border-[#e3dccd]">
+                <p className="rounded-xl border border-dashed border-line bg-surface p-6 text-center text-xs italic text-muted">
                   No technical questions were logged for this round.
-                </div>
+                </p>
               )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </section>
   );
 };

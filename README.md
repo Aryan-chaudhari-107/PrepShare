@@ -55,7 +55,7 @@ PrepShare/
 │   ├── _06_routers/        # REST API endpoints (Auth, Posts, Chat, etc.)
 │   ├── alembic/            # Database schema migrations
 │   ├── scripts/            # Database seeding & migration scripts
-│   ├── tests/              # Automated integration & security tests
+│   ├── tests/              # Integration & security test scripts
 │   ├── utils/              # Helper utilities (OTP, email, slug generation)
 │   ├── alembic.ini         # Alembic configuration
 │   ├── main.py             # FastAPI entrypoint & middleware
@@ -178,7 +178,7 @@ PrepShare/
 
 ## 🧪 Testing & Verification
 
-### Backend Integration & Security Test Suite
+### Backend Integration & Security Test Scripts
 Run the end-to-end integration flow:
 ```bash
 python Backend/tests/manual_flow.py
