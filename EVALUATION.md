@@ -198,3 +198,15 @@ Earlier rounds also fixed: 3 metric-coherence bugs caught by screenshot review (
 **Live verification (2026-09-26, after `b23628d`):** `/` 200, `/login` 200 (SPA fallback confirmed), `/api/*` and `/health*` reach the backend function; CI run `36225813970` 3/3 green.
 
 **Remaining - platform configuration, by design not in the repo:** the Vercel project must define `VITE_API_BASE_URL=/api` (build-time) plus the nine backend variables read by `Settings()` at import (`DATABASE_URL`, `SECRET_KEY`, `ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `CORS_ORIGINS`). Until they exist the backend fails at import with `FUNCTION_INVOCATION_FAILED` (observed live). Known serverless limitation: the file-upload feature writes to local disk and needs external storage before launch.
+
+## 10. Round 6 - backend brought fully live (2026-09-26)
+
+The `FUNCTION_INVOCATION_FAILED` persisted even after the environment variables were added to the dashboard (all eight were already present — confirmed in project settings). The real root cause chain, found by reading the live function logs:
+
+| # | Bug | Impact | Fix (commit) |
+|---|---|---|---|
+| D4 | `RotatingFileHandler` opens `logs/app.log` at import time | every backend invocation died with `OSError: [Errno 30] Read-only file system` before routing even ran | file logging wrapped in `try/except OSError`; console handler always on (`d86a1db`) |
+| D5 | D3's `request.path` transform is a no-op — the backend service receives `/api/*` verbatim | every API path 404'd with `{"detail":"Not Found"}` (supersedes D3's fix) | every router mounted twice: bare (local/CI) and under `/api` (`b84f842`) |
+| D6 | `"/api/:path*"` and `"/health/:path*"` rewrite sources do not match paths ending in `/` | collection URLs (`/api/posts/`, `/api/companies/`) fell through to the SPA fallback and returned `index.html` instead of JSON | regex sources `/api/(.*)`, `/health/(.*)` (`28d2d77`) |
+
+**Live verification (after `28d2d77`):** `/health` 200; `/health/ready` -> `{"database":"up"}` (Supabase reachable from Vercel); `/api/posts/` -> 61 seeded posts, `/api/companies/` -> seeded companies, `/api/dashboard/summary` -> platform numbers; no-slash variants redirect 307 into the backend; `/`, `/login`, `/feed` 200. In-browser: the landing hero reads "61 experiences from 15 contributors across 19 members" and the feed renders post cards with "61 experiences - Page 1 of 7" pagination. Gates: local import check, TestClient on bare + `/api` paths (200/401 as expected), backend suite `2 passed`.
