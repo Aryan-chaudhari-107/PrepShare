@@ -17,6 +17,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from jose import jwt
 import requests
+from sqlalchemy import bindparam, text
 
 from _01_core.config import settings
 from _01_core.database import SessionLocal
@@ -25,6 +26,17 @@ from _02_models import User, Institution
 BASE = "http://127.0.0.1:8000"
 
 results = []
+
+# Exact titles this audit writes to the SHARED database (locally and on every
+# CI push). Kept in one place so run_audit() and cleanup_test_artifacts()
+# can never drift apart.
+AUDIT_POST_TITLES = (
+    "User B Secret Draft Post",
+    "Public Post For Comments",
+    "Anonymous Confidential Experience",
+    "Draft for Offer Check",
+    "Vote Testing Post",
+)
 
 def record(category, endpoint, case, expected_status, actual_status, passed, significance, details=""):
     results.append({
@@ -43,6 +55,141 @@ def mint_token(user_id: uuid.UUID, expires_delta: timedelta | None = None, tv: i
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=60))
     to_encode = {"sub": str(user_id), "tv": tv, "exp": expire}
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def cleanup_test_artifacts(extra_titles=()):
+    """Delete every row this audit creates from the shared database.
+
+    Markers are the exact constants used by the audit, so this also sweeps
+    leftovers from earlier runs or runs that crashed before cleaning up.
+    Extra titles (e.g. manual_flow's) may be passed in. Raw SQL in explicit
+    FK order — independent of ON DELETE clauses. Best-effort: never raises;
+    returns the per-table counts it removed.
+    """
+    titles = list(AUDIT_POST_TITLES) + list(extra_titles)
+    db = SessionLocal()
+    counts = {}
+    try:
+        def run(name, stmt, **params):
+            bound = text(stmt).bindparams(bindparam("ids", expanding=True))
+            n = db.execute(bound, params).rowcount
+            if n:
+                counts[name] = counts.get(name, 0) + n
+
+        post_rows = db.execute(
+            text("SELECT id FROM interview_posts WHERE title IN :titles").bindparams(
+                bindparam("titles", expanding=True)
+            ),
+            {"titles": titles},
+        ).fetchall()
+        post_ids = [r[0] for r in post_rows]
+
+        round_ids = []
+        if post_ids:
+            round_ids = [
+                r[0]
+                for r in db.execute(
+                    text("SELECT DISTINCT round_id FROM post_rounds WHERE post_id IN :ids").bindparams(
+                        bindparam("ids", expanding=True)
+                    ),
+                    {"ids": post_ids},
+                ).fetchall()
+            ]
+
+            # polymorphic references (no FK) go first
+            run("notifications", "DELETE FROM notifications WHERE reference_id IN :ids", ids=post_ids)
+            run(
+                "contribution_events",
+                "DELETE FROM contribution_events WHERE reference_id IN :ids",
+                ids=post_ids,
+            )
+            # children of the posts
+            run(
+                "question_votes",
+                "DELETE FROM question_difficulty_votes WHERE question_id IN "
+                "(SELECT id FROM interview_questions WHERE post_id IN :ids)",
+                ids=post_ids,
+            )
+            run(
+                "completed_questions",
+                "DELETE FROM completed_questions WHERE question_id IN "
+                "(SELECT id FROM interview_questions WHERE post_id IN :ids)",
+                ids=post_ids,
+            )
+            run(
+                "question_tags",
+                "DELETE FROM question_tag_map WHERE question_id IN "
+                "(SELECT id FROM interview_questions WHERE post_id IN :ids)",
+                ids=post_ids,
+            )
+            run("questions", "DELETE FROM interview_questions WHERE post_id IN :ids", ids=post_ids)
+            run("comments", "DELETE FROM comments WHERE post_id IN :ids", ids=post_ids)
+            run("likes", "DELETE FROM likes WHERE post_id IN :ids", ids=post_ids)
+            run("bookmarks", "DELETE FROM bookmarks WHERE post_id IN :ids", ids=post_ids)
+            run("reports", "DELETE FROM reports WHERE post_id IN :ids", ids=post_ids)
+            run("post_rounds", "DELETE FROM post_rounds WHERE post_id IN :ids", ids=post_ids)
+            run("posts", "DELETE FROM interview_posts WHERE id IN :ids", ids=post_ids)
+
+        # rounds are standalone — only drop the ones no other post uses
+        if round_ids:
+            round_ids = [
+                r[0]
+                for r in db.execute(
+                    text("SELECT id FROM interview_rounds WHERE id IN :ids").bindparams(
+                        bindparam("ids", expanding=True)
+                    ),
+                    {"ids": round_ids},
+                ).fetchall()
+            ]
+            still_used = {
+                r[0]
+                for r in db.execute(
+                    text("SELECT DISTINCT round_id FROM post_rounds WHERE round_id IN :ids").bindparams(
+                        bindparam("ids", expanding=True)
+                    ),
+                    {"ids": round_ids},
+                ).fetchall()
+            }
+            orphans = [r for r in round_ids if r not in still_used]
+            if orphans:
+                run("rounds", "DELETE FROM interview_rounds WHERE id IN :ids", ids=orphans)
+
+        # audit education rows: exact payload of section 2.1 (seed rows always
+        # carry an end_year and is_current=False)
+        counts["education"] = db.execute(
+            text(
+                "DELETE FROM education_history WHERE course = 'Computer Science' "
+                "AND degree_level = 'Bachelors' AND start_year = 2020 "
+                "AND is_current = TRUE AND end_year IS NULL"
+            )
+        ).rowcount or 0
+        if not counts["education"]:
+            counts.pop("education")
+
+        # the DuplicateTest company from 7.2 (detach posts that picked it first)
+        cids = [
+            r[0]
+            for r in db.execute(
+                text("SELECT id FROM companies WHERE name LIKE 'DuplicateTest_%'")
+            ).fetchall()
+        ]
+        if cids:
+            run("company_stats", "DELETE FROM company_statistics WHERE company_id IN :ids", ids=cids)
+            run(
+                "post_company_refs",
+                "UPDATE interview_posts SET company_id = NULL WHERE company_id IN :ids",
+                ids=cids,
+            )
+            run("companies", "DELETE FROM companies WHERE id IN :ids", ids=cids)
+
+        db.commit()
+    except Exception as exc:  # cleanup must never fail the audit
+        db.rollback()
+        print(f"[cleanup] skipped: {exc}")
+        return counts
+    finally:
+        db.close()
+    return counts
 
 
 def run_audit():
@@ -403,6 +550,12 @@ def run_audit():
     print(f"{'='*95}")
     print(f"AUDIT SUMMARY: {pass_count} PASSED, {fail_count} FAILED out of {len(results)} tests.")
     print(f"{'='*95}\n")
+
+    # Leave the shared database exactly as we found it — CI runs this on
+    # every push against the same DB the site uses.
+    removed = cleanup_test_artifacts()
+    if removed:
+        print(f"cleanup: removed {removed}")
 
 if __name__ == "__main__":
     run_audit()

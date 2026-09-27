@@ -15,6 +15,7 @@ import {
   Lightbulb,
   MapPin,
   MessageSquare,
+  Pencil,
   ScrollText,
   Share2,
   ShieldAlert,
@@ -29,11 +30,15 @@ import {
   Button,
   EmptyState,
   ErrorState,
+  Field,
+  Input,
   LINK_PRIMARY,
   LINK_SECONDARY,
+  Modal,
   Skeleton,
   SkeletonCard,
   Spinner,
+  Textarea,
 } from "../components/ui";
 import { Focus, Scene, Section, SPRING, Tilt } from "../motion";
 import { prefersReducedMotion } from "../lib/motion";
@@ -294,6 +299,15 @@ export const ReportDetailPage: React.FC = () => {
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [sharing, setSharing] = useState(false);
 
+  // Owner edit — 3 edits per post for the post's whole life; switching
+  // anonymity is free and never consumes one.
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editExperience, setEditExperience] = useState("");
+  const [editTips, setEditTips] = useState("");
+  const [editAnonymous, setEditAnonymous] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+
   const celebratedRef = useRef(false);
   const outcomeMarkRef = useRef<HTMLSpanElement>(null);
 
@@ -446,6 +460,65 @@ export const ReportDetailPage: React.FC = () => {
     });
   };
 
+  const openEdit = () => {
+    if (!post) return;
+    setEditTitle(post.title);
+    setEditExperience(post.experience_text ?? "");
+    setEditTips(post.tips ?? "");
+    setEditAnonymous(Boolean(post.is_anonymous));
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!post || !postId || savingEdit) return;
+
+    const title = editTitle.trim();
+    const experience = editExperience.trim();
+    if (!title) {
+      error("Title can't be empty.");
+      return;
+    }
+    if (!experience) {
+      error("Experience text can't be empty.");
+      return;
+    }
+
+    // Only send what actually changed — an unchanged payload must never
+    // consume one of the three edits, and a pure anonymity switch stays free.
+    const payload: Partial<PostOut> = {};
+    if (title !== post.title) payload.title = title;
+    if (experience !== (post.experience_text ?? "").trim()) payload.experience_text = experience;
+    const tips = editTips.trim();
+    if (tips !== (post.tips ?? "").trim()) payload.tips = tips || null;
+    if (editAnonymous !== Boolean(post.is_anonymous)) payload.is_anonymous = editAnonymous;
+
+    const changed = Object.keys(payload);
+    if (changed.length === 0) {
+      setEditOpen(false);
+      info("Nothing changed — no edit was used.", "No changes");
+      return;
+    }
+    const anonOnly = changed.length === 1 && changed[0] === "is_anonymous";
+    const remaining = post.edits_remaining ?? Math.max(0, 3 - post.edit_count);
+
+    setSavingEdit(true);
+    try {
+      await postsApi.update(postId, payload);
+      setEditOpen(false);
+      await fetchPost();
+      if (anonOnly) {
+        success("Visibility updated — this change never counts against your limit.", "Post updated");
+      } else {
+        success(`Post updated — ${Math.max(0, remaining - 1)} of 3 edits remaining.`, "Post updated");
+      }
+    } catch (err: unknown) {
+      error(errorMessage(err, "Failed to update the post."));
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   /* ── Loading ─────────────────────────────────────────────────────────── */
   if (loading) {
     return (
@@ -548,6 +621,7 @@ export const ReportDetailPage: React.FC = () => {
   }
 
   const isDraft = post.status === "draft";
+  const editsRemaining = post.edits_remaining ?? Math.max(0, 3 - post.edit_count);
   const packageLabel = formatPackage(post.package_amount, post.currency);
   const dateLabel = absoluteDate(post.published_at || post.created_at);
   const roundCount = post.rounds?.length ?? 0;
@@ -629,6 +703,22 @@ export const ReportDetailPage: React.FC = () => {
 
                     <div className="flex shrink-0 flex-wrap items-center gap-3">
                       <CategoryBadge category={post.post_category} />
+                      {post.is_owner && post.status === "published" && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          icon={<Pencil size={14} aria-hidden="true" />}
+                          onClick={openEdit}
+                          disabled={editsRemaining <= 0}
+                          title={
+                            editsRemaining <= 0
+                              ? "All 3 edits used for this post"
+                              : `${editsRemaining} of 3 edits remaining`
+                          }
+                        >
+                          Edit
+                        </Button>
+                      )}
                       <time
                         className="text-sm text-muted"
                         dateTime={post.published_at || post.created_at}
@@ -773,6 +863,82 @@ export const ReportDetailPage: React.FC = () => {
           </Scene>
         </section>
       </div>
+
+      {/* ── Owner edit modal ─────────────────────────────────────────────── */}
+      <Modal
+        isOpen={editOpen}
+        onClose={() => !savingEdit && setEditOpen(false)}
+        title="Edit experience"
+        subtitle={`${editsRemaining} of 3 edits remaining — switching anonymity never counts.`}
+        maxWidth="max-w-xl"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setEditOpen(false)} disabled={savingEdit}>
+              Cancel
+            </Button>
+            <Button type="submit" form="edit-post-form" loading={savingEdit}>
+              Save changes
+            </Button>
+          </>
+        }
+      >
+        <form id="edit-post-form" onSubmit={handleSaveEdit} className="space-y-4">
+          <Field label="Experience Title" htmlFor="edit-post-title" required>
+            <Input
+              id="edit-post-title"
+              type="text"
+              required
+              maxLength={200}
+              value={editTitle}
+              disabled={savingEdit}
+              onChange={(e) => setEditTitle(e.target.value)}
+              placeholder="e.g. Google Software Engineer Intern Interview Experience 2024"
+            />
+          </Field>
+
+          <Field
+            label="Your experience"
+            htmlFor="edit-post-experience"
+            required
+            hint="What happened, how each round went, what you learned."
+          >
+            <Textarea
+              id="edit-post-experience"
+              rows={6}
+              required
+              value={editExperience}
+              disabled={savingEdit}
+              onChange={(e) => setEditExperience(e.target.value)}
+            />
+          </Field>
+
+          <Field label="Tips & preparation strategy" htmlFor="edit-post-tips" hint="Optional">
+            <Textarea
+              id="edit-post-tips"
+              rows={3}
+              value={editTips}
+              disabled={savingEdit}
+              onChange={(e) => setEditTips(e.target.value)}
+            />
+          </Field>
+
+          <label className="flex cursor-pointer items-start gap-2 text-sm text-body">
+            <input
+              type="checkbox"
+              checked={editAnonymous}
+              disabled={savingEdit}
+              onChange={(e) => setEditAnonymous(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-line text-primary focus:ring-primary/40"
+            />
+            <span>
+              Post anonymously
+              <span className="block text-xs text-faint">
+                Hide your identity on this experience — this switch is always free.
+              </span>
+            </span>
+          </label>
+        </form>
+      </Modal>
 
       <ReportModal
         isOpen={reportModalOpen}

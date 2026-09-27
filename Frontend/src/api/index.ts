@@ -160,7 +160,7 @@ export const postsApi = {
   addRound: (postId: T.UUID, data: {
     name: string;
     mode?: "online" | "offline";
-    duration_minutes?: number;
+    duration_minutes?: number | null;
     round_tags?: string;
     difficulty?: string;
     round_number?: number;

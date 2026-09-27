@@ -211,15 +211,13 @@ def update_post_details(db, current_user, post_id, data: PostUpdate):
         if locked_fields_attempted:
             raise ValueError(f"Cannot change {', '.join(locked_fields_attempted)} after publishing")
 
-        # exception: switching to anonymous is always free, never counts
-        # against the edit limit/window
+        # exception: switching to anonymity is always free, never counts
+        # against the edit limit
         is_only_anonymity_change = set(updates.keys()) == {"is_anonymous"}
 
         if not is_only_anonymity_change:
-            days_since_publish = (utc_now() - post.published_at.replace(tzinfo=timezone.utc)).days
-            if days_since_publish >= 3:
-                raise ValueError("Edit window has expired (3 days after publishing)")
-
+            # product decision: 3 edits per post for the post's whole life,
+            # no time window after publishing
             if post.edit_count >= 3:
                 raise ValueError("Maximum number of edits (3) reached for this post")
 
@@ -363,12 +361,6 @@ def get_post_detail(db, post_id, current_user=None, background_tasks=None):
 
     edit_count = post.edit_count or 0
     edits_remaining = max(0, 3 - edit_count)
-    days_left_to_edit = 3
-    if post.published_at:
-        days_since_publish = (utc_now() - post.published_at.replace(tzinfo=timezone.utc)).days
-        days_left_to_edit = max(0, 3 - days_since_publish)
-    elif post.status != "published":
-        days_left_to_edit = 3
 
     return {
         "id": post.id,
@@ -399,7 +391,7 @@ def get_post_detail(db, post_id, current_user=None, background_tasks=None):
         "status": post.status,
         "edit_count": edit_count,
         "edits_remaining": edits_remaining,
-        "days_left_to_edit": days_left_to_edit,
+        "is_owner": is_owner,
         "view_count": post.view_count,
         "share_count": post.share_count,
         "published_at": post.published_at,

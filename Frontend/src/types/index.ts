@@ -258,6 +258,8 @@ export interface PostOut {
   status: PostStatus;
   published_at?: string | null;
   edit_count: number;
+  edits_remaining?: number;
+  is_owner?: boolean;
   view_count: number;
   share_count: number;
   created_at: string;

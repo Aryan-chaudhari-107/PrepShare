@@ -33,14 +33,13 @@ import {
   PageHeader,
   Segmented,
   Select,
-  Spinner,
   Textarea,
 } from "../components/ui";
 import { DURATION, EASE, Focus, Scene, SPRING, Section, Tilt } from "../motion";
 import { postsApi, companiesApi, uploadsApi } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
-import { Company, PostCategory } from "../types";
+import { PostCategory } from "../types";
 import { cn } from "../lib/cn";
 import { errorMessage, localId } from "../lib/format";
 
@@ -56,7 +55,7 @@ interface RoundDraft {
   id: string;
   name: string;
   mode: "online" | "offline";
-  duration_minutes: number;
+  duration_minutes: number | null;
   difficulty: "easy" | "medium" | "hard";
   questions: QuestionDraft[];
 }
@@ -68,6 +67,8 @@ type RoundMode = RoundDraft["mode"];
 interface RoundActions {
   onNameChange: (roundIndex: number, name: string) => void;
   onModeChange: (roundIndex: number, mode: RoundMode) => void;
+  /** null = the poster never provided a duration — nothing is stored or shown */
+  onDurationChange: (roundIndex: number, minutes: number | null) => void;
   onRemoveRound: (roundIndex: number) => void;
   onAddQuestion: (roundIndex: number) => void;
   onQuestionChange: (roundIndex: number, questionIndex: number, text: string) => void;
@@ -184,6 +185,7 @@ interface RoundCardProps {
 const RoundCard: React.FC<RoundCardProps> = ({ round, index, total, disabled, actions }) => {
   const nameId = `round-name-${round.id}`;
   const modeId = `round-mode-${round.id}`;
+  const durationId = `round-duration-${round.id}`;
   const nameError = actions.fieldError(
     `round:${round.id}`,
     !round.name.trim(),
@@ -211,7 +213,7 @@ const RoundCard: React.FC<RoundCardProps> = ({ round, index, total, disabled, ac
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
         <div className="sm:col-span-2">
           <Field label="Round Name / Focus" htmlFor={nameId} required error={nameError}>
             <Input
@@ -237,6 +239,34 @@ const RoundCard: React.FC<RoundCardProps> = ({ round, index, total, disabled, ac
             <option value="online">Virtual / Online</option>
             <option value="offline">On-Site / Offline</option>
           </Select>
+        </Field>
+        <Field
+          label="Duration (mins)"
+          htmlFor={durationId}
+          hint="Optional — leave blank if unknown"
+        >
+          <Input
+            id={durationId}
+            type="number"
+            min={1}
+            max={1440}
+            inputMode="numeric"
+            value={round.duration_minutes ?? ""}
+            disabled={disabled}
+            onChange={(event) => {
+              const raw = event.target.value;
+              if (raw === "") {
+                actions.onDurationChange(index, null);
+                return;
+              }
+              const parsed = Number.parseInt(raw, 10);
+              actions.onDurationChange(
+                index,
+                Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 1440) : null
+              );
+            }}
+            placeholder="e.g. 60"
+          />
         </Field>
       </div>
 
@@ -542,16 +572,14 @@ export const DraftReportPage: React.FC = () => {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [pendingRemoval, setPendingRemoval] = useState<PendingRemoval | null>(null);
 
-  // Available Companies
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [companiesLoading, setCompaniesLoading] = useState(false);
-  const [showNewCompanyInput, setShowNewCompanyInput] = useState(false);
-  const [newCompanyName, setNewCompanyName] = useState("");
+  // Company: free-text field — no dropdown of stored names. The typed name
+  // is resolved against the companies table on submit (reused when an exact
+  // name already exists, created otherwise).
+  const [companyName, setCompanyName] = useState("");
 
   // STEP 1 STATE: General Intelligence
   const [title, setTitle] = useState("");
   const [postCategory, setPostCategory] = useState<PostCategory>("campus_placement");
-  const [selectedCompanyId, setSelectedCompanyId] = useState("");
   const [collegeName, setCollegeName] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [yearOfStudy, setYearOfStudy] = useState<number>(3);
@@ -564,7 +592,7 @@ export const DraftReportPage: React.FC = () => {
       id: "round-1",
       name: "",
       mode: "online",
-      duration_minutes: 60,
+      duration_minutes: null,
       difficulty: "medium",
       questions: [
         {
@@ -603,17 +631,6 @@ export const DraftReportPage: React.FC = () => {
       openAuthModal("login");
     }
   }, [isAuthenticated, openAuthModal]);
-
-  useEffect(() => {
-    setCompaniesLoading(true);
-    companiesApi
-      .list(undefined, 1, 100)
-      .then((res) => {
-        setCompanies(res.data.items || []);
-      })
-      .catch(() => {})
-      .finally(() => setCompaniesLoading(false));
-  }, []);
 
   // The completion beat owns navigation: the resolution mark gets its moment
   // BEFORE the route changes, and an unmount during the hold (browser Back,
@@ -663,6 +680,31 @@ export const DraftReportPage: React.FC = () => {
 
   /* ── Step 1: Submit Draft Post ───────────────────────────────────────── */
 
+  /**
+   * Resolve a typed company name to a company id: reuse the row when the
+   * exact name already exists (case-insensitive), otherwise create it. If
+   * creation loses a name-uniqueness race, fall back to the winner's row.
+   */
+  const resolveCompanyId = async (name: string): Promise<string> => {
+    const findExact = async (): Promise<string | undefined> => {
+      const res = await companiesApi.list(name, 1, 50);
+      return (res.data.items || []).find(
+        (c) => c.name.trim().toLowerCase() === name.toLowerCase()
+      )?.id;
+    };
+
+    const existingId = await findExact();
+    if (existingId) return existingId;
+    try {
+      const created = await companiesApi.create({ name });
+      return created.data.id;
+    } catch (err) {
+      const racedId = await findExact();
+      if (racedId) return racedId;
+      throw err;
+    }
+  };
+
   const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting || stepRef.current !== 1) return;
@@ -679,13 +721,8 @@ export const DraftReportPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      let compId = selectedCompanyId;
-      if (showNewCompanyInput && newCompanyName.trim()) {
-        const cRes = await companiesApi.create({ name: newCompanyName.trim() });
-        compId = cRes.data.id;
-        setCompanies((prev) => [...prev, cRes.data]);
-        setSelectedCompanyId(compId);
-      }
+      const typedCompany = companyName.trim();
+      const compId = typedCompany ? await resolveCompanyId(typedCompany) : undefined;
 
       const payload = {
         title: title.trim(),
@@ -717,7 +754,7 @@ export const DraftReportPage: React.FC = () => {
         id: `round-${localId()}`,
         name: "",
         mode: "online",
-        duration_minutes: 45,
+        duration_minutes: null,
         difficulty: "medium",
         questions: [{ id: `q-${localId()}`, question_text: "" }],
       },
@@ -730,6 +767,10 @@ export const DraftReportPage: React.FC = () => {
 
   const updateRoundMode = (roundIndex: number, mode: RoundMode) => {
     setRounds((prev) => prev.map((r, rIdx) => (rIdx === roundIndex ? { ...r, mode } : r)));
+  };
+
+  const updateRoundDuration = (roundIndex: number, minutes: number | null) => {
+    setRounds((prev) => prev.map((r, rIdx) => (rIdx === roundIndex ? { ...r, duration_minutes: minutes } : r)));
   };
 
   const addQuestionToRound = (roundIndex: number) => {
@@ -812,6 +853,7 @@ export const DraftReportPage: React.FC = () => {
   const roundActions: RoundActions = {
     onNameChange: updateRoundName,
     onModeChange: updateRoundMode,
+    onDurationChange: updateRoundDuration,
     onRemoveRound: requestRemoveRound,
     onAddQuestion: addQuestionToRound,
     onQuestionChange: updateQuestionText,
@@ -1063,62 +1105,24 @@ export const DraftReportPage: React.FC = () => {
 
                         {/* Basic info fields (2x2 grid) */}
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                          {/* Company / organization */}
-                          <Field
-                            label="Company / Organization"
-                            htmlFor={companyId}
-                            hint={companiesLoading ? "Loading companies…" : undefined}
-                            action={
-                              <Button
-                                variant="link"
-                                size="sm"
-                                disabled={isSubmitting}
-                                onClick={() => setShowNewCompanyInput((open) => !open)}
-                              >
-                                {showNewCompanyInput ? "Select Existing" : "+ Add New"}
-                              </Button>
-                            }
-                          >
+                          {/* Company / organization — typed freely, never a list */}
+                          <Field label="Company / Organization" htmlFor={companyId}>
                             <div className="relative">
                               <Building2
                                 size={16}
                                 aria-hidden="true"
                                 className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint"
                               />
-                              {showNewCompanyInput ? (
-                                <Input
-                                  id={companyId}
-                                  type="text"
-                                  value={newCompanyName}
-                                  disabled={isSubmitting}
-                                  onChange={(e) => setNewCompanyName(e.target.value)}
-                                  placeholder="e.g. Google, Microsoft, Amazon"
-                                  autoComplete="organization"
-                                  className="pl-9"
-                                />
-                              ) : (
-                                <>
-                                  <Select
-                                    id={companyId}
-                                    value={selectedCompanyId}
-                                    disabled={isSubmitting}
-                                    onChange={(e) => setSelectedCompanyId(e.target.value)}
-                                    className="pl-9"
-                                  >
-                                    <option value="">-- Select Company (Optional) --</option>
-                                    {companies.map((c) => (
-                                      <option key={c.id} value={c.id}>
-                                        {c.name} {c.industry ? `(${c.industry})` : ""}
-                                      </option>
-                                    ))}
-                                  </Select>
-                                  {companiesLoading && (
-                                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-                                      <Spinner size={16} />
-                                    </span>
-                                  )}
-                                </>
-                              )}
+                              <Input
+                                id={companyId}
+                                type="text"
+                                value={companyName}
+                                disabled={isSubmitting}
+                                onChange={(e) => setCompanyName(e.target.value)}
+                                placeholder="e.g. Google, Microsoft, Amazon"
+                                autoComplete="organization"
+                                className="pl-9"
+                              />
                             </div>
                           </Field>
 

@@ -118,7 +118,7 @@ class PostOut(BaseModel):
     status: str
     edit_count: int = 0
     edits_remaining: int = 3
-    days_left_to_edit: int = 0
+    is_owner: bool = False   # viewer is the author (works for anon posts too)
     view_count: int
     share_count: int
     published_at: datetime | None = None
