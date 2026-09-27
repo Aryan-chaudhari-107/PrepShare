@@ -554,7 +554,7 @@ const PublishedBeat: React.FC = () => (
 /* ── Page ────────────────────────────────────────────────────────────────── */
 
 export const DraftReportPage: React.FC = () => {
-  const { isAuthenticated, openAuthModal } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, openAuthModal } = useAuth();
   const { success, error } = useToast();
   const navigate = useNavigate();
 
@@ -626,11 +626,14 @@ export const DraftReportPage: React.FC = () => {
   const currencyId = useId();
   const packageId = useId();
 
+  // Force login only once auth has actually resolved. Opening the modal
+  // during the loading window stranded signed-in users behind "Sign in to
+  // continue" — nothing ever closed the modal when auth then succeeded.
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!authLoading && !isAuthenticated) {
       openAuthModal("login");
     }
-  }, [isAuthenticated, openAuthModal]);
+  }, [authLoading, isAuthenticated, openAuthModal]);
 
   // The completion beat owns navigation: the resolution mark gets its moment
   // BEFORE the route changes, and an unmount during the hold (browser Back,

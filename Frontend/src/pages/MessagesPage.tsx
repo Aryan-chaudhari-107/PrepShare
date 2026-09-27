@@ -240,7 +240,7 @@ const SendButton: React.FC<{ disabled: boolean; loading: boolean }> = ({ disable
  * conversations" control — while at `lg` and up both stay side by side.
  */
 export const MessagesPage: React.FC = () => {
-  const { user, isAuthenticated, openAuthModal } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, openAuthModal } = useAuth();
   const { success, error } = useToast();
 
   const [conversations, setConversations] = useState<ConversationOut[]>([]);
@@ -409,14 +409,17 @@ export const MessagesPage: React.FC = () => {
     [scrollToBottom]
   );
 
-  // Initial load — send unauthenticated visitors through the auth modal.
+  // Initial load — send unauthenticated visitors through the auth modal, but
+  // only after auth resolves: opening it mid-load stranded signed-in users
+  // behind a "Sign in" dialog that never closed over their loaded inbox.
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!authLoading && !isAuthenticated) {
       openAuthModal("login");
       return;
     }
+    if (!isAuthenticated) return; // still loading — this effect re-runs when it settles
     void loadConversations();
-  }, [isAuthenticated, loadConversations, openAuthModal]);
+  }, [authLoading, isAuthenticated, loadConversations, openAuthModal]);
 
   // (Re)load the thread whenever the active conversation changes.
   useEffect(() => {
