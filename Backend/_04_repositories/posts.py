@@ -64,6 +64,47 @@ def add_question(db: Session, post_id, post_round_id, question_text, attachment_
     return new_question
 
 
+def clear_post_rounds(db: Session, post_id) -> int:
+    """Remove every round (and its questions) from a draft post.
+
+    Used by the draft wizard's replace-on-resubmit: the form's state is the
+    source of truth, so re-submitting step 2 clears whatever was committed
+    before and writes the current set. ``interview_questions.post_round_id``
+    has no ON DELETE cascade — questions are deleted first so the FK always
+    resolves. Returns the number of rounds removed.
+    """
+    rounds = db.query(PostRound).filter(PostRound.post_id == post_id).all()
+    if not rounds:
+        return 0
+
+    round_ids = [r.id for r in rounds]
+    db.query(InterviewQuestion).filter(
+        InterviewQuestion.post_round_id.in_(round_ids)
+    ).delete(synchronize_session=False)
+    db.query(PostRound).filter(PostRound.post_id == post_id).delete(
+        synchronize_session=False
+    )
+
+    # add_round writes a fresh interview_rounds lookup row per round — drop
+    # the ones this clear just orphaned (same rule cleanup_test_artifacts
+    # applies) so repeated draft edits never accumulate dead rows.
+    still_used = {
+        r[0]
+        for r in db.query(PostRound.round_id)
+        .filter(PostRound.round_id.in_(round_ids))
+        .distinct()
+        .all()
+    }
+    orphans = [rid for rid in round_ids if rid not in still_used]
+    if orphans:
+        db.query(InterviewRound).filter(InterviewRound.id.in_(orphans)).delete(
+            synchronize_session=False
+        )
+
+    db.commit()
+    return len(rounds)
+
+
 def publish_post(db: Session, post, experience_text, tips, is_offer_received, job_role, package_amount, currency):
     post.experience_text = experience_text
     post.tips = tips

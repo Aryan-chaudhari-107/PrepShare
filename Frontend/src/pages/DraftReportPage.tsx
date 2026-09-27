@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import {
   ArrowLeft,
@@ -565,6 +565,18 @@ export const DraftReportPage: React.FC = () => {
   stepRef.current = step;
   const [direction, setDirection] = useState(1);
   const [createdPostId, setCreatedPostId] = useState<string | null>(null);
+  // Draft editing: "Continue editing" lands on /draft?id=<postId>. While that
+  // param is present the wizard hydrates the existing draft (details, rounds,
+  // narrative) instead of starting blank, and every re-submit PATCHes /
+  // replaces rather than creating duplicate rows.
+  const [searchParams] = useSearchParams();
+  const resumeId = searchParams.get("id");
+  const [resumeStatus, setResumeStatus] = useState<"idle" | "loading" | "ready" | "failed">(
+    resumeId ? "loading" : "idle"
+  );
+  // True once step 2 has committed rounds for this draft: the next commit
+  // clears first, because the form's state is the source of truth.
+  const [roundsCommitted, setRoundsCommitted] = useState(false);
   // True once the final publish resolves: replaces the last step with the
   // resolution beat, which in turn owns the navigation away (see the effect).
   const [isPublished, setIsPublished] = useState(false);
@@ -634,6 +646,78 @@ export const DraftReportPage: React.FC = () => {
       openAuthModal("login");
     }
   }, [authLoading, isAuthenticated, openAuthModal]);
+
+  // Hydrate an existing draft when the URL carries ?id= (Draft Archive
+  // "Continue editing", post page "Resume drafting"). Waits for auth to
+  // resolve so the signed-out case still loads once the login completes; a
+  // draft that is gone, foreign, or already published falls back to a clean
+  // wizard with the param stripped.
+  useEffect(() => {
+    if (!resumeId || resumeStatus !== "loading") return;
+    if (authLoading || !isAuthenticated) return;
+
+    // No "attempted" once-guard: React StrictMode's dev double-invoke runs
+    // this effect, then its cleanup (cancelling the in-flight GET), then the
+    // effect again — a once-guard would block run 2 and strand the wizard on
+    // the loading card forever. Each run owns its request; cleanup cancels
+    // the superseded one, so only the latest hydration ever lands.
+    let cancelled = false;
+    (async () => {
+      try {
+        const p = (await postsApi.getById(resumeId)).data;
+        if (cancelled) return;
+        if (p.status !== "draft") {
+          throw new Error("This draft has already been published.");
+        }
+
+        setTitle(p.title);
+        setPostCategory(p.post_category);
+        setCompanyName(p.company_name ?? "");
+        setIsAnonymous(p.is_anonymous);
+        setYearOfStudy(p.year_of_study ?? 3);
+        setExperienceYears(p.experience_years != null ? String(p.experience_years) : "");
+        setWorkLocation(p.work_location ?? "");
+        setExperienceText(p.experience_text ?? "");
+        setTips(p.tips ?? "");
+        setIsOfferReceived(p.is_offer_received);
+        if (p.job_role) setJobRole(p.job_role);
+        if (p.package_amount != null) setPackageAmount(String(p.package_amount));
+        if (p.currency) setCurrency(p.currency);
+
+        const savedRounds = [...(p.rounds ?? [])]
+          .sort((a, b) => a.round_number - b.round_number)
+          .map((r): RoundDraft => ({
+            id: r.post_round_id,
+            name: r.name ?? "",
+            mode: r.mode === "offline" ? "offline" : "online",
+            duration_minutes: r.duration_minutes ?? null,
+            difficulty: "medium",
+            questions: r.questions.length
+              ? r.questions.map((q) => ({
+                  id: q.id,
+                  question_text: q.question_text ?? "",
+                  ...(q.attachment_url ? { attachment_url: q.attachment_url } : {}),
+                }))
+              : [{ id: `q-${localId()}`, question_text: "" }],
+          }));
+        if (savedRounds.length) setRounds(savedRounds);
+
+        setCreatedPostId(p.id);
+        setRoundsCommitted(savedRounds.length > 0);
+        setResumeStatus("ready");
+        success("Draft loaded — pick up where you left off.", "Editing draft");
+      } catch (err) {
+        if (cancelled) return;
+        setResumeStatus("failed");
+        error(errorMessage(err, "Could not load that draft."));
+        navigate("/draft", { replace: true });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeId, resumeStatus, authLoading, isAuthenticated]);
 
   // The completion beat owns navigation: the resolution mark gets its moment
   // BEFORE the route changes, and an unmount during the hold (browser Back,
@@ -737,9 +821,25 @@ export const DraftReportPage: React.FC = () => {
         work_location: workLocation.trim() || undefined,
       };
 
-      const res = await postsApi.createDraft(payload);
-      setCreatedPostId(res.data.post_id);
-      success("Draft initialized successfully.", "Draft Saved");
+      if (createdPostId) {
+        // Editing an existing draft (back-nav from step 2 or a ?id= resume):
+        // update it in place — a second wizard visit must never mint a
+        // duplicate draft. Explicit nulls clear fields the user emptied.
+        await postsApi.update(createdPostId, {
+          title: payload.title,
+          post_category: payload.post_category,
+          company_id: compId || null,
+          is_anonymous: payload.is_anonymous,
+          year_of_study: payload.year_of_study ?? null,
+          experience_years: payload.experience_years ?? null,
+          work_location: payload.work_location ?? null,
+        });
+        success("Draft details saved.", "Draft Saved");
+      } else {
+        const res = await postsApi.createDraft(payload);
+        setCreatedPostId(res.data.post_id);
+        success("Draft initialized successfully.", "Draft Saved");
+      }
       goToStep(2);
     } catch (err: unknown) {
       error(errorMessage(err, "Failed to initialize draft experience."));
@@ -877,6 +977,13 @@ export const DraftReportPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      // Re-submit after a back-nav or a ?id= resume: the form is the source
+      // of truth, so clear whatever an earlier visit committed first —
+      // rounds, timings and questions then replace instead of duplicating.
+      if (roundsCommitted) {
+        await postsApi.clearRounds(createdPostId);
+      }
+
       // Sequential on purpose: rounds must exist before their questions can
       // reference them, and a retry must never run concurrently with itself.
       for (let i = 0; i < rounds.length; i++) {
@@ -900,6 +1007,7 @@ export const DraftReportPage: React.FC = () => {
         }
       }
 
+      setRoundsCommitted(true);
       success("Rounds and questions saved to draft.", "Rounds Saved");
       goToStep(3);
     } catch (err: unknown) {
@@ -986,6 +1094,36 @@ export const DraftReportPage: React.FC = () => {
     animate: "show" as const,
     exit: "exit" as const,
   });
+
+  // While a ?id= draft hydrates the wizard stays hidden — handing the user a
+  // blank form they are about to overwrite would defeat the whole point of
+  // "Continue editing". Signed-out visitors get the normal form (with the
+  // login modal over it); the draft loads once auth resolves.
+  const resumePending = resumeStatus === "loading" && (authLoading || isAuthenticated);
+  if (resumePending) {
+    return (
+      <PageContainer width="wizard">
+        <Scene>
+          <Section>
+            <Card
+              as="section"
+              className="flex flex-col items-center gap-4 py-16 text-center shadow-md"
+            >
+              <span className="animate-pulse text-primary" aria-hidden="true">
+                <FileEdit size={28} />
+              </span>
+              <div>
+                <h1 className="text-lg font-semibold text-heading">Loading your draft…</h1>
+                <p className="mt-1 text-sm text-muted">
+                  Fetching your saved details, rounds and narrative.
+                </p>
+              </div>
+            </Card>
+          </Section>
+        </Scene>
+      </PageContainer>
+    );
+  }
 
   return (
     <>

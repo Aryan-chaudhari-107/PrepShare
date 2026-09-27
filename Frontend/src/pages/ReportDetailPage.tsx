@@ -688,7 +688,7 @@ export const ReportDetailPage: React.FC = () => {
                   <ShieldAlert size={16} aria-hidden="true" />
                   Draft experience — visible only to you
                 </span>
-                <Link to="/draft" className={LINK_SECONDARY}>
+                <Link to={`/draft?id=${post.id}`} className={LINK_SECONDARY}>
                   Resume drafting
                 </Link>
               </Section>

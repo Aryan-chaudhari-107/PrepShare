@@ -69,7 +69,25 @@ def add_question(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    
+
+
+@router.delete("/{post_id}/rounds")
+def clear_rounds(
+    post_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Draft editing: wipe committed rounds before the wizard re-writes them.
+
+    Draft-only and owner-only — published rounds never change.
+    """
+    try:
+        return posts.clear_rounds_from_post(db, current_user, post_id)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
 @router.put("/{post_id}/publish")
 def publish_post(
     post_id : uuid.UUID,

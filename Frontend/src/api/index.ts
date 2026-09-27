@@ -182,6 +182,13 @@ export const postsApi = {
       data
     ),
 
+  /** Draft editing: clear committed rounds so a step-2 re-submit can write
+   *  the form's current state instead of appending duplicates. */
+  clearRounds: (postId: T.UUID) =>
+    apiClient.delete<{ removed: number; message: string }>(
+      `/posts/${postId}/rounds`
+    ),
+
   publish: (postId: T.UUID, data: {
     experience_text: string;
     tips?: string;

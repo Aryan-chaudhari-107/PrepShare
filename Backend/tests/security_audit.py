@@ -36,6 +36,8 @@ AUDIT_POST_TITLES = (
     "Anonymous Confidential Experience",
     "Draft for Offer Check",
     "Vote Testing Post",
+    "Draft Edit Flow Test",
+    "Draft Edit Flow Test Edited",
 )
 
 def record(category, endpoint, case, expected_status, actual_status, passed, significance, details=""):
@@ -540,6 +542,108 @@ def run_audit():
     r_comp_fake = requests.post(f"{BASE}/questions/{fake_id}/complete", headers=headers_a)
     passed_fake_q = (r_vote_fake.status_code in (400, 404)) and (r_comp_fake.status_code in (400, 404))
     record("6. State", "POST /questions/{fake_id}/[vote|complete]", "Operations on nonexistent question ID", "400/404", f"Vote:{r_vote_fake.status_code}, Complete:{r_comp_fake.status_code}", passed_fake_q, "Ensures graceful error handling on missing question resources")
+
+    # =========================================================================
+    # 8. DRAFT EDITING (resume + replace semantics)
+    # =========================================================================
+    # 8.1 Resume surface: draft detail must carry everything the wizard
+    # hydrates when the user clicks "Continue editing".
+    r_edit_post = requests.post(f"{BASE}/posts/", json={
+        "post_category": "campus_placement",
+        "title": "Draft Edit Flow Test",
+    }, headers=headers_a)
+    edit_post_id = r_edit_post.json().get("post_id")
+    r_edit_rnd = requests.post(f"{BASE}/posts/{edit_post_id}/rounds", json={
+        "name": "Tech Screen", "mode": "online", "duration_minutes": 45,
+    }, headers=headers_a)
+    edit_rnd_id = r_edit_rnd.json().get("post_round_id")
+    requests.post(f"{BASE}/posts/{edit_post_id}/rounds/{edit_rnd_id}/questions", json={
+        "question_text": "Resume payload probe question",
+    }, headers=headers_a)
+
+    r_det = requests.get(f"{BASE}/posts/{edit_post_id}", headers=headers_a)
+    det = r_det.json() if r_det.status_code == 200 else {}
+    det_rounds = det.get("rounds") or []
+    passed_resume = (
+        r_det.status_code == 200
+        and det.get("status") == "draft"
+        and det.get("is_owner") is True
+        and len(det_rounds) == 1
+        and det_rounds[0].get("duration_minutes") == 45
+        and len(det_rounds[0].get("questions") or []) == 1
+    )
+    record("8. Draft Edit", "GET /posts/{id}", "Draft detail carries full resume payload", "200 + round/timing/questions", f"{r_det.status_code}, rounds={len(det_rounds)}", passed_resume, "Lets 'Continue editing' hydrate the wizard instead of starting blank")
+
+    # 8.2 Step-1 re-submit patches in place — never duplicates the draft
+    db_cnt = SessionLocal()
+    try:
+        drafts_before = db_cnt.execute(
+            text("SELECT count(*) FROM interview_posts WHERE user_id = :u AND status = 'draft' AND deleted_at IS NULL"),
+            {"u": user_a_id},
+        ).scalar()
+    finally:
+        db_cnt.close()
+
+    r_pat = requests.patch(f"{BASE}/posts/{edit_post_id}", json={
+        "title": "Draft Edit Flow Test Edited",
+        "work_location": "Pune",
+        "year_of_study": 2,
+    }, headers=headers_a)
+
+    db_cnt = SessionLocal()
+    try:
+        drafts_after = db_cnt.execute(
+            text("SELECT count(*) FROM interview_posts WHERE user_id = :u AND status = 'draft' AND deleted_at IS NULL"),
+            {"u": user_a_id},
+        ).scalar()
+    finally:
+        db_cnt.close()
+
+    passed_inplace = r_pat.status_code == 200 and drafts_after == drafts_before
+    record("8. Draft Edit", "PATCH /posts/{id}", "Step-1 re-submit updates draft in place", "200, draft count unchanged", f"{r_pat.status_code}, {drafts_before}->{drafts_after}", passed_inplace, "Back-navigation can never mint duplicate drafts")
+
+    # 8.3 Step-2 re-submit replaces rounds instead of appending duplicates
+    r_clear = requests.delete(f"{BASE}/posts/{edit_post_id}/rounds", headers=headers_a)
+    r_det2 = requests.get(f"{BASE}/posts/{edit_post_id}", headers=headers_a)
+    rounds_after_clear = (r_det2.json() or {}).get("rounds") or []
+    r_readd = requests.post(f"{BASE}/posts/{edit_post_id}/rounds", json={
+        "name": "Tech Screen", "mode": "online", "duration_minutes": 30,
+    }, headers=headers_a)
+    r_det3 = requests.get(f"{BASE}/posts/{edit_post_id}", headers=headers_a)
+    rounds_final = (r_det3.json() or {}).get("rounds") or []
+    passed_replace = (
+        r_clear.status_code == 200
+        and len(rounds_after_clear) == 0
+        and len(rounds_final) == 1
+        and rounds_final[0].get("round_number") == 1
+        and rounds_final[0].get("duration_minutes") == 30
+    )
+    record("8. Draft Edit", "DELETE /posts/{id}/rounds", "Step-2 re-submit replaces rounds", "200, 0 then 1 round #1", f"clear={r_clear.status_code}, {len(rounds_after_clear)}->{len(rounds_final)}", passed_replace, "Fixes duplicated rounds and timings when a draft is edited")
+
+    # 8.4 Guardrails: foreign drafts untouched, published rounds immutable,
+    #     and draft editing never consumes the 3-edit published budget
+    passed_foreign = True
+    if b_post_id:
+        r_foreign = requests.delete(f"{BASE}/posts/{b_post_id}/rounds", headers=headers_a)
+        passed_foreign = r_foreign.status_code in (400, 404)
+        foreign_status = r_foreign.status_code
+    else:
+        foreign_status = "n/a"
+    record("8. Draft Edit", "DELETE /posts/{foreign}/rounds", "Clearing someone else's draft", "400/404", foreign_status, passed_foreign, "Prevents cross-user draft tampering")
+
+    requests.put(f"{BASE}/posts/{edit_post_id}/publish", json={
+        "experience_text": "Draft editing audit narrative.",
+        "is_offer_received": False,
+    }, headers=headers_a)
+    r_pub_clear = requests.delete(f"{BASE}/posts/{edit_post_id}/rounds", headers=headers_a)
+    r_final = requests.get(f"{BASE}/posts/{edit_post_id}", headers=headers_a)
+    final_det = r_final.json() if r_final.status_code == 200 else {}
+    budget_ok = final_det.get("edit_count") == 0 and final_det.get("edits_remaining") == 3
+    passed_lock = r_pub_clear.status_code == 400 and budget_ok
+    record("8. Draft Edit", "DELETE /posts/{id}/rounds (published)", "Published rounds immutable; edit budget intact", "400 + 3 edits left", f"delete={r_pub_clear.status_code}, remaining={final_det.get('edits_remaining')}", passed_lock, "Draft editing can never touch published content or the edit budget")
+
+    # Last test on this post has run: out of the public feed immediately
+    hide_from_feed(edit_post_id)
 
     # =========================================================================
     # 7. DATABASE & API ROBUSTNESS (NO 500s)

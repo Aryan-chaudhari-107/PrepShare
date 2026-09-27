@@ -7,6 +7,7 @@ from _03_schemas.posts import PostUpdate
 from _04_repositories import (
     add_question,
     add_round,
+    clear_post_rounds,
     count_published_posts,
     count_rounds_for_posts,
     count_user_draft_posts,
@@ -104,6 +105,29 @@ def add_round_to_post(db, current_user, post_id, data):
         "message": "Round added",
     }
 
+
+
+def clear_rounds_from_post(db, current_user, post_id):
+    """Replace-enabler for the draft wizard: wipe a draft's committed rounds.
+
+    Drafts stay fully editable until they publish — the wizard commits step 2
+    by writing the form's current state, so a re-submit first clears whatever
+    an earlier visit committed (round names, timings, questions). Published
+    rounds are immutable, matching the add-round rule.
+    """
+    post = get_post_by_id(db, post_id)
+    if not post:
+        raise NotFoundError("Post not found")
+
+    if post.user_id != current_user.id:
+        raise ValueError("You don't own this post")
+
+    if post.status != "draft":
+        raise ValueError("Cannot modify rounds of a published post")
+
+    removed = clear_post_rounds(db, post_id)
+    logger.info(f"Cleared {removed} round(s) from draft {post.id} by user {current_user.id}")
+    return {"removed": removed, "message": "Rounds cleared"}
 
 
 def add_question_to_round(db, current_user, post_id, post_round_id, data):

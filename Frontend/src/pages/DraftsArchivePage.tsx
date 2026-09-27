@@ -198,7 +198,7 @@ export const DraftsArchivePage: React.FC = () => {
                           <Link to={`/posts/${d.id}`} className={LINK_SECONDARY}>
                             View draft
                           </Link>
-                          <Link to="/draft" className={LINK_PRIMARY}>
+                          <Link to={`/draft?id=${d.id}`} className={LINK_PRIMARY}>
                             Continue editing
                             <ArrowRight
                               size={14}
