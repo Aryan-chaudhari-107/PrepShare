@@ -192,6 +192,23 @@ def cleanup_test_artifacts(extra_titles=()):
     return counts
 
 
+def hide_from_feed(post_id):
+    """Soft-delete an audit post the moment its last test has run.
+
+    The feed and public-profile queries filter ``deleted_at IS NULL``, so the
+    shared public feed stops showing the post immediately while the audit
+    keeps running; the rows stay for cleanup_test_artifacts at the end.
+    """
+    if not post_id:
+        return
+    db = SessionLocal()
+    try:
+        db.execute(text("UPDATE interview_posts SET deleted_at = now() WHERE id = :id"), {"id": post_id})
+        db.commit()
+    finally:
+        db.close()
+
+
 def run_audit():
     db = SessionLocal()
     try:
@@ -288,6 +305,36 @@ def run_audit():
     }, headers=headers_b)
     b_comment_id = r_b_comment.json().get("id") if r_b_comment.status_code == 201 else None
 
+    # --- Everything that needs the public post LIVE runs right here, while it
+    # --- is fresh, and the post is then soft-deleted from the feed. CI runs
+    # --- this audit against the production database on every push, so the
+    # --- shared public feed must only ever see these rows for the seconds
+    # --- between the publish above and the hide_from_feed call below.
+
+    # 4.3 Empty string for min-length constrained field
+    r = requests.post(f"{BASE}/posts/{a_post_id}/comments", json={"comment_text": ""}, headers=headers_a)
+    passed = r.status_code == 422
+    record("4. Validation", "POST /posts/{id}/comments", "Empty string comment_text (min_length=1)", "422", r.status_code, passed, "Blocks blank/spam submissions")
+
+    # 6.1 Like toggle idempotency & state correctness
+    # Rapid toggle x4
+    l1 = requests.post(f"{BASE}/posts/{a_post_id}/like", headers=headers_a).json().get("liked")
+    l2 = requests.post(f"{BASE}/posts/{a_post_id}/like", headers=headers_a).json().get("liked")
+    l3 = requests.post(f"{BASE}/posts/{a_post_id}/like", headers=headers_a).json().get("liked")
+    l4 = requests.post(f"{BASE}/posts/{a_post_id}/like", headers=headers_a).json().get("liked")
+    passed_like = (l1 != l2) and (l2 != l3) and (l3 != l4)
+    record("6. State", "POST /posts/{id}/like", "Like/unlike toggle cycle state consistency", "Alternating True/False", f"{l1}->{l2}->{l3}->{l4}", passed_like, "Prevents duplicate like records or desynchronized like counters")
+
+    # 6.2 Bookmark toggle cycle
+    b1 = requests.post(f"{BASE}/posts/{a_post_id}/bookmark", headers=headers_a).json().get("bookmarked")
+    b2 = requests.post(f"{BASE}/posts/{a_post_id}/bookmark", headers=headers_a).json().get("bookmarked")
+    passed_bm = (b1 != b2)
+    record("6. State", "POST /posts/{id}/bookmark", "Bookmark/unbookmark toggle cycle", "Alternating True/False", f"{b1}->{b2}", passed_bm, "Ensures reliable bookmark state toggling")
+
+    # Last test on this post has run: out of the public feed immediately
+    # (rows stay until cleanup_test_artifacts at the end of the run).
+    hide_from_feed(a_post_id)
+
     # 2.1 User A attempts to edit User B's education record
     if b_edu_id:
         r = requests.patch(f"{BASE}/users/me/education/{b_edu_id}", json={
@@ -380,6 +427,9 @@ def run_audit():
     has_anon_in_profile = any(item.get("id") == anon_post_id for item in pub_posts_items)
     record("3. Privacy", "GET /users/{id}/posts", "Anonymous posts excluded from public profile", "Excluded", f"Found anon post: {has_anon_in_profile}", not has_anon_in_profile, "Prevents linking anonymous posts via user profile post lists")
 
+    # 3.4 was the last test on this post: out of the public feed immediately.
+    hide_from_feed(anon_post_id)
+
     # =========================================================================
     # 4. INPUT VALIDATION & EDGE CASES
     # =========================================================================
@@ -392,11 +442,6 @@ def run_audit():
     r = requests.post(f"{BASE}/posts/", json={}, headers=headers_a)
     passed = r.status_code == 422
     record("4. Validation", "POST /posts/", "Empty JSON body (missing title & category)", "422", r.status_code, passed, "Enforces required field validation before DB write")
-
-    # 4.3 Empty string for min-length constrained field
-    r = requests.post(f"{BASE}/posts/{a_post_id}/comments", json={"comment_text": ""}, headers=headers_a)
-    passed = r.status_code == 422
-    record("4. Validation", "POST /posts/{id}/comments", "Empty string comment_text (min_length=1)", "422", r.status_code, passed, "Blocks blank/spam submissions")
 
     # 4.4 Invalid Enum value
     r = requests.post(f"{BASE}/questions/{uuid.uuid4()}/vote", json={"difficulty": "extreme_impossible"}, headers=headers_a)
@@ -468,21 +513,6 @@ def run_audit():
     round_id = r_round.json().get("post_round_id")
     r_q = requests.post(f"{BASE}/posts/{vote_post_id}/rounds/{round_id}/questions", json={"question_text": "Algorithm question?"}, headers=headers_a)
     q_id = r_q.json().get("question_id")
-
-    # 6.1 Like toggle idempotency & state correctness
-    # Rapid toggle x4
-    l1 = requests.post(f"{BASE}/posts/{a_post_id}/like", headers=headers_a).json().get("liked")
-    l2 = requests.post(f"{BASE}/posts/{a_post_id}/like", headers=headers_a).json().get("liked")
-    l3 = requests.post(f"{BASE}/posts/{a_post_id}/like", headers=headers_a).json().get("liked")
-    l4 = requests.post(f"{BASE}/posts/{a_post_id}/like", headers=headers_a).json().get("liked")
-    passed_like = (l1 != l2) and (l2 != l3) and (l3 != l4)
-    record("6. State", "POST /posts/{id}/like", "Like/unlike toggle cycle state consistency", "Alternating True/False", f"{l1}->{l2}->{l3}->{l4}", passed_like, "Prevents duplicate like records or desynchronized like counters")
-
-    # 6.2 Bookmark toggle cycle
-    b1 = requests.post(f"{BASE}/posts/{a_post_id}/bookmark", headers=headers_a).json().get("bookmarked")
-    b2 = requests.post(f"{BASE}/posts/{a_post_id}/bookmark", headers=headers_a).json().get("bookmarked")
-    passed_bm = (b1 != b2)
-    record("6. State", "POST /posts/{id}/bookmark", "Bookmark/unbookmark toggle cycle", "Alternating True/False", f"{b1}->{b2}", passed_bm, "Ensures reliable bookmark state toggling")
 
     # 6.3 Difficulty vote state transitions & counter conservation
     if q_id:
